@@ -22,7 +22,7 @@ export default function ImpactPage() {
   const [loading, setLoading] = useState(true)
   const [editingId, setEditingId] = useState<string | null>(null)
   const router = useRouter()
-  const supabase = createClient()
+  const supabase =  createClient()
 
   const [formData, setFormData] = useState({
     title: '',

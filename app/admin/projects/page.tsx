@@ -138,7 +138,7 @@ export default function ProjectsPage() {
                 onClick={() => router.push('/admin/projects/create')}
                 className="mt-4 text-gold-500 hover:text-gold-400 transition-colors"
               >
-                Create your first project →
+                Create your first project ?
               </button>
             </div>
           ) : (

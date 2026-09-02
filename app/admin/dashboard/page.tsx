@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { createClient } from '@/lib/supabase/client'
+import { createClient } from '@/lib/supabase/client'  // Use client
 import { 
   Plus, 
   FolderTree, 
@@ -27,7 +27,7 @@ export default function AdminDashboard() {
     contacts: 0,
   })
   const router = useRouter()
-  const supabase = createClient()
+  const supabase = createClient()  // No await needed
 
   useEffect(() => {
     checkAuth()

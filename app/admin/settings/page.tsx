@@ -10,6 +10,7 @@ import Sidebar from '@/components/admin/Sidebar'
 export default function SettingsPage() {
   const [loading, setLoading] = useState(false)
   const [initialLoading, setInitialLoading] = useState(true)
+  const [error, setError] = useState('')
   const router = useRouter()
   const supabase = createClient()
 
@@ -57,14 +58,20 @@ export default function SettingsPage() {
   }
 
   const fetchSettings = async () => {
+    setInitialLoading(true)
+    setError('')
     try {
       const { data, error } = await supabase
         .from('site_settings')
         .select('*')
 
-      if (error) throw error
+      if (error) {
+        console.error('Error fetching settings:', error)
+        setError(error.message)
+        return
+      }
 
-      if (data) {
+      if (data && data.length > 0) {
         const settingsMap: Record<string, any> = {}
         data.forEach(item => {
           settingsMap[item.key] = item.value
@@ -77,8 +84,9 @@ export default function SettingsPage() {
           donation: settingsMap.donation || settings.donation,
         })
       }
-    } catch (error) {
-      toast.error('Failed to fetch settings')
+    } catch (err: any) {
+      console.error('Error:', err)
+      setError(err.message || 'Failed to fetch settings')
     } finally {
       setInitialLoading(false)
     }
@@ -131,6 +139,7 @@ export default function SettingsPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
+    setError('')
 
     try {
       const settingsData = [
@@ -145,12 +154,18 @@ export default function SettingsPage() {
           .from('site_settings')
           .upsert({ key: item.key, value: item.value }, { onConflict: 'key' })
 
-        if (error) throw error
+        if (error) {
+          console.error('Error saving:', item.key, error)
+          throw new Error(`Failed to save ${item.key}: ${error.message}`)
+        }
       }
 
       toast.success('Settings saved successfully!')
-    } catch (error: any) {
-      toast.error(error.message || 'Failed to save settings')
+      await fetchSettings() // Refresh to show updated values
+    } catch (err: any) {
+      console.error('Submit error:', err)
+      setError(err.message || 'Failed to save settings')
+      toast.error(err.message || 'Failed to save settings')
     } finally {
       setLoading(false)
     }
@@ -158,14 +173,18 @@ export default function SettingsPage() {
 
   if (initialLoading) {
     return (
-      <div className="min-h-screen bg-black flex items-center justify-center">
-        <div className="text-gold-500 text-xl">Loading...</div>
+      <div className="min-h-screen bg-black flex">
+        <Sidebar />
+        <main className="flex-1 p-4 md:p-8 overflow-y-auto flex items-center justify-center">
+          <div className="text-gold-500 text-xl">Loading settings...</div>
+        </main>
       </div>
     )
   }
 
   return (
     <div className="min-h-screen bg-black flex">
+      <Sidebar />
       <main className="flex-1 p-4 md:p-8 overflow-y-auto">
         <div className="max-w-4xl mx-auto">
           <div className="flex items-center gap-4 mb-8">
@@ -176,7 +195,14 @@ export default function SettingsPage() {
             </div>
           </div>
 
+          {error && (
+            <div className="mb-6 p-4 bg-red-500/10 border border-red-500/20 text-red-500 rounded-lg">
+              Error: {error}
+            </div>
+          )}
+
           <form onSubmit={handleSubmit} className="space-y-6">
+            {/* Organization Settings */}
             <div className="bg-[#1A1A1A] rounded-xl p-4 md:p-6 border border-gold-500/10">
               <h2 className="text-lg md:text-xl font-semibold text-white mb-4">Organization</h2>
               <div className="space-y-4">
@@ -245,6 +271,7 @@ export default function SettingsPage() {
               </div>
             </div>
 
+            {/* Social Media Settings */}
             <div className="bg-[#1A1A1A] rounded-xl p-4 md:p-6 border border-gold-500/10">
               <h2 className="text-lg md:text-xl font-semibold text-white mb-4">Social Media</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -306,6 +333,7 @@ export default function SettingsPage() {
               </div>
             </div>
 
+            {/* Donation Settings */}
             <div className="bg-[#1A1A1A] rounded-xl p-4 md:p-6 border border-gold-500/10">
               <h2 className="text-lg md:text-xl font-semibold text-white mb-4">Donation</h2>
               <div className="space-y-4">
@@ -355,7 +383,6 @@ export default function SettingsPage() {
           </form>
         </div>
       </main>
-      <Sidebar />
     </div>
   )
 }

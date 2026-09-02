@@ -2,12 +2,12 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { createClient } from '@/lib/supabase/client'
+import { createClient } from '@/lib/supabase/client'  // Use client, not server
 
 export default function Success() {
-  const [user, setUser] = useState(null)
+  const [user, setUser] = useState<any>(null)
   const router = useRouter()
-  const supabase = createClient()
+  const supabase = createClient()  // No await needed
 
   useEffect(() => {
     const getUser = async () => {
@@ -19,7 +19,7 @@ export default function Success() {
       setUser(user)
     }
     getUser()
-  }, [])
+  }, [router, supabase])
 
   if (!user) {
     return (

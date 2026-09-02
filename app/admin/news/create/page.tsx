@@ -12,7 +12,7 @@ export default function CreateNews() {
   const [uploading, setUploading] = useState(false)
   const [featuredImage, setFeaturedImage] = useState('')
   const router = useRouter()
-  const supabase = createClient()
+  const supabase =  createClient()
 
   const [formData, setFormData] = useState({
     title: '',

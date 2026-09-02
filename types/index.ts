@@ -176,3 +176,143 @@ export interface SiteSettings {
     donation_url: string
   }
 }
+
+export interface ContactSubmission {
+  id: string
+  name: string
+  email: string
+  phone: string | null
+  subject: string | null
+  message: string
+  status: 'unread' | 'read' | 'archived'
+  created_at: string
+}
+
+export interface VolunteerSubmission {
+  id: string
+  name: string
+  email: string
+  phone: string
+  area_of_interest: string
+  availability: string
+  message: string | null
+  status: 'new' | 'contacted' | 'approved' | 'rejected'
+  created_at: string
+}
+
+export interface Event {
+  id: string
+  title: string
+  slug: string
+  description: string | null
+  content: string | null
+  location: string | null
+  event_date: string
+  end_date: string | null
+  cover_image: string | null
+  registration_url: string | null
+  published: boolean
+  featured: boolean
+  created_at: string
+  updated_at: string
+}
+
+export interface GalleryAlbum {
+  id: string
+  title: string
+  slug: string
+  description: string | null
+  cover_image: string | null
+  event_date: string | null
+  published: boolean
+  display_order: number
+  created_at: string
+  updated_at: string
+  images?: GalleryImage[]
+}
+
+export interface GalleryImage {
+  id: string
+  album_id: string
+  image_url: string
+  caption: string | null
+  display_order: number
+  created_at: string
+}
+
+export interface NewsArticle {
+  id: string
+  title: string
+  slug: string
+  summary: string | null
+  content: string | null
+  cover_image: string | null
+  published: boolean
+  published_at: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface Resource {
+  id: string
+  title: string
+  slug: string
+  description: string | null
+  file_url: string
+  file_size: string | null
+  file_type: string | null
+  category: string | null
+  download_count: number
+  published: boolean
+  created_at: string
+}
+
+export interface ProjectSection {
+  id: string
+  project_id: string
+  heading: string | null
+  description: string | null
+  image_url: string | null
+  display_order: number
+  created_at: string
+}
+
+export interface ContactSubmission {
+  id: string
+  name: string
+  email: string
+  phone: string | null
+  subject: string | null
+  message: string
+  status: 'unread' | 'read' | 'archived'
+  created_at: string
+}
+
+export interface VolunteerSubmission {
+  id: string
+  name: string
+  email: string
+  phone: string
+  area_of_interest: string
+  availability: string
+  message: string | null
+  status: 'new' | 'contacted' | 'approved' | 'rejected'
+  created_at: string
+}
+
+export interface Event {
+  id: string
+  title: string
+  slug: string
+  description: string | null
+  date: string | null
+  time: string | null
+  location: string | null
+  cover_image: string | null
+  registration_link: string | null
+  status: 'upcoming' | 'ongoing' | 'completed'
+  published: boolean
+  display_order: number
+  created_at: string
+  updated_at: string
+}

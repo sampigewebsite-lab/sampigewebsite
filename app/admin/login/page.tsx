@@ -1,7 +1,8 @@
 'use client'
-import { createClient } from '@/lib/supabase/client'
+
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import { createClient } from '@/lib/supabase/client'  // Use client
 import { Eye, EyeOff, Sparkles } from 'lucide-react'
 import toast from 'react-hot-toast'
 
@@ -12,7 +13,7 @@ export default function AdminLogin() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const router = useRouter()
-  const supabase = createClient()
+  const supabase = createClient()  // No await needed
 
   useEffect(() => {
     const checkSession = async () => {
@@ -76,9 +77,7 @@ export default function AdminLogin() {
             )}
             
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">
-                Email Address
-              </label>
+              <label className="block text-sm font-medium text-gray-300 mb-2">Email Address</label>
               <input
                 type="email"
                 value={email}
@@ -90,9 +89,7 @@ export default function AdminLogin() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">
-                Password
-              </label>
+              <label className="block text-sm font-medium text-gray-300 mb-2">Password</label>
               <div className="relative">
                 <input
                   type={showPassword ? 'text' : 'password'}
@@ -123,7 +120,9 @@ export default function AdminLogin() {
 
           <div className="mt-6 p-4 bg-black/50 rounded-lg border border-gray-700">
             <p className="text-xs text-gray-500 text-center">
-              Demo: admin@sampige.org
+              <a href="/admin/signup" className="text-gold-500 hover:text-gold-400">
+                Create an account
+              </a>
             </p>
           </div>
         </div>

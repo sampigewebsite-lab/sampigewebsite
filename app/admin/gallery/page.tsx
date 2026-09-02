@@ -21,7 +21,7 @@ export default function GalleryPage() {
   const [albums, setAlbums] = useState<GalleryAlbum[]>([])
   const [loading, setLoading] = useState(true)
   const router = useRouter()
-  const supabase = createClient()
+  const supabase =  createClient()
 
   useEffect(() => {
     checkAuth()

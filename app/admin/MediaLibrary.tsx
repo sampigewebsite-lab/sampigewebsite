@@ -16,7 +16,7 @@ export default function MediaLibrary({ onSelect, onClose, bucket = 'project-imag
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [selected, setSelected] = useState<string | null>(null)
-  const supabase = createClient()
+  const supabase = await createClient()
 
   useEffect(() => {
     loadImages()

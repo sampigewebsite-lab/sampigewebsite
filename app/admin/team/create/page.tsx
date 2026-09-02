@@ -12,7 +12,7 @@ export default function CreateTeamMember() {
   const [uploading, setUploading] = useState(false)
   const [photo, setPhoto] = useState('')
   const router = useRouter()
-  const supabase = createClient()
+  const supabase =  createClient()
 
   const [formData, setFormData] = useState({
     name: '',

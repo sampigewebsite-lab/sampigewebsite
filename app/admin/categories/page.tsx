@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { createClient } from '@/lib/supabase/client'
+import { createClient } from '@/lib/supabase/client'  // Use client, NOT server
 import { Plus, Edit, Trash2, ArrowUp, ArrowDown, X, Tag } from 'lucide-react'
 import toast from 'react-hot-toast'
 import Sidebar from '@/components/admin/Sidebar'
@@ -24,7 +24,7 @@ export default function CategoriesPage() {
   const [showModal, setShowModal] = useState(false)
   const [editingCategory, setEditingCategory] = useState<Category | null>(null)
   const router = useRouter()
-  const supabase = createClient()
+  const supabase = createClient()  // No await needed!
 
   const [formData, setFormData] = useState({
     name: '',

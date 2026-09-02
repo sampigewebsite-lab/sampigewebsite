@@ -21,7 +21,7 @@ export default function TeamPage() {
   const [members, setMembers] = useState<TeamMember[]>([])
   const [loading, setLoading] = useState(true)
   const router = useRouter()
-  const supabase = createClient()
+  const supabase =  createClient()
 
   useEffect(() => {
     checkAuth()
@@ -112,7 +112,7 @@ export default function TeamPage() {
                 onClick={() => router.push('/admin/team/create')}
                 className="mt-4 text-gold-500 hover:text-gold-400 transition-colors"
               >
-                Add your first team member →
+                Add your first team member ?
               </button>
             </div>
           ) : (

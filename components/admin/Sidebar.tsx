@@ -14,7 +14,10 @@ import {
   Calendar,
   Newspaper,
   Menu,
-  X
+  X,
+  MessageSquare,
+  HeartHandshake,
+  FileDown
 } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import toast from 'react-hot-toast'
@@ -43,6 +46,9 @@ export default function Sidebar() {
     { icon: Image, label: 'Gallery', href: '/admin/gallery' },
     { icon: Newspaper, label: 'News', href: '/admin/news' },
     { icon: Calendar, label: 'Events', href: '/admin/events' },
+    { icon: FileDown, label: 'Resources', href: '/admin/resources' },
+    { icon: MessageSquare, label: 'Enquiries', href: '/admin/contacts' },
+    { icon: HeartHandshake, label: 'Volunteers', href: '/admin/volunteers' },
     { icon: FileText, label: 'Pages', href: '/admin/pages' },
     { icon: Settings, label: 'Settings', href: '/admin/settings' },
   ]
@@ -64,7 +70,7 @@ export default function Sidebar() {
         )}
       </div>
 
-      <nav className="space-y-1 flex-1 overflow-y-auto">
+      <nav className="space-y-1 flex-1 overflow-y-auto pr-1">
         {menuItems.map((item) => {
           const isActive = pathname === item.href || pathname?.startsWith(item.href + '/')
           
@@ -73,13 +79,13 @@ export default function Sidebar() {
               key={item.label}
               href={item.href}
               onClick={() => isMobile && setIsOpen(false)}
-              className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
+              className={`flex items-center gap-3 px-4 py-2.5 rounded-lg transition-colors text-sm ${
                 isActive
                   ? 'bg-gold-500/10 text-gold-500 border border-gold-500/20'
                   : 'text-gray-400 hover:text-white hover:bg-white/5'
               }`}
             >
-              <item.icon className="h-5 w-5 flex-shrink-0" />
+              <item.icon className="h-4.5 w-4.5 flex-shrink-0 text-gold-500" />
               <span className="truncate">{item.label}</span>
             </a>
           )
@@ -96,11 +102,9 @@ export default function Sidebar() {
     </>
   )
 
-  // Mobile: Hamburger menu (opens from right)
   if (isMobile) {
     return (
       <>
-        {/* Hamburger Button - positioned on the right */}
         <button
           onClick={() => setIsOpen(true)}
           className="fixed top-4 right-4 z-50 p-2 bg-[#1A1A1A] rounded-lg border border-gold-500/10 text-gray-400 hover:text-white"
@@ -108,7 +112,6 @@ export default function Sidebar() {
           <Menu className="h-6 w-6" />
         </button>
 
-        {/* Overlay */}
         {isOpen && (
           <div 
             className="fixed inset-0 bg-black/70 z-40"
@@ -116,7 +119,6 @@ export default function Sidebar() {
           />
         )}
 
-        {/* Sidebar - slides in from right */}
         <aside className={`fixed top-0 right-0 h-full w-64 bg-[#0A0A0A] border-l border-gold-500/10 p-6 flex flex-col z-50 transition-transform duration-300 ${
           isOpen ? 'translate-x-0' : 'translate-x-full'
         }`}>
@@ -126,7 +128,6 @@ export default function Sidebar() {
     )
   }
 
-  // Desktop: Sidebar on the right
   return (
     <aside className="w-64 bg-[#0A0A0A] border-l border-gold-500/10 min-h-screen p-6 flex flex-col sticky top-0 flex-shrink-0 order-last">
       <SidebarContent />

@@ -10,7 +10,7 @@ import Sidebar from '@/components/admin/Sidebar'
 export default function CreatePage() {
   const [loading, setLoading] = useState(false)
   const router = useRouter()
-  const supabase = createClient()
+  const supabase =  createClient()
 
   const [formData, setFormData] = useState({
     title: '',

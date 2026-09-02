@@ -26,6 +26,7 @@ export default function EditEvent() {
     cover_image: '',
     registration_link: '',
     status: 'upcoming',
+    display_order: '0',
     published: true,
   })
 
@@ -64,6 +65,7 @@ export default function EditEvent() {
           cover_image: data.cover_image || '',
           registration_link: data.registration_link || '',
           status: data.status || 'upcoming',
+          display_order: data.display_order?.toString() || '0',
           published: data.published || false,
         })
         setCoverImage(data.cover_image || '')
@@ -162,6 +164,7 @@ export default function EditEvent() {
         cover_image: coverImage || null,
         registration_link: formData.registration_link || null,
         status: formData.status,
+        display_order: parseInt(formData.display_order) || 0,
         published: formData.published,
       }
 
@@ -292,15 +295,28 @@ export default function EditEvent() {
                 </div>
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">Registration Link</label>
-                <input
-                  type="url"
-                  name="registration_link"
-                  value={formData.registration_link}
-                  onChange={handleChange}
-                  className="w-full px-4 py-2 bg-black border border-gray-700 rounded-lg text-white focus:outline-none focus:border-gold-500 transition-colors"
-                />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">Registration Link</label>
+                  <input
+                    type="url"
+                    name="registration_link"
+                    value={formData.registration_link}
+                    onChange={handleChange}
+                    className="w-full px-4 py-2 bg-black border border-gray-700 rounded-lg text-white focus:outline-none focus:border-gold-500 transition-colors"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">Display Order (Rank)</label>
+                  <input
+                    type="number"
+                    name="display_order"
+                    value={formData.display_order}
+                    onChange={handleChange}
+                    className="w-full px-4 py-2 bg-black border border-gray-700 rounded-lg text-white focus:outline-none focus:border-gold-500 transition-colors"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">Lower values appear first on your events page</p>
+                </div>
               </div>
 
               <div>

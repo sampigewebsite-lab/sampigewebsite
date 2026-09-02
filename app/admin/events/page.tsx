@@ -25,7 +25,7 @@ export default function EventsPage() {
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const router = useRouter()
-  const supabase = createClient()
+  const supabase =  createClient()
 
   useEffect(() => {
     checkAuth()

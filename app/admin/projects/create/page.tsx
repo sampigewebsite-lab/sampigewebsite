@@ -13,7 +13,7 @@ export default function CreateProject() {
   const [categories, setCategories] = useState<any[]>([])
   const [coverImage, setCoverImage] = useState('')
   const router = useRouter()
-  const supabase = createClient()
+  const supabase =  createClient()
 
   const [formData, setFormData] = useState({
     title: '',

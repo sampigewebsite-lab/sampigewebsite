@@ -1,6 +1,8 @@
 import type { Metadata } from 'next'
 import './globals.css'
 import { Toaster } from 'react-hot-toast'
+import Header from '@/components/Header'
+import Footer from '@/components/Footer'
 
 export const metadata: Metadata = {
   title: 'Sampige - Creating Change. Building Hope.',
@@ -19,8 +21,12 @@ export default function RootLayout({
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link href="https://fonts.googleapis.com/css2?family=Great+Vibes&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
       </head>
-      <body className="bg-black text-white font-sans antialiased">
-        {children}
+      <body className="bg-black text-white font-sans antialiased flex flex-col min-h-screen">
+        <Header />
+        <div className="flex-1">
+          {children}
+        </div>
+        <Footer />
         <Toaster 
           position="top-right"
           toastOptions={{

@@ -13,7 +13,7 @@ export default function CreateGalleryAlbum() {
   const [coverImage, setCoverImage] = useState('')
   const [images, setImages] = useState<string[]>([])
   const router = useRouter()
-  const supabase = createClient()
+  const supabase =  createClient()
 
   const [formData, setFormData] = useState({
     title: '',
