@@ -1,10 +1,13 @@
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { ArrowRight } from 'lucide-react'
+import PageHero from '@/components/PageHero'
+import { getPageHero, heroToStats } from '@/lib/getPageHero'
 
 export default async function NewsPage() {
   const supabase = await createClient()
-  
+  const hero = await getPageHero('news')
+
   const { data: articles } = await supabase
     .from('news')
     .select('*')
@@ -12,17 +15,16 @@ export default async function NewsPage() {
     .order('created_at', { ascending: false })
 
   return (
-    <main className="bg-black min-h-screen py-20">
-      <div className="container mx-auto px-4">
-        <div className="text-center mb-12">
-          <h1 className="text-4xl md:text-5xl font-bold text-white mb-4">
-            News & <span className="gradient-text">Stories</span>
-          </h1>
-          <p className="text-gray-400 max-w-2xl mx-auto">
-            Stay updated with our latest activities and stories
-          </p>
-        </div>
+    <main className="bg-black min-h-screen">
+      <PageHero
+        badge={hero?.badge}
+        title={hero?.title || 'News & Stories'}
+        description={hero?.description}
+        backgroundImage={hero?.background_image}
+        stats={heroToStats(hero)}
+      />
 
+      <div className="container mx-auto px-4 py-16">
         {!articles || articles.length === 0 ? (
           <div className="text-center py-20">
             <p className="text-gray-400 text-xl">No news articles found</p>
@@ -61,7 +63,7 @@ export default async function NewsPage() {
                   {article.excerpt && (
                     <p className="text-gray-400 text-sm line-clamp-2">{article.excerpt}</p>
                   )}
-                  <div className="flex items-center text-gold-500 font-medium mt-4 group-hover:gap-2 transition-all">
+                  <div className="flex items-center text-gold-500 font-medium mt-4">
                     Read More
                     <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
                   </div>

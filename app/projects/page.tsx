@@ -1,10 +1,13 @@
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { ArrowRight } from 'lucide-react'
+import PageHero from '@/components/PageHero'
+import { getPageHero, heroToStats } from '@/lib/getPageHero'
 
 export default async function ProjectsPage() {
   const supabase = await createClient()
-  
+  const hero = await getPageHero('projects')
+
   const { data: projects } = await supabase
     .from('projects')
     .select('*')
@@ -22,17 +25,16 @@ export default async function ProjectsPage() {
   }
 
   return (
-    <main className="bg-black min-h-screen py-20">
-      <div className="container mx-auto px-4">
-        <div className="text-center mb-12">
-          <h1 className="text-4xl md:text-5xl font-bold text-white mb-4">
-            Our <span className="gradient-text">Projects</span>
-          </h1>
-          <p className="text-gray-400 max-w-2xl mx-auto">
-            Explore the projects we're working on to create lasting change
-          </p>
-        </div>
+    <main className="bg-black min-h-screen">
+      <PageHero
+        badge={hero?.badge}
+        title={hero?.title || 'Our Projects'}
+        description={hero?.description}
+        backgroundImage={hero?.background_image}
+        stats={heroToStats(hero)}
+      />
 
+      <div className="container mx-auto px-4 py-16">
         {!projects || projects.length === 0 ? (
           <div className="text-center py-20">
             <p className="text-gray-400 text-xl">No projects found</p>
@@ -44,7 +46,7 @@ export default async function ProjectsPage() {
               <Link
                 key={project.id}
                 href={`/projects/${project.slug}`}
-                className="group bg-[#1A1A1A] rounded-2xl overflow-hidden border border-gold-500/10 hover:border-gold-500/30 transition-all hover:shadow-2xl hover:shadow-gold-500/5"
+                className="group bg-[#1A1A1A] rounded-2xl overflow-hidden border border-gold-500/10 hover:border-gold-500/30 transition-all"
               >
                 {project.cover_image && (
                   <div className="h-56 bg-[#0A0A0A] relative overflow-hidden">
@@ -70,7 +72,7 @@ export default async function ProjectsPage() {
                   <p className="text-gray-400 text-sm mb-4 line-clamp-2">
                     {project.short_description || 'Making a difference in our community.'}
                   </p>
-                  <div className="flex items-center text-gold-500 font-medium group-hover:gap-2 transition-all">
+                  <div className="flex items-center text-gold-500 font-medium">
                     Learn More
                     <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
                   </div>

@@ -1,9 +1,12 @@
 import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 import { Calendar, MapPin, Clock, ArrowRight } from 'lucide-react'
+import PageHero from '@/components/PageHero'
+import { getPageHero, heroToStats } from '@/lib/getPageHero'
 
 export default async function EventsPage() {
   const supabase = await createClient()
+  const hero = await getPageHero('events')
 
   const { data: events } = await supabase
     .from('events')
@@ -22,16 +25,16 @@ export default async function EventsPage() {
   }
 
   return (
-    <main className="bg-black min-h-screen pt-24 pb-16">
-      <div className="container mx-auto px-4 max-w-6xl">
-        <div className="text-center max-w-2xl mx-auto mb-12">
-          <span className="text-gold-500 text-sm font-semibold tracking-wider uppercase">What&apos;s Happening</span>
-          <h1 className="text-4xl md:text-5xl font-bold text-white mt-2 mb-4">Events</h1>
-          <p className="text-gray-400">
-            Join us at our upcoming events and be part of the change.
-          </p>
-        </div>
+    <main className="bg-black min-h-screen">
+      <PageHero
+        badge={hero?.badge}
+        title={hero?.title || 'Events'}
+        description={hero?.description}
+        backgroundImage={hero?.background_image}
+        stats={heroToStats(hero)}
+      />
 
+      <div className="container mx-auto px-4 py-16 max-w-6xl">
         {!events || events.length === 0 ? (
           <div className="text-center py-16 bg-[#1A1A1A] rounded-xl border border-gold-500/10">
             <Calendar className="h-12 w-12 text-gray-600 mx-auto mb-4" />
@@ -41,9 +44,7 @@ export default async function EventsPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {events.map((event) => (
               <Link key={event.id} href={`/events/${event.slug}`}
-                className="group bg-[#1A1A1A] rounded-xl border border-gold-500/10 hover:border-gold-500/30 overflow-hidden transition-all hover:shadow-lg hover:shadow-gold-500/5">
-                
-                {/* Cover Image */}
+                className="group bg-[#1A1A1A] rounded-xl border border-gold-500/10 hover:border-gold-500/30 overflow-hidden transition-all">
                 <div className="relative h-48 bg-[#0A0A0A] overflow-hidden">
                   {event.cover_image ? (
                     <img src={event.cover_image} alt={event.title}
@@ -57,13 +58,10 @@ export default async function EventsPage() {
                     </span>
                   </div>
                 </div>
-
-                {/* Content */}
                 <div className="p-5 space-y-3">
                   <h3 className="text-lg font-bold text-white group-hover:text-gold-500 transition-colors line-clamp-2">
                     {event.title}
                   </h3>
-
                   <div className="space-y-2 text-sm text-gray-400">
                     {event.date && (
                       <div className="flex items-center gap-2">
@@ -86,12 +84,10 @@ export default async function EventsPage() {
                       </div>
                     )}
                   </div>
-
                   {event.description && (
                     <p className="text-gray-500 text-sm line-clamp-2">{event.description}</p>
                   )}
-
-                  <div className="pt-2 flex items-center text-gold-500 text-sm font-semibold group-hover:gap-2 transition-all gap-1">
+                  <div className="pt-2 flex items-center text-gold-500 text-sm font-semibold gap-1">
                     View Details <ArrowRight className="h-4 w-4" />
                   </div>
                 </div>

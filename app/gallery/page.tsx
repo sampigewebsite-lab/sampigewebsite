@@ -1,10 +1,13 @@
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { ArrowRight } from 'lucide-react'
+import PageHero from '@/components/PageHero'
+import { getPageHero, heroToStats } from '@/lib/getPageHero'
 
 export default async function GalleryPage() {
   const supabase = await createClient()
-  
+  const hero = await getPageHero('gallery')
+
   const { data: albums } = await supabase
     .from('gallery_albums')
     .select('*')
@@ -12,17 +15,16 @@ export default async function GalleryPage() {
     .order('created_at', { ascending: false })
 
   return (
-    <main className="bg-black min-h-screen py-20">
-      <div className="container mx-auto px-4">
-        <div className="text-center mb-12">
-          <h1 className="text-4xl md:text-5xl font-bold text-white mb-4">
-            Our <span className="gradient-text">Gallery</span>
-          </h1>
-          <p className="text-gray-400 max-w-2xl mx-auto">
-            Moments captured from our work in communities
-          </p>
-        </div>
+    <main className="bg-black min-h-screen">
+      <PageHero
+        badge={hero?.badge}
+        title={hero?.title || 'Our Gallery'}
+        description={hero?.description}
+        backgroundImage={hero?.background_image}
+        stats={heroToStats(hero)}
+      />
 
+      <div className="container mx-auto px-4 py-16">
         {!albums || albums.length === 0 ? (
           <div className="text-center py-20">
             <p className="text-gray-400 text-xl">No gallery albums found</p>
@@ -44,9 +46,7 @@ export default async function GalleryPage() {
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                     />
                   ) : (
-                    <div className="w-full h-full flex items-center justify-center text-6xl text-gray-600">
-                      📸
-                    </div>
+                    <div className="w-full h-full flex items-center justify-center text-6xl text-gray-600">📸</div>
                   )}
                 </div>
                 <div className="p-6">
@@ -56,7 +56,7 @@ export default async function GalleryPage() {
                   {album.description && (
                     <p className="text-gray-400 text-sm mt-2">{album.description}</p>
                   )}
-                  <div className="flex items-center text-gold-500 font-medium mt-4 group-hover:gap-2 transition-all">
+                  <div className="flex items-center text-gold-500 font-medium mt-4">
                     View Album
                     <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
                   </div>

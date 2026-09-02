@@ -17,7 +17,8 @@ import {
   X,
   MessageSquare,
   HeartHandshake,
-  FileDown
+  FileDown,
+  Layout
 } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import toast from 'react-hot-toast'
@@ -50,6 +51,7 @@ export default function Sidebar() {
     { icon: MessageSquare, label: 'Enquiries', href: '/admin/contacts' },
     { icon: HeartHandshake, label: 'Volunteers', href: '/admin/volunteers' },
     { icon: FileText, label: 'Pages', href: '/admin/pages' },
+    { icon: Layout, label: 'Page Heroes', href: '/admin/page-heroes' },
     { icon: Settings, label: 'Settings', href: '/admin/settings' },
   ]
 
@@ -85,7 +87,7 @@ export default function Sidebar() {
                   : 'text-gray-400 hover:text-white hover:bg-white/5'
               }`}
             >
-              <item.icon className="h-4.5 w-4.5 flex-shrink-0 text-gold-500" />
+              <item.icon className="h-4 w-4 flex-shrink-0 text-gold-500" />
               <span className="truncate">{item.label}</span>
             </a>
           )
@@ -102,6 +104,7 @@ export default function Sidebar() {
     </>
   )
 
+  // Mobile: Hamburger menu
   if (isMobile) {
     return (
       <>
