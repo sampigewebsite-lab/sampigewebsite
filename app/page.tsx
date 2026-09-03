@@ -68,33 +68,34 @@ export default async function Home() {
   return (
     <main className="bg-black">
       {/* ===== HERO ===== */}
-      <section className="relative min-h-screen flex items-center overflow-hidden pt-16">
+      <section className="relative min-h-[85vh] md:min-h-screen flex items-end md:items-center overflow-hidden pt-20 pb-12 md:py-28">
+        {/* Background image — Mobile focuses on the right (80%) where subjects are */}
         {hero.background_image ? (
           <img
             src={hero.background_image}
             alt=""
-            className="absolute inset-0 w-full h-full object-cover"
+            className="absolute inset-0 w-full h-full object-cover object-[80%_center] md:object-center transition-all duration-300"
           />
         ) : (
           <div className="absolute inset-0 bg-gradient-to-br from-black via-[#0A0A0A] to-[#1A0A00]" />
         )}
 
-        <div className="absolute inset-0 bg-gradient-to-r from-black via-black/70 to-black/30" />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-transparent to-black/50" />
+        {/* Mobile Gradient: Soft dark top/bottom gradient so text is readable AND image subject is clear */}
+        <div className="absolute inset-0 bg-gradient-to-b md:bg-gradient-to-r from-black/90 via-black/75 to-black/30 md:to-black/20" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-black/40 md:to-transparent" />
 
-        <div className="container mx-auto px-4 py-20 md:py-28 relative z-10">
-          {/* WIDER content area */}
-          <div className="max-w-5xl">
+        <div className="container mx-auto px-4 relative z-10">
+          <div className="max-w-3xl md:max-w-5xl">
             {hero.badge && (
-              <div className="flex items-center gap-2 mb-6">
-                <Sparkles className="text-gold-500 h-5 w-5 shrink-0" />
-                <span className="text-gold-500 font-semibold tracking-[0.15em] text-xs md:text-sm uppercase">
+              <div className="flex items-center gap-2 mb-3 md:mb-6">
+                <Sparkles className="text-gold-500 h-4 w-4 shrink-0" />
+                <span className="text-gold-500 font-semibold tracking-[0.15em] text-[11px] md:text-sm uppercase">
                   {hero.badge}
                 </span>
               </div>
             )}
 
-            <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-white leading-[1.05] mb-6">
+            <h1 className="text-3xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-white leading-[1.1] md:leading-[1.05] mb-3 md:mb-6">
               {hero.title_line1}
               {hero.title_line2 && (
                 <>
@@ -105,12 +106,12 @@ export default async function Home() {
             </h1>
 
             {hero.description && (
-              <p className="text-sm sm:text-base md:text-lg text-gray-200 mb-3 max-w-4xl leading-relaxed md:leading-8">
+              <p className="text-xs sm:text-base md:text-lg text-gray-200 mb-2 md:mb-3 max-w-4xl leading-relaxed md:leading-8">
                 {hero.description}
               </p>
             )}
             {hero.sub_description && (
-              <p className="text-sm md:text-base text-gray-400 mb-8 max-w-4xl leading-relaxed">
+              <p className="text-xs sm:text-sm md:text-base text-gray-400 mb-6 md:mb-8 max-w-4xl leading-relaxed">
                 {hero.sub_description}
               </p>
             )}
@@ -118,15 +119,15 @@ export default async function Home() {
             <div className="flex flex-wrap gap-3 md:gap-4">
               <Link
                 href={hero.cta_primary_link || '/projects'}
-                className="inline-flex items-center px-6 md:px-8 py-3.5 md:py-4 bg-gold-500 text-black font-bold rounded-lg hover:bg-gold-600 transition-all hover:scale-[1.02] shadow-lg shadow-gold-500/20 uppercase text-sm tracking-wide"
+                className="inline-flex items-center px-5 md:px-8 py-3 md:py-4 bg-gold-500 text-black font-bold rounded-lg hover:bg-gold-600 transition-all hover:scale-[1.02] shadow-lg shadow-gold-500/20 uppercase text-xs md:text-sm tracking-wide"
               >
                 {hero.cta_primary_label || 'Explore Our Work'}
-                <ArrowRight className="ml-2 h-5 w-5" />
+                <ArrowRight className="ml-2 h-4 w-4 md:h-5 md:w-5" />
               </Link>
 
               <Link
                 href={hero.cta_secondary_link || '/get-involved/donate'}
-                className="inline-flex items-center px-6 md:px-8 py-3.5 md:py-4 bg-transparent text-white font-semibold rounded-lg border border-white/40 hover:bg-white/10 transition-all uppercase text-sm tracking-wide gap-2"
+                className="inline-flex items-center px-5 md:px-8 py-3 md:py-4 bg-transparent text-white font-semibold rounded-lg border border-white/40 hover:bg-white/10 transition-all uppercase text-xs md:text-sm tracking-wide gap-2"
               >
                 {hero.cta_secondary_label || 'Donate Now'}
                 <Heart className="h-4 w-4" />
