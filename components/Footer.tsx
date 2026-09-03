@@ -145,7 +145,7 @@ export default function Footer() {
                 { href: '/about-us', label: 'About Us' },
                 { href: '/projects', label: 'Our Projects' },
                 { href: '/gallery', label: 'Gallery' },
-                { href: '/news', label: 'News & Updates' },
+                { href: '/blogs', label: 'Blogs & Updates' },
                 { href: '/events', label: 'Events' },
                 { href: '/resources', label: 'Resources' },
                 { href: '/contact', label: 'Contact Us' },

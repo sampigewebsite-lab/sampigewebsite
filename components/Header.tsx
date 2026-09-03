@@ -35,7 +35,7 @@ export default function Header() {
     { href: '/about-us', label: 'About' },
     { href: '/projects', label: 'Projects' },
     { href: '/gallery', label: 'Gallery' },
-    { href: '/news', label: 'News' },
+    { href: '/blogs', label: 'Blogs' },
     { href: '/events', label: 'Events' },
     { href: '/resources', label: 'Resources' },
     { href: '/contact', label: 'Contact' },

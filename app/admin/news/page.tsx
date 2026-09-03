@@ -18,12 +18,12 @@ interface NewsItem {
   created_at: string
 }
 
-export default function NewsPage() {
+export default function BlogsAdminPage() {
   const [news, setNews] = useState<NewsItem[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const router = useRouter()
-  const supabase =  createClient()
+  const supabase = createClient()
 
   useEffect(() => {
     checkAuth()
@@ -48,14 +48,14 @@ export default function NewsPage() {
       if (error) throw error
       setNews(data || [])
     } catch (error) {
-      toast.error('Failed to fetch news')
+      toast.error('Failed to fetch blogs')
     } finally {
       setLoading(false)
     }
   }
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this news article?')) return
+    if (!confirm('Are you sure you want to delete this blog post?')) return
 
     try {
       const { error } = await supabase
@@ -64,10 +64,10 @@ export default function NewsPage() {
         .eq('id', id)
 
       if (error) throw error
-      toast.success('News deleted successfully')
+      toast.success('Blog deleted successfully')
       fetchNews()
     } catch (error) {
-      toast.error('Failed to delete news')
+      toast.error('Failed to delete blog')
     }
   }
 
@@ -75,23 +75,24 @@ export default function NewsPage() {
     try {
       const { error } = await supabase
         .from('news')
-        .update({ 
+        .update({
           published: !currentStatus,
-          published_at: !currentStatus ? new Date().toISOString() : null
+          published_at: !currentStatus ? new Date().toISOString() : null,
         })
         .eq('id', id)
 
       if (error) throw error
-      toast.success(`News ${!currentStatus ? 'published' : 'unpublished'}`)
+      toast.success(`Blog ${!currentStatus ? 'published' : 'unpublished'}`)
       fetchNews()
     } catch (error) {
-      toast.error('Failed to update news')
+      toast.error('Failed to update blog')
     }
   }
 
-  const filteredNews = news.filter(item =>
-    item.title.toLowerCase().includes(search.toLowerCase()) ||
-    item.category?.toLowerCase().includes(search.toLowerCase())
+  const filteredNews = news.filter(
+    (item) =>
+      item.title.toLowerCase().includes(search.toLowerCase()) ||
+      item.category?.toLowerCase().includes(search.toLowerCase())
   )
 
   return (
@@ -100,15 +101,15 @@ export default function NewsPage() {
         <div className="max-w-7xl mx-auto">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
             <div>
-              <h1 className="text-2xl md:text-3xl font-bold text-white">News & Stories</h1>
-              <p className="text-gray-400 mt-1 text-sm md:text-base">Manage news articles and stories</p>
+              <h1 className="text-2xl md:text-3xl font-bold text-white">Blogs & Stories</h1>
+              <p className="text-gray-400 mt-1 text-sm md:text-base">Manage blog posts and stories</p>
             </div>
             <button
               onClick={() => router.push('/admin/news/create')}
               className="flex items-center justify-center gap-2 px-4 py-2 bg-gold-500 text-black font-semibold rounded-lg hover:bg-gold-600 transition-all hover:scale-[1.02]"
             >
               <Plus className="h-5 w-5" />
-              Add News
+              Add Blog
             </button>
           </div>
 
@@ -116,7 +117,7 @@ export default function NewsPage() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-500" />
             <input
               type="text"
-              placeholder="Search news..."
+              placeholder="Search blogs..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="w-full pl-10 pr-4 py-3 bg-[#1A1A1A] border border-gold-500/10 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-gold-500 transition-colors"
@@ -128,12 +129,12 @@ export default function NewsPage() {
           ) : filteredNews.length === 0 ? (
             <div className="text-center py-12 bg-[#1A1A1A] rounded-xl border border-gold-500/10">
               <Newspaper className="h-12 w-12 text-gray-600 mx-auto mb-4" />
-              <p className="text-gray-400">No news articles found</p>
+              <p className="text-gray-400">No blog posts found</p>
               <button
                 onClick={() => router.push('/admin/news/create')}
                 className="mt-4 text-gold-500 hover:text-gold-400 transition-colors"
               >
-                Write your first article →
+                Write your first blog →
               </button>
             </div>
           ) : (
@@ -186,7 +187,7 @@ export default function NewsPage() {
                         <Trash2 className="h-4 w-4" />
                       </button>
                       <a
-                        href={`/news/${item.slug}`}
+                        href={`/blogs/${item.slug}`}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="p-2 text-gray-400 hover:text-white hover:bg-white/10 rounded-lg transition-colors"

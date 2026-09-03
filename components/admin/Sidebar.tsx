@@ -45,7 +45,7 @@ export default function Sidebar() {
     { icon: Tag, label: 'Categories', href: '/admin/categories' },
     { icon: Users, label: 'Team', href: '/admin/team' },
     { icon: Image, label: 'Gallery', href: '/admin/gallery' },
-    { icon: Newspaper, label: 'News', href: '/admin/news' },
+    { icon: Newspaper, label: 'Blogs', href: '/admin/news' },
     { icon: Calendar, label: 'Events', href: '/admin/events' },
     { icon: FileDown, label: 'Resources', href: '/admin/resources' },
     { icon: MessageSquare, label: 'Enquiries', href: '/admin/contacts' },

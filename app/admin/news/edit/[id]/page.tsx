@@ -7,7 +7,7 @@ import { ArrowLeft, Save, Upload, X } from 'lucide-react'
 import toast from 'react-hot-toast'
 import Sidebar from '@/components/admin/Sidebar'
 
-export default function EditNews() {
+export default function EditBlog() {
   const [loading, setLoading] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [initialLoading, setInitialLoading] = useState(true)
@@ -29,7 +29,7 @@ export default function EditNews() {
 
   useEffect(() => {
     checkAuth()
-    fetchNews()
+    fetchBlog()
   }, [])
 
   const checkAuth = async () => {
@@ -39,7 +39,7 @@ export default function EditNews() {
     }
   }
 
-  const fetchNews = async () => {
+  const fetchBlog = async () => {
     const id = params.id
     if (!id) return
 
@@ -65,7 +65,7 @@ export default function EditNews() {
         setFeaturedImage(data.featured_image || '')
       }
     } catch (error) {
-      toast.error('Failed to fetch news article')
+      toast.error('Failed to fetch blog post')
     } finally {
       setInitialLoading(false)
     }
@@ -167,10 +167,10 @@ export default function EditNews() {
 
       if (error) throw error
 
-      toast.success('News article updated successfully!')
+      toast.success('Blog post updated successfully!')
       router.push('/admin/news')
     } catch (error: any) {
-      toast.error(error.message || 'Failed to update news article')
+      toast.error(error.message || 'Failed to update blog post')
     } finally {
       setLoading(false)
     }
@@ -196,8 +196,8 @@ export default function EditNews() {
               <ArrowLeft className="h-6 w-6" />
             </button>
             <div>
-              <h1 className="text-2xl md:text-3xl font-bold text-white">Edit News Article</h1>
-              <p className="text-gray-400 mt-1 text-sm md:text-base">Update article details</p>
+              <h1 className="text-2xl md:text-3xl font-bold text-white">Edit Blog Post</h1>
+              <p className="text-gray-400 mt-1 text-sm md:text-base">Update blog post details</p>
             </div>
           </div>
 
@@ -294,7 +294,7 @@ export default function EditNews() {
                       <Upload className="h-8 w-8 text-gray-500" />
                     </div>
                   )}
-                  
+
                   <div>
                     <label className="px-4 py-2 bg-gold-500 text-black font-semibold rounded-lg hover:bg-gold-600 transition-all cursor-pointer disabled:opacity-50 inline-block text-sm">
                       {uploading ? 'Uploading...' : 'Upload Image'}
@@ -332,7 +332,7 @@ export default function EditNews() {
                 className="flex items-center gap-2 px-6 py-3 bg-gold-500 text-black font-semibold rounded-lg hover:bg-gold-600 transition-all hover:scale-[1.02] disabled:opacity-50"
               >
                 <Save className="h-5 w-5" />
-                {loading ? 'Updating...' : 'Update Article'}
+                {loading ? 'Updating...' : 'Update Blog Post'}
               </button>
               <button
                 type="button"

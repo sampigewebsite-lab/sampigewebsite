@@ -290,54 +290,54 @@ export default async function Home() {
         </section>
       )}
 
-      {/* News */}
-      {newsArticles && newsArticles.length > 0 && (
-        <section className="py-20 bg-[#0A0A0A]">
-          <div className="container mx-auto px-4">
-            <div className="text-center mb-12">
-              <h2 className="text-4xl md:text-5xl font-bold mb-4">
-                Latest <span className="gradient-text">News</span>
-              </h2>
+{/* Blogs */}
+{newsArticles && newsArticles.length > 0 && (
+  <section className="py-20 bg-[#0A0A0A]">
+    <div className="container mx-auto px-4">
+      <div className="text-center mb-12">
+        <h2 className="text-4xl md:text-5xl font-bold mb-4">
+          Latest <span className="gradient-text">Blogs</span>
+        </h2>
+      </div>
+      <div className="grid md:grid-cols-3 gap-6">
+        {newsArticles.map((article: any) => (
+          <Link
+            key={article.id}
+            href={`/blogs/${article.slug}`}
+            className="group bg-[#1A1A1A] rounded-2xl overflow-hidden border border-gold-500/10 hover:border-gold-500/30 transition-all"
+          >
+            {article.featured_image && (
+              <div className="h-48 bg-[#0A0A0A] overflow-hidden">
+                <img
+                  src={article.featured_image}
+                  alt={article.title}
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                />
+              </div>
+            )}
+            <div className="p-6">
+              <div className="text-sm text-gray-500 mb-2">
+                {new Date(article.published_at || article.created_at).toLocaleDateString()}
+              </div>
+              <h3 className="text-xl font-semibold text-white group-hover:text-gold-500 transition-colors line-clamp-2">
+                {article.title}
+              </h3>
             </div>
-            <div className="grid md:grid-cols-3 gap-6">
-              {newsArticles.map((article: any) => (
-                <Link
-                  key={article.id}
-                  href={`/news/${article.slug}`}
-                  className="group bg-[#1A1A1A] rounded-2xl overflow-hidden border border-gold-500/10 hover:border-gold-500/30 transition-all"
-                >
-                  {article.featured_image && (
-                    <div className="h-48 bg-[#0A0A0A] overflow-hidden">
-                      <img
-                        src={article.featured_image}
-                        alt={article.title}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                      />
-                    </div>
-                  )}
-                  <div className="p-6">
-                    <div className="text-sm text-gray-500 mb-2">
-                      {new Date(article.published_at || article.created_at).toLocaleDateString()}
-                    </div>
-                    <h3 className="text-xl font-semibold text-white group-hover:text-gold-500 transition-colors line-clamp-2">
-                      {article.title}
-                    </h3>
-                  </div>
-                </Link>
-              ))}
-            </div>
-            <div className="text-center mt-10">
-              <Link
-                href="/news"
-                className="inline-flex items-center px-8 py-3 bg-gold-500 text-black font-semibold rounded-full hover:bg-gold-600"
-              >
-                Read All News
-                <ArrowRight className="ml-2 h-5 w-5" />
-              </Link>
-            </div>
-          </div>
-        </section>
-      )}
+          </Link>
+        ))}
+      </div>
+      <div className="text-center mt-10">
+        <Link
+          href="/blogs"
+          className="inline-flex items-center px-8 py-3 bg-gold-500 text-black font-semibold rounded-full hover:bg-gold-600"
+        >
+          Read All Blogs
+          <ArrowRight className="ml-2 h-5 w-5" />
+        </Link>
+      </div>
+    </div>
+  </section>
+)}
 
       {whatsapp && <WhatsAppFloat phone={whatsapp} />}
     </main>

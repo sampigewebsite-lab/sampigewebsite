@@ -7,12 +7,12 @@ import { ArrowLeft, Save, Upload, X } from 'lucide-react'
 import toast from 'react-hot-toast'
 import Sidebar from '@/components/admin/Sidebar'
 
-export default function CreateNews() {
+export default function CreateBlog() {
   const [loading, setLoading] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [featuredImage, setFeaturedImage] = useState('')
   const router = useRouter()
-  const supabase =  createClient()
+  const supabase = createClient()
 
   const [formData, setFormData] = useState({
     title: '',
@@ -138,10 +138,10 @@ export default function CreateNews() {
 
       if (error) throw error
 
-      toast.success('News article created successfully!')
+      toast.success('Blog post created successfully!')
       router.push('/admin/news')
     } catch (error: any) {
-      toast.error(error.message || 'Failed to create news article')
+      toast.error(error.message || 'Failed to create blog post')
     } finally {
       setLoading(false)
     }
@@ -159,8 +159,8 @@ export default function CreateNews() {
               <ArrowLeft className="h-6 w-6" />
             </button>
             <div>
-              <h1 className="text-2xl md:text-3xl font-bold text-white">Create News Article</h1>
-              <p className="text-gray-400 mt-1 text-sm md:text-base">Write a new news article</p>
+              <h1 className="text-2xl md:text-3xl font-bold text-white">Create Blog Post</h1>
+              <p className="text-gray-400 mt-1 text-sm md:text-base">Write a new blog post</p>
             </div>
           </div>
 
@@ -176,7 +176,7 @@ export default function CreateNews() {
                     onChange={handleTitleChange}
                     required
                     className="w-full px-4 py-2 bg-black border border-gray-700 rounded-lg text-white focus:outline-none focus:border-gold-500 transition-colors"
-                    placeholder="Article title"
+                    placeholder="Blog post title"
                   />
                 </div>
                 <div>
@@ -212,7 +212,7 @@ export default function CreateNews() {
                     value={formData.category}
                     onChange={handleChange}
                     className="w-full px-4 py-2 bg-black border border-gray-700 rounded-lg text-white focus:outline-none focus:border-gold-500 transition-colors"
-                    placeholder="e.g., News, Story, Update"
+                    placeholder="e.g., Story, Update, Impact"
                   />
                 </div>
               </div>
@@ -225,7 +225,7 @@ export default function CreateNews() {
                   value={formData.excerpt}
                   onChange={handleChange}
                   className="w-full px-4 py-2 bg-black border border-gray-700 rounded-lg text-white focus:outline-none focus:border-gold-500 transition-colors"
-                  placeholder="Brief summary of the article"
+                  placeholder="Brief summary of the blog post"
                 />
               </div>
 
@@ -237,7 +237,7 @@ export default function CreateNews() {
                   onChange={handleChange}
                   rows={8}
                   className="w-full px-4 py-2 bg-black border border-gray-700 rounded-lg text-white focus:outline-none focus:border-gold-500 transition-colors"
-                  placeholder="Full article content..."
+                  placeholder="Full blog content..."
                 />
               </div>
 
@@ -263,7 +263,7 @@ export default function CreateNews() {
                       <Upload className="h-8 w-8 text-gray-500" />
                     </div>
                   )}
-                  
+
                   <div>
                     <label className="px-4 py-2 bg-gold-500 text-black font-semibold rounded-lg hover:bg-gold-600 transition-all cursor-pointer disabled:opacity-50 inline-block text-sm">
                       {uploading ? 'Uploading...' : 'Upload Image'}
@@ -301,7 +301,7 @@ export default function CreateNews() {
                 className="flex items-center gap-2 px-6 py-3 bg-gold-500 text-black font-semibold rounded-lg hover:bg-gold-600 transition-all hover:scale-[1.02] disabled:opacity-50"
               >
                 <Save className="h-5 w-5" />
-                {loading ? 'Creating...' : 'Create Article'}
+                {loading ? 'Creating...' : 'Create Blog Post'}
               </button>
               <button
                 type="button"
