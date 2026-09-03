@@ -2,12 +2,12 @@ import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { ArrowLeft } from 'lucide-react'
 import Link from 'next/link'
+import PageHero from '@/components/PageHero'
 
 export default async function GalleryDetail({ params }: { params: Promise<{ slug: string }> }) {
-  const { slug } = await params  // AWAIT the params
-  
+  const { slug } = await params
   const supabase = await createClient()
-  
+
   const { data: album } = await supabase
     .from('gallery_albums')
     .select('*')
@@ -25,32 +25,48 @@ export default async function GalleryDetail({ params }: { params: Promise<{ slug
     .eq('album_id', album.id)
     .order('display_order', { ascending: true })
 
+  const imageCount = images?.length || 0
+  const eventDate = album.event_date
+    ? new Date(album.event_date).toLocaleDateString('en-IN', {
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric',
+      })
+    : null
+
+  const stats = [
+    imageCount > 0 ? { value: String(imageCount), label: 'PHOTOS' } : null,
+    eventDate ? { value: eventDate, label: 'EVENT DATE' } : null,
+    { value: 'GALLERY', label: 'ALBUM' },
+  ].filter(Boolean) as { value: string; label: string }[]
+
   return (
-    <main className="bg-black min-h-screen pt-20">
-      <div className="container mx-auto px-4">
-        <Link 
-          href="/gallery" 
-          className="inline-flex items-center text-gray-400 hover:text-gold-500 transition-colors mt-4"
+    <main className="bg-black min-h-screen">
+      <PageHero
+        badge="GALLERY ALBUM"
+        title={album.title}
+        description={album.description}
+        backgroundImage={album.cover_image}
+        stats={stats}
+      />
+
+      <div className="container mx-auto px-4 pt-8">
+        <Link
+          href="/gallery"
+          className="inline-flex items-center text-gray-400 hover:text-gold-500 transition-colors text-sm"
         >
           <ArrowLeft className="h-4 w-4 mr-2" />
           Back to Gallery
         </Link>
       </div>
 
-      <div className="container mx-auto px-4 py-8">
-        <h1 className="text-4xl md:text-5xl font-bold text-white mb-4">{album.title}</h1>
-        {album.description && (
-          <p className="text-gray-400 text-lg max-w-2xl">{album.description}</p>
-        )}
-      </div>
-
-      <div className="container mx-auto px-4 pb-16">
+      <div className="container mx-auto px-4 py-12 pb-16">
         {!images || images.length === 0 ? (
-          <div className="text-center py-12 text-gray-400">
+          <div className="text-center py-16 bg-[#1A1A1A] rounded-xl border border-gold-500/10 text-gray-400">
             <p>No images in this album yet</p>
           </div>
         ) : (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4">
             {images.map((image, index) => (
               <div
                 key={image.id}
