@@ -32,13 +32,13 @@ export default function PageHero({
           <div className="absolute inset-0 bg-gradient-to-br from-black via-[#0A0A0A] to-[#1A0A00]" />
         )}
 
-        {/* Dark gradient overlays */}
-        <div className="absolute inset-0 bg-gradient-to-r from-black via-black/70 to-black/30" />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/40" />
+        {/* Dark gradient overlays — keep left readable, show more image on right */}
+        <div className="absolute inset-0 bg-gradient-to-r from-black via-black/65 to-black/25" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-transparent to-black/40" />
 
         {/* Content */}
         <div className="container mx-auto px-4 py-16 md:py-20 relative z-10">
-          <div className="max-w-3xl">
+          <div className="max-w-5xl">
             {badge && (
               <div className="flex items-center gap-2 mb-5">
                 <Sparkles className="text-gold-500 h-4 w-4 shrink-0" />
@@ -48,12 +48,12 @@ export default function PageHero({
               </div>
             )}
 
-            <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-white leading-[1.05] mb-4">
+            <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-white leading-[1.05] mb-5">
               {title}
             </h1>
 
             {description && (
-              <p className="text-base md:text-lg text-gray-200 max-w-2xl leading-relaxed">
+              <p className="text-sm sm:text-base md:text-lg text-gray-200 max-w-4xl leading-relaxed md:leading-8">
                 {description}
               </p>
             )}
