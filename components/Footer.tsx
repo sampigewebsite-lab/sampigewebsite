@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
-import { Mail, Phone, MapPin, ArrowRight, Heart } from 'lucide-react'
+import { Mail, Phone, MapPin, ArrowRight, Heart, Lock } from 'lucide-react'
 
 const InstagramIcon = ({ className }: { className?: string }) => (
   <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -159,7 +159,7 @@ export default function Footer() {
             </ul>
           </div>
 
-          {/* Contact  */}
+          {/* Contact */}
           <div>
             <h4 className="text-white font-semibold text-lg mb-4 border-l-2 border-gold-500 pl-3">Contact Info</h4>
             <ul className="space-y-3 text-sm">
@@ -210,7 +210,18 @@ export default function Footer() {
       {/* Bottom */}
       <div className="border-t border-gold-500/10 py-6 bg-black">
         <div className="container mx-auto px-4 flex flex-col sm:flex-row items-center justify-between text-xs text-gray-500 gap-4">
-          <p>© {currentYear} {org.name || 'Sampige Foundation'}. All rights reserved.</p>
+          <p className="flex items-center gap-2">
+            <span>© {currentYear} {org.name || 'Sampige Foundation'}. All rights reserved.</span>
+            <span>•</span>
+            <Link
+              href="/admin/login"
+              className="text-gray-600 hover:text-gold-500 transition-colors flex items-center gap-1"
+              title="Admin Portal"
+            >
+              <Lock className="w-3 h-3" />
+              <span>Admin</span>
+            </Link>
+          </p>
           <div className="flex items-center gap-1">
             <span>Built with</span>
             <Heart className="w-3.5 h-3.5 text-gold-500 fill-gold-500" />
