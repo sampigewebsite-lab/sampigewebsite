@@ -3,6 +3,9 @@ import { ArrowRight, Heart, Users, TreePine, Utensils, Sparkles } from 'lucide-r
 import { createClient } from '@/lib/supabase/server'
 import WhatsAppFloat from '@/components/WhatsAppFloat'
 
+// Always fetch fresh settings/content after admin saves
+export const dynamic = 'force-dynamic'
+
 export default async function Home() {
   const supabase = await createClient()
 
@@ -64,9 +67,8 @@ export default async function Home() {
 
   return (
     <main className="bg-black">
-      {/* ===== HERO (client mockup style) ===== */}
+      {/* ===== HERO ===== */}
       <section className="relative min-h-screen flex items-center overflow-hidden pt-16">
-        {/* Background image */}
         {hero.background_image ? (
           <img
             src={hero.background_image}
@@ -77,12 +79,12 @@ export default async function Home() {
           <div className="absolute inset-0 bg-gradient-to-br from-black via-[#0A0A0A] to-[#1A0A00]" />
         )}
 
-        {/* Dark gradient overlay — left heavy for text */}
-        <div className="absolute inset-0 bg-gradient-to-r from-black via-black/80 to-black/40" />
+        <div className="absolute inset-0 bg-gradient-to-r from-black via-black/70 to-black/30" />
         <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-transparent to-black/50" />
 
         <div className="container mx-auto px-4 py-20 md:py-28 relative z-10">
-          <div className="max-w-3xl">
+          {/* WIDER content area */}
+          <div className="max-w-5xl">
             {hero.badge && (
               <div className="flex items-center gap-2 mb-6">
                 <Sparkles className="text-gold-500 h-5 w-5 shrink-0" />
@@ -103,12 +105,12 @@ export default async function Home() {
             </h1>
 
             {hero.description && (
-              <p className="text-base md:text-lg text-gray-200 mb-3 max-w-2xl leading-relaxed">
+              <p className="text-sm sm:text-base md:text-lg text-gray-200 mb-3 max-w-4xl leading-relaxed md:leading-8">
                 {hero.description}
               </p>
             )}
             {hero.sub_description && (
-              <p className="text-sm md:text-base text-gray-400 mb-8 max-w-2xl leading-relaxed">
+              <p className="text-sm md:text-base text-gray-400 mb-8 max-w-4xl leading-relaxed">
                 {hero.sub_description}
               </p>
             )}
@@ -133,7 +135,6 @@ export default async function Home() {
           </div>
         </div>
 
-        {/* Bottom gold accent line */}
         <div className="absolute bottom-0 left-0 right-0 h-1 bg-gold-500" />
       </section>
 
@@ -290,54 +291,54 @@ export default async function Home() {
         </section>
       )}
 
-{/* Blogs */}
-{newsArticles && newsArticles.length > 0 && (
-  <section className="py-20 bg-[#0A0A0A]">
-    <div className="container mx-auto px-4">
-      <div className="text-center mb-12">
-        <h2 className="text-4xl md:text-5xl font-bold mb-4">
-          Latest <span className="gradient-text">Blogs</span>
-        </h2>
-      </div>
-      <div className="grid md:grid-cols-3 gap-6">
-        {newsArticles.map((article: any) => (
-          <Link
-            key={article.id}
-            href={`/blogs/${article.slug}`}
-            className="group bg-[#1A1A1A] rounded-2xl overflow-hidden border border-gold-500/10 hover:border-gold-500/30 transition-all"
-          >
-            {article.featured_image && (
-              <div className="h-48 bg-[#0A0A0A] overflow-hidden">
-                <img
-                  src={article.featured_image}
-                  alt={article.title}
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                />
-              </div>
-            )}
-            <div className="p-6">
-              <div className="text-sm text-gray-500 mb-2">
-                {new Date(article.published_at || article.created_at).toLocaleDateString()}
-              </div>
-              <h3 className="text-xl font-semibold text-white group-hover:text-gold-500 transition-colors line-clamp-2">
-                {article.title}
-              </h3>
+      {/* Blogs */}
+      {newsArticles && newsArticles.length > 0 && (
+        <section className="py-20 bg-[#0A0A0A]">
+          <div className="container mx-auto px-4">
+            <div className="text-center mb-12">
+              <h2 className="text-4xl md:text-5xl font-bold mb-4">
+                Latest <span className="gradient-text">Blogs</span>
+              </h2>
             </div>
-          </Link>
-        ))}
-      </div>
-      <div className="text-center mt-10">
-        <Link
-          href="/blogs"
-          className="inline-flex items-center px-8 py-3 bg-gold-500 text-black font-semibold rounded-full hover:bg-gold-600"
-        >
-          Read All Blogs
-          <ArrowRight className="ml-2 h-5 w-5" />
-        </Link>
-      </div>
-    </div>
-  </section>
-)}
+            <div className="grid md:grid-cols-3 gap-6">
+              {newsArticles.map((article: any) => (
+                <Link
+                  key={article.id}
+                  href={`/blogs/${article.slug}`}
+                  className="group bg-[#1A1A1A] rounded-2xl overflow-hidden border border-gold-500/10 hover:border-gold-500/30 transition-all"
+                >
+                  {article.featured_image && (
+                    <div className="h-48 bg-[#0A0A0A] overflow-hidden">
+                      <img
+                        src={article.featured_image}
+                        alt={article.title}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                      />
+                    </div>
+                  )}
+                  <div className="p-6">
+                    <div className="text-sm text-gray-500 mb-2">
+                      {new Date(article.published_at || article.created_at).toLocaleDateString()}
+                    </div>
+                    <h3 className="text-xl font-semibold text-white group-hover:text-gold-500 transition-colors line-clamp-2">
+                      {article.title}
+                    </h3>
+                  </div>
+                </Link>
+              ))}
+            </div>
+            <div className="text-center mt-10">
+              <Link
+                href="/blogs"
+                className="inline-flex items-center px-8 py-3 bg-gold-500 text-black font-semibold rounded-full hover:bg-gold-600"
+              >
+                Read All Blogs
+                <ArrowRight className="ml-2 h-5 w-5" />
+              </Link>
+            </div>
+          </div>
+        </section>
+      )}
 
       {whatsapp && <WhatsAppFloat phone={whatsapp} />}
     </main>
