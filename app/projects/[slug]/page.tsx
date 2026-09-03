@@ -3,7 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { Target, Lightbulb, ArrowLeft } from 'lucide-react'
 import Link from 'next/link'
 import PageHero from '@/components/PageHero'
-
+//
 export default async function ProjectDetail({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
   const supabase = await createClient()
