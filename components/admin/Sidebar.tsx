@@ -15,10 +15,10 @@ import {
   Newspaper,
   Menu,
   X,
-  MessageSquare,
-  HeartHandshake,
+  Inbox,
   FileDown,
-  Layout
+  Layout,
+  Sparkles
 } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import toast from 'react-hot-toast'
@@ -48,8 +48,8 @@ export default function Sidebar() {
     { icon: Newspaper, label: 'Blogs', href: '/admin/news' },
     { icon: Calendar, label: 'Events', href: '/admin/events' },
     { icon: FileDown, label: 'Resources', href: '/admin/resources' },
-    { icon: MessageSquare, label: 'Enquiries', href: '/admin/contacts' },
-    { icon: HeartHandshake, label: 'Volunteers', href: '/admin/volunteers' },
+    { icon: Inbox, label: 'Submissions', href: '/admin/submissions' },
+    { icon: Sparkles, label: '#BeTheChange', href: '/admin/be-the-change' },
     { icon: FileText, label: 'Pages', href: '/admin/pages' },
     { icon: Layout, label: 'Page Heroes', href: '/admin/page-heroes' },
     { icon: Settings, label: 'Settings', href: '/admin/settings' },
@@ -104,7 +104,6 @@ export default function Sidebar() {
     </>
   )
 
-  // Mobile: Hamburger menu
   if (isMobile) {
     return (
       <>

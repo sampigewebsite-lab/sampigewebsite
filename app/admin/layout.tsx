@@ -1,8 +1,8 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
-import { createClient } from '@/lib/supabase/client'  // Use client, not server
+import { useRouter, usePathname } from 'next/navigation'
+import { createClient } from '@/lib/supabase/client'
 
 export default function AdminLayout({
   children,
@@ -11,15 +11,19 @@ export default function AdminLayout({
 }) {
   const [loading, setLoading] = useState(true)
   const router = useRouter()
-  const supabase = createClient()  // No await needed for client
+  const pathname = usePathname()
+  const supabase = createClient()
 
   useEffect(() => {
     checkAuth()
-  }, [])
+  }, [pathname])
 
   const checkAuth = async () => {
-    const { data: { session } } = await supabase.auth.getSession()
-    if (!session) {
+    const {
+      data: { session },
+    } = await supabase.auth.getSession()
+
+    if (!session && pathname !== '/admin/login') {
       router.push('/admin/login')
     }
     setLoading(false)
@@ -28,7 +32,7 @@ export default function AdminLayout({
   if (loading) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
-        <div className="text-gold-500 text-xl">Loading...</div>
+        <div className="text-gold-500 text-xl font-medium">Loading...</div>
       </div>
     )
   }

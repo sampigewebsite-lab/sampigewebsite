@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { Plus, Edit, Trash2, Eye, Search, FileText } from 'lucide-react'
+import { Plus, Edit, Trash2, Eye, Search, FileText, GraduationCap, ArrowRight } from 'lucide-react'
 import toast from 'react-hot-toast'
 import Sidebar from '@/components/admin/Sidebar'
 
@@ -20,7 +20,7 @@ export default function PagesPage() {
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const router = useRouter()
-  const supabase =  createClient()
+  const supabase = createClient()
 
   useEffect(() => {
     checkAuth()
@@ -105,6 +105,39 @@ export default function PagesPage() {
               Add Page
             </button>
           </div>
+
+          {/* Special Pages Section */}
+          <div className="mb-8">
+            <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">
+              Special Pages
+            </h2>
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {/* Intern Page Card */}
+              <button
+                onClick={() => router.push('/admin/intern-page')}
+                className="group text-left bg-[#1A1A1A] border border-gold-500/20 hover:border-gold-500/50 rounded-2xl p-5 transition-all hover:scale-[1.02]"
+              >
+                <div className="flex items-start justify-between mb-3">
+                  <div className="w-11 h-11 rounded-xl bg-gold-500/10 border border-gold-500/20 flex items-center justify-center">
+                    <GraduationCap className="h-5 w-5 text-gold-500" />
+                  </div>
+                  <ArrowRight className="h-4 w-4 text-gray-600 group-hover:text-gold-500 transition-colors" />
+                </div>
+                <h3 className="text-white font-semibold mb-1">Intern Page</h3>
+                <p className="text-gray-400 text-sm">
+                  Edit hero, stats, benefits & resume email section
+                </p>
+                <p className="text-xs text-gold-500/70 mt-3">/get-involved/intern</p>
+              </button>
+
+              {/* You can add more special page cards here later (e.g. CSR, About) */}
+            </div>
+          </div>
+
+          {/* CMS Pages */}
+          <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">
+            CMS Pages
+          </h2>
 
           <div className="relative mb-6">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-500" />

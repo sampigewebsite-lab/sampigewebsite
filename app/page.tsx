@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { ArrowRight, Heart, Users, TreePine, Utensils, Sparkles } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import WhatsAppFloat from '@/components/WhatsAppFloat'
+import BeTheChange from '@/components/BeTheChange'
 
 // Always fetch fresh settings/content after admin saves
 export const dynamic = 'force-dynamic'
@@ -180,6 +181,8 @@ export default async function Home() {
           </div>
         </div>
       </section>
+
+<BeTheChange />
 
       {/* Projects */}
       {allProjects && allProjects.length > 0 && (
