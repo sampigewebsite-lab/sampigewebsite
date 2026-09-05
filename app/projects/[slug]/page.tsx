@@ -1,9 +1,75 @@
+import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { Target, Lightbulb, ArrowLeft } from 'lucide-react'
 import Link from 'next/link'
 import PageHero from '@/components/PageHero'
-//
+
+// Helper to determine base URL dynamically (current Vercel or future custom domain)
+const getBaseUrl = () => {
+  if (process.env.NEXT_PUBLIC_SITE_URL) {
+    return process.env.NEXT_PUBLIC_SITE_URL.replace(/\/$/, '')
+  }
+  return 'https://sampigewebsite.vercel.app'
+}
+
+// Automatically generates unique SEO data for each of your 12 projects
+export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
+  const { slug } = await params
+  const siteUrl = getBaseUrl()
+
+  try {
+    const supabase = await createClient()
+    const { data: project } = await supabase
+      .from('projects')
+      .select('title, short_description, description, cover_image')
+      .eq('slug', slug)
+      .eq('published', true)
+      .single()
+
+    if (!project) return {}
+
+    const title = project.title
+    const description =
+      project.short_description ||
+      (project.description
+        ? project.description.substring(0, 160).replace(/\r?\n|\r/g, ' ') + '...'
+        : 'Discover how Sampige Foundation is making a positive impact with this project.')
+    const imageUrl = project.cover_image
+
+    return {
+      title,
+      description,
+      openGraph: {
+        type: 'article',
+        title: `${title} | Sampige Foundation`,
+        description,
+        url: `${siteUrl}/projects/${slug}`,
+        images: imageUrl
+          ? [
+              {
+                url: imageUrl,
+                width: 1200,
+                height: 630,
+                alt: title,
+              },
+            ]
+          : [],
+      },
+      twitter: {
+        card: 'summary_large_image',
+        title: `${title} | Sampige Foundation`,
+        description,
+        images: imageUrl ? [imageUrl] : [],
+      },
+    }
+  } catch (error) {
+    return {
+      title: 'Our Projects',
+    }
+  }
+}
+
 export default async function ProjectDetail({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
   const supabase = await createClient()
@@ -112,7 +178,7 @@ export default async function ProjectDetail({ params }: { params: Promise<{ slug
           </div>
         </div>
 
-        {/* BOTTOM: Project Highlights — FULL WIDTH, each section in its own box */}
+        {/* BOTTOM: Project Highlights — FULL WIDTH */}
         {sections && sections.length > 0 && (
           <div className="space-y-8">
             <h2 className="text-2xl md:text-3xl font-bold text-white border-t border-gold-500/10 pt-10">

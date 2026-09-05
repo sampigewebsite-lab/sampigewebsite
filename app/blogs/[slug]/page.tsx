@@ -1,8 +1,75 @@
+import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { ArrowLeft, Calendar, User } from 'lucide-react'
 import Link from 'next/link'
 import PageHero from '@/components/PageHero'
+
+// Helper to determine base URL dynamically (current Vercel or future custom domain)
+const getBaseUrl = () => {
+  if (process.env.NEXT_PUBLIC_SITE_URL) {
+    return process.env.NEXT_PUBLIC_SITE_URL.replace(/\/$/, '')
+  }
+  return 'https://sampigewebsite.vercel.app'
+}
+
+// Automatically generates unique SEO data for each of your blog posts
+export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
+  const { slug } = await params
+  const siteUrl = getBaseUrl()
+
+  try {
+    const supabase = await createClient()
+    const { data: article } = await supabase
+      .from('news')
+      .select('title, excerpt, summary, content, featured_image, cover_image')
+      .eq('slug', slug)
+      .eq('published', true)
+      .single()
+
+    if (!article) return {}
+
+    const title = article.title
+    const description =
+      article.excerpt ||
+      article.summary ||
+      (article.content
+        ? article.content.substring(0, 160).replace(/\r?\n|\r/g, ' ') + '...'
+        : 'Read this latest update from Sampige Foundation.')
+    const imageUrl = article.featured_image || article.cover_image
+
+    return {
+      title,
+      description,
+      openGraph: {
+        type: 'article',
+        title: `${title} | Sampige Foundation`,
+        description,
+        url: `${siteUrl}/blogs/${slug}`,
+        images: imageUrl
+          ? [
+              {
+                url: imageUrl,
+                width: 1200,
+                height: 630,
+                alt: title,
+              },
+            ]
+          : [],
+      },
+      twitter: {
+        card: 'summary_large_image',
+        title: `${title} | Sampige Foundation`,
+        description,
+        images: imageUrl ? [imageUrl] : [],
+      },
+    }
+  } catch (error) {
+    return {
+      title: 'Our Blogs',
+    }
+  }
+}
 
 export default async function BlogDetail({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
