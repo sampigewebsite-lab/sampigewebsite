@@ -18,7 +18,8 @@ import {
   Inbox,
   FileDown,
   Layout,
-  Sparkles
+  Sparkles,
+  Handshake
 } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import toast from 'react-hot-toast'
@@ -50,6 +51,7 @@ export default function Sidebar() {
     { icon: FileDown, label: 'Resources', href: '/admin/resources' },
     { icon: Inbox, label: 'Submissions', href: '/admin/submissions' },
     { icon: Sparkles, label: '#BeTheChange', href: '/admin/be-the-change' },
+    { icon: Handshake, label: 'CSR Partners', href: '/admin/csr' },
     { icon: FileText, label: 'Pages', href: '/admin/pages' },
     { icon: Layout, label: 'Page Heroes', href: '/admin/page-heroes' },
     { icon: Settings, label: 'Settings', href: '/admin/settings' },

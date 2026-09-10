@@ -70,7 +70,6 @@ export default async function Home() {
     <main className="bg-black">
       {/* ===== HERO ===== */}
       <section className="relative min-h-[85vh] md:min-h-screen flex items-end md:items-center overflow-hidden pt-20 pb-12 md:py-28">
-        {/* Background image — Mobile focuses on the right (80%) where subjects are */}
         {hero.background_image ? (
           <img
             src={hero.background_image}
@@ -81,7 +80,6 @@ export default async function Home() {
           <div className="absolute inset-0 bg-gradient-to-br from-black via-[#0A0A0A] to-[#1A0A00]" />
         )}
 
-        {/* Mobile Gradient: Soft dark top/bottom gradient so text is readable AND image subject is clear */}
         <div className="absolute inset-0 bg-gradient-to-b md:bg-gradient-to-r from-black/90 via-black/75 to-black/30 md:to-black/20" />
         <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-black/40 md:to-transparent" />
 
@@ -182,7 +180,7 @@ export default async function Home() {
         </div>
       </section>
 
-<BeTheChange />
+      <BeTheChange />
 
       {/* Projects */}
       {allProjects && allProjects.length > 0 && (
@@ -247,9 +245,48 @@ export default async function Home() {
         </section>
       )}
 
+      {/* ===== NEW CSR PREVIEW SECTION ===== */}
+      <section className="py-20 bg-black border-t border-gold-500/10">
+        <div className="container mx-auto px-4">
+          <div className="bg-gradient-to-br from-[#0f0f0f] to-black rounded-3xl p-8 md:p-14 border border-gold-500/20 flex flex-col lg:flex-row items-center justify-between gap-12 overflow-hidden relative shadow-2xl">
+            {/* Background Accent */}
+            <div className="absolute top-0 right-0 w-64 h-64 bg-gold-500/10 rounded-full blur-[100px] -mr-20 -mt-20 pointer-events-none"></div>
+
+            <div className="flex-1 relative z-10">
+              <div className="text-gold-500 text-xs font-bold uppercase tracking-widest mb-4 flex items-center gap-3">
+                <span className="w-8 h-px bg-gold-500"></span> Corporate Partnerships
+              </div>
+              <h2 className="text-3xl md:text-5xl font-bold text-white mb-6 leading-tight">
+                Create Meaningful Impact With Your Team
+              </h2>
+              <p className="text-[#B0B0B0] text-base md:text-lg mb-8 max-w-xl leading-relaxed">
+                Partner with Sampige Foundation for high-impact corporate volunteering. Choose from 22 hands-on engagement formats across environment, education, and community support.
+              </p>
+              <Link 
+                href="/csr" 
+                className="inline-flex items-center gap-2 bg-gold-500 text-black font-extrabold px-8 py-4 rounded-full text-sm uppercase tracking-wider hover:bg-gold-400 hover:scale-105 transition-all"
+              >
+                Explore CSR Programmes <ArrowRight className="w-4 h-4" />
+              </Link>
+            </div>
+
+            <div className="w-full lg:w-5/12 grid grid-cols-2 gap-4 relative z-10">
+              <div className="bg-[#1A1A1A] p-8 rounded-2xl border border-gold-500/10 text-center hover:border-gold-500/30 transition-colors">
+                <div className="text-4xl md:text-5xl font-extrabold text-gold-500 mb-2">22</div>
+                <div className="text-xs text-[#B0B0B0] uppercase font-bold tracking-wider">Engagement Formats</div>
+              </div>
+              <div className="bg-[#1A1A1A] p-8 rounded-2xl border border-gold-500/10 text-center lg:translate-y-6 hover:border-gold-500/30 transition-colors">
+                <div className="text-4xl md:text-5xl font-extrabold text-gold-500 mb-2">5</div>
+                <div className="text-xs text-[#B0B0B0] uppercase font-bold tracking-wider">Impact Pillars</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* Gallery */}
       {galleryAlbums && galleryAlbums.length > 0 && (
-        <section className="py-20 bg-black">
+        <section className="py-20 bg-[#0A0A0A] border-t border-gold-500/10">
           <div className="container mx-auto px-4">
             <div className="text-center mb-12">
               <h2 className="text-4xl md:text-5xl font-bold mb-4">
@@ -297,7 +334,7 @@ export default async function Home() {
 
       {/* Blogs */}
       {newsArticles && newsArticles.length > 0 && (
-        <section className="py-20 bg-[#0A0A0A]">
+        <section className="py-20 bg-black border-t border-gold-500/10">
           <div className="container mx-auto px-4">
             <div className="text-center mb-12">
               <h2 className="text-4xl md:text-5xl font-bold mb-4">
