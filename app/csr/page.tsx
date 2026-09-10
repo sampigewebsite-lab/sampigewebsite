@@ -73,13 +73,6 @@ export default async function CSRPage({ searchParams }: { searchParams: Promise<
     .eq('is_active', true)
     .order('display_order', { ascending: true })
 
-  // 7. Fetch Stats
-  const { data: stats } = await supabase
-    .from('csr_statistics')
-    .select('*')
-    .eq('published', true)
-    .order('display_order', { ascending: true })
-
   return (
     <>
       <PageHero
@@ -89,22 +82,6 @@ export default async function CSRPage({ searchParams }: { searchParams: Promise<
         backgroundImage={pageContent.hero_image || hero?.background_image}
         stats={heroToStats(hero)}
       />
-
-      {/* Dynamic Counter Banner */}
-      {stats && stats.length > 0 && (
-        <section className="bg-gold-500 py-10">
-          <div className="max-w-6xl mx-auto px-5">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center text-black">
-              {stats.map((s) => (
-                <div key={s.id}>
-                  <div className="text-3xl md:text-5xl font-extrabold mb-1">{s.number}</div>
-                  <div className="text-xs md:text-sm font-semibold uppercase tracking-wider opacity-90">{s.label}</div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-      )}
 
       {/* Pillars Section */}
       <section className="bg-black py-20 border-b border-gold-500/10">

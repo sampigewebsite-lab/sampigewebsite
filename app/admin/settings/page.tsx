@@ -40,7 +40,12 @@ export default function SettingsPage() {
     },
     donation: {
       upi_id: '',
-      bank_details: '',
+      bank_name: '',
+      account_name: '',
+      account_number: '',
+      ifsc_code: '',
+      pan: '',
+      bank_details: '', // legacy fallback
       qr_code: '',
       payment_gateway: 'razorpay',
       donation_url: '',
@@ -364,7 +369,7 @@ export default function SettingsPage() {
               <div>
                 <h2 className="text-lg md:text-xl font-semibold text-white">Homepage Hero</h2>
                 <p className="text-xs text-gray-500 mt-1">
-                  Controls the big first section on the homepage (like your reference design)
+                  Controls the big first section on the homepage
                 </p>
               </div>
 
@@ -424,9 +429,6 @@ export default function SettingsPage() {
                     />
                   </label>
                 </div>
-                <p className="text-xs text-gray-500 mt-2">
-                  Landscape photo works best (1920×1080+). Any orientation is supported.
-                </p>
               </div>
 
               <div>
@@ -633,10 +635,10 @@ export default function SettingsPage() {
               </div>
             </div>
 
-            {/* Donation */}
+            {/* Donation — separate bank fields + QR upload */}
             <div className="bg-[#1A1A1A] rounded-xl p-4 md:p-6 border border-gold-500/10">
               <h2 className="text-lg md:text-xl font-semibold text-white mb-4">Donation</h2>
-              <div className="space-y-4">
+              <div className="space-y-5">
                 <div>
                   <label className="block text-sm font-medium text-gray-300 mb-2">UPI ID</label>
                   <input
@@ -648,18 +650,135 @@ export default function SettingsPage() {
                     placeholder="sampige@upi"
                   />
                 </div>
+
+                {/* QR / Scanner Upload */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">Bank Details</label>
-                  <input
-                    type="text"
-                    name="bank_details"
-                    value={settings.donation.bank_details}
-                    onChange={handleDonation}
-                    className="w-full px-4 py-2 bg-black border border-gray-700 rounded-lg text-white focus:outline-none focus:border-gold-500"
-                  />
+                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                    UPI / Payment QR Code (Scanner)
+                  </label>
+                  <div className="flex flex-wrap items-center gap-4">
+                    {settings.donation.qr_code ? (
+                      <div className="relative">
+                        <img
+                          src={settings.donation.qr_code}
+                          alt="Donation QR"
+                          className="w-32 h-32 object-contain rounded-lg border border-gold-500/20 bg-white p-2"
+                        />
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setSettings((p) => ({
+                              ...p,
+                              donation: { ...p.donation, qr_code: '' },
+                            }))
+                          }
+                          className="absolute -top-2 -right-2 p-1 bg-red-500 text-white rounded-full"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="w-32 h-32 border-2 border-dashed border-gray-600 rounded-lg flex items-center justify-center bg-black/50">
+                        <ImageIcon className="h-8 w-8 text-gray-500" />
+                      </div>
+                    )}
+                    <div>
+                      <label className="px-4 py-2 bg-gold-500 text-black font-semibold rounded-lg cursor-pointer text-sm hover:bg-gold-600 inline-flex items-center gap-2">
+                        {uploading === 'qr' ? (
+                          <>
+                            <Loader2 className="h-4 w-4 animate-spin" /> Uploading...
+                          </>
+                        ) : (
+                          <>
+                            <Upload className="h-4 w-4" /> Upload QR / Scanner
+                          </>
+                        )}
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          disabled={!!uploading}
+                          onChange={(e) => {
+                            const f = e.target.files?.[0]
+                            if (!f) return
+                            uploadToMedia(f, 'donation', (url) => {
+                              setSettings((p) => ({
+                                ...p,
+                                donation: { ...p.donation, qr_code: url },
+                              }))
+                            }, 'qr')
+                          }}
+                        />
+                      </label>
+                      <p className="text-xs text-gray-500 mt-2">PNG/JPG of your UPI QR code</p>
+                    </div>
+                  </div>
                 </div>
+
+                {/* Bank fields — separate columns */}
+                <div className="pt-2 border-t border-gray-800">
+                  <p className="text-sm font-medium text-gold-500 mb-3">Bank Account Details</p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300 mb-2">Bank Name</label>
+                      <input
+                        type="text"
+                        name="bank_name"
+                        value={settings.donation.bank_name}
+                        onChange={handleDonation}
+                        className="w-full px-4 py-2 bg-black border border-gray-700 rounded-lg text-white focus:outline-none focus:border-gold-500"
+                        placeholder="State Bank of India"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300 mb-2">Account Name</label>
+                      <input
+                        type="text"
+                        name="account_name"
+                        value={settings.donation.account_name}
+                        onChange={handleDonation}
+                        className="w-full px-4 py-2 bg-black border border-gray-700 rounded-lg text-white focus:outline-none focus:border-gold-500"
+                        placeholder="SAMPIGE FOUNDATION"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300 mb-2">Account Number</label>
+                      <input
+                        type="text"
+                        name="account_number"
+                        value={settings.donation.account_number}
+                        onChange={handleDonation}
+                        className="w-full px-4 py-2 bg-black border border-gray-700 rounded-lg text-white focus:outline-none focus:border-gold-500"
+                        placeholder="43515053368"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300 mb-2">IFSC Code</label>
+                      <input
+                        type="text"
+                        name="ifsc_code"
+                        value={settings.donation.ifsc_code}
+                        onChange={handleDonation}
+                        className="w-full px-4 py-2 bg-black border border-gray-700 rounded-lg text-white focus:outline-none focus:border-gold-500"
+                        placeholder="SBIN0001234"
+                      />
+                    </div>
+                    <div className="md:col-span-2">
+                      <label className="block text-sm font-medium text-gray-300 mb-2">PAN</label>
+                      <input
+                        type="text"
+                        name="pan"
+                        value={settings.donation.pan}
+                        onChange={handleDonation}
+                        className="w-full px-4 py-2 bg-black border border-gray-700 rounded-lg text-white focus:outline-none focus:border-gold-500"
+                        placeholder="ABCDE1234F"
+                      />
+                    </div>
+                  </div>
+                </div>
+
                 <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">Donation URL</label>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">Donation URL (optional online link)</label>
                   <input
                     type="url"
                     name="donation_url"
