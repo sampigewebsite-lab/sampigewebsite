@@ -65,8 +65,8 @@ export default async function BeTheChange() {
   return (
     <section className="py-24 bg-black overflow-hidden relative border-t border-white/5">
       <div className="container mx-auto px-4">
-        {/* Title */}
-        <div className="text-center mb-20">
+        {/* Section Heading */}
+        <div className="text-center mb-24">
           <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold text-white uppercase tracking-wider">
             {title}{' '}
             <span className="text-[#FFB300]">{highlight}</span>
@@ -76,8 +76,8 @@ export default async function BeTheChange() {
           )}
         </div>
 
-        {/* Cards Grid */}
-        <div className="flex flex-wrap justify-center items-center gap-x-6 gap-y-20 md:gap-y-16">
+        {/* Cards Grid with Increased Spacing (gap-x-12 md:gap-x-16 lg:gap-x-20 & gap-y-28) */}
+        <div className="flex flex-wrap justify-center items-center gap-x-12 md:gap-x-16 lg:gap-x-20 gap-y-28 md:gap-y-32 pt-10 pb-8">
           {list.map((card, index) => {
             const Icon = ICON_MAP[card.icon_name] || Heart
             const rotation = ROTATIONS[index % ROTATIONS.length]
@@ -87,20 +87,21 @@ export default async function BeTheChange() {
               <Link
                 key={card.id}
                 href={card.link || '#'}
-                className="group relative block w-full max-w-[220px] transition-transform duration-300 hover:scale-105 hover:z-20"
+                className="group relative block w-full max-w-[220px] transition-transform duration-300 hover:scale-105 hover:z-20 shrink-0"
               >
-                {/* Outline title */}
+                {/* Outline Title Sitting Above Card */}
                 <h3
                   className="absolute -top-12 left-1/2 -translate-x-1/2 text-2xl md:text-3xl font-black uppercase z-20 whitespace-nowrap tracking-widest transition-colors duration-300 group-hover:text-[#FFB300]"
                   style={{
-                    WebkitTextStroke: '1px #FFB300',
+                    WebkitTextStroke: '1.5px #FFB300',
                     color: 'transparent',
+                    textShadow: '0 4px 12px rgba(0,0,0,0.9)',
                   }}
                 >
                   {card.title}
                 </h3>
 
-                {/* Slanted background */}
+                {/* Slanted Background */}
                 <div
                   className={`absolute inset-0 ${rotation.box} transform scale-105 rounded-md transition-transform duration-300 group-hover:rotate-0`}
                   style={{
@@ -109,11 +110,11 @@ export default async function BeTheChange() {
                   }}
                 />
 
-                {/* Polaroid photo */}
+                {/* Polaroid Photo */}
                 <div
-                  className={`relative bg-white p-3 pb-12 shadow-2xl ${rotation.photo} transition-transform duration-300 group-hover:rotate-0`}
+                  className={`relative bg-white p-3 pb-12 shadow-2xl ${rotation.photo} transition-transform duration-300 group-hover:rotate-0 rounded-sm`}
                 >
-                  <div className="relative aspect-[3/4] w-full overflow-hidden bg-gray-200">
+                  <div className="relative aspect-[3/4] w-full overflow-hidden bg-gray-200 rounded-xs">
                     {card.image_url ? (
                       <img
                         src={card.image_url}
@@ -128,7 +129,7 @@ export default async function BeTheChange() {
                   </div>
                 </div>
 
-                {/* Icon sticker */}
+                {/* Icon Sticker */}
                 <div className="absolute -top-4 -right-4 z-30 bg-black p-3 rounded-full border border-[#FFB300] shadow-xl transform rotate-12 transition-transform group-hover:rotate-0 group-hover:scale-110">
                   <Icon className="w-6 h-6 text-[#FFB300]" />
                 </div>
