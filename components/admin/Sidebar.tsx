@@ -19,7 +19,8 @@ import {
   FileDown,
   Layout,
   Sparkles,
-  Handshake
+  Handshake,
+  Search, // ⭐ ADD THIS
 } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import toast from 'react-hot-toast'
@@ -54,6 +55,7 @@ export default function Sidebar() {
     { icon: Handshake, label: 'CSR Partners', href: '/admin/csr' },
     { icon: FileText, label: 'Pages', href: '/admin/pages' },
     { icon: Layout, label: 'Page Heroes', href: '/admin/page-heroes' },
+    { icon: Search, label: 'SEO Services', href: '/admin/seo-services' }, // ⭐ ADD THIS
     { icon: Settings, label: 'Settings', href: '/admin/settings' },
   ]
 

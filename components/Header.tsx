@@ -34,6 +34,7 @@ export default function Header() {
     { href: '/', label: 'Home' },
     { href: '/about-us', label: 'About' },
     { href: '/projects', label: 'Projects' },
+    { href: '/services', label: 'Services' }, // ⭐ NEW
     { href: '/csr', label: 'CSR' },
     { href: '/gallery', label: 'Gallery' },
     { href: '/blogs', label: 'Blogs' },

@@ -74,12 +74,30 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: 'monthly',
       priority: 0.8,
     },
+    {
+      url: `${baseUrl}/get-involved/intern`,
+      lastModified: currentDate,
+      changeFrequency: 'monthly',
+      priority: 0.7,
+    },
+    {
+      url: `${baseUrl}/services`,
+      lastModified: currentDate,
+      changeFrequency: 'weekly',
+      priority: 0.9,
+    },
+    {
+      url: `${baseUrl}/csr`,
+      lastModified: currentDate,
+      changeFrequency: 'weekly',
+      priority: 0.9,
+    },
   ]
 
   try {
     const supabase = await createClient()
 
-    // 2. Dynamic Projects from Supabase
+    // 2. Dynamic Projects
     const { data: projects } = await supabase
       .from('projects')
       .select('slug, updated_at, created_at')
@@ -89,12 +107,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       (item: { slug: string; updated_at?: string; created_at?: string }) => ({
         url: `${baseUrl}/projects/${item.slug}`,
         lastModified: item.updated_at ? new Date(item.updated_at) : currentDate,
-        changeFrequency: 'weekly',
+        changeFrequency: 'weekly' as const,
         priority: 0.8,
       })
     )
 
-    // 3. Dynamic Blogs from Supabase (news table)
+    // 3. Dynamic Blogs
     const { data: blogs } = await supabase
       .from('news')
       .select('slug, updated_at, created_at')
@@ -104,12 +122,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       (item: { slug: string; updated_at?: string; created_at?: string }) => ({
         url: `${baseUrl}/blogs/${item.slug}`,
         lastModified: item.updated_at ? new Date(item.updated_at) : currentDate,
-        changeFrequency: 'weekly',
+        changeFrequency: 'weekly' as const,
         priority: 0.8,
       })
     )
 
-    // 4. Dynamic Events from Supabase
+    // 4. Dynamic Events
     const { data: events } = await supabase
       .from('events')
       .select('slug, updated_at, created_at')
@@ -119,12 +137,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       (item: { slug: string; updated_at?: string; created_at?: string }) => ({
         url: `${baseUrl}/events/${item.slug}`,
         lastModified: item.updated_at ? new Date(item.updated_at) : currentDate,
-        changeFrequency: 'weekly',
+        changeFrequency: 'weekly' as const,
         priority: 0.7,
       })
     )
 
-    // 5. Dynamic Gallery Albums from Supabase
+    // 5. Dynamic Gallery Albums
     const { data: albums } = await supabase
       .from('gallery_albums')
       .select('slug, created_at')
@@ -133,7 +151,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       (item: { slug: string; created_at?: string }) => ({
         url: `${baseUrl}/gallery/${item.slug}`,
         lastModified: item.created_at ? new Date(item.created_at) : currentDate,
-        changeFrequency: 'monthly',
+        changeFrequency: 'monthly' as const,
         priority: 0.6,
       })
     )
@@ -148,8 +166,38 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       (item: { slug: string; updated_at?: string; created_at?: string }) => ({
         url: `${baseUrl}/${item.slug}`,
         lastModified: item.updated_at ? new Date(item.updated_at) : currentDate,
-        changeFrequency: 'monthly',
+        changeFrequency: 'monthly' as const,
         priority: 0.6,
+      })
+    )
+
+    // 7. Dynamic CSR Activity Detail Pages
+    const { data: csrActivities } = await supabase
+      .from('csr_activities')
+      .select('slug, updated_at, created_at')
+      .eq('published', true)
+
+    const csrRoutes: MetadataRoute.Sitemap = (csrActivities || []).map(
+      (item: { slug: string; updated_at?: string; created_at?: string }) => ({
+        url: `${baseUrl}/csr/${item.slug}`,
+        lastModified: item.updated_at ? new Date(item.updated_at) : currentDate,
+        changeFrequency: 'monthly' as const,
+        priority: 0.7,
+      })
+    )
+
+    // 8. ⭐ Dynamic SEO Service Landing Pages (keyword ranking pages)
+    const { data: seoServices } = await supabase
+      .from('seo_services')
+      .select('slug, updated_at, created_at')
+      .eq('published', true)
+
+    const seoRoutes: MetadataRoute.Sitemap = (seoServices || []).map(
+      (item: { slug: string; updated_at?: string; created_at?: string }) => ({
+        url: `${baseUrl}/services/${item.slug}`,
+        lastModified: item.updated_at ? new Date(item.updated_at) : currentDate,
+        changeFrequency: 'weekly' as const,
+        priority: 0.95,
       })
     )
 
@@ -160,6 +208,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       ...eventRoutes,
       ...galleryRoutes,
       ...customPageRoutes,
+      ...csrRoutes,
+      ...seoRoutes,
     ]
   } catch (error) {
     console.error('Error generating dynamic sitemap:', error)

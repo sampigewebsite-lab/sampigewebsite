@@ -49,6 +49,7 @@ export default function Footer() {
     address: 'Bangalore, Karnataka, India',
   })
   const [social, setSocial] = useState<any>({})
+  const [services, setServices] = useState<{ slug: string; label: string }[]>([])
 
   useEffect(() => {
     const loadSettings = async () => {
@@ -62,6 +63,29 @@ export default function Footer() {
         if (row.key === 'organization' && row.value) setOrg(row.value)
         if (row.key === 'social' && row.value) setSocial(row.value)
       })
+
+      // Load published SEO services for footer links
+      const { data: seoData } = await supabase
+        .from('seo_services')
+        .select('slug, hero_heading, meta_title')
+        .eq('published', true)
+        .order('created_at', { ascending: false })
+        .limit(6)
+
+      const list: { slug: string; label: string }[] = (seoData || []).map((s: any) => ({
+        slug: s.slug,
+        label: s.hero_heading || s.meta_title || s.slug,
+      }))
+
+      // Always ensure photo-frame page is linked (static template page)
+      if (!list.some((s) => s.slug === 'photo-frame-recycling-bangalore')) {
+        list.unshift({
+          slug: 'photo-frame-recycling-bangalore',
+          label: 'Photo Frame Recycling',
+        })
+      }
+
+      setServices(list)
     }
     loadSettings()
   }, [])
@@ -100,9 +124,9 @@ export default function Footer() {
 
       {/* Main Footer */}
       <div className="container mx-auto px-4 py-12">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-10">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-10">
           {/* Org Details */}
-          <div className="space-y-4">
+          <div className="space-y-4 lg:col-span-1">
             <span className="text-2xl font-bold text-gold-500">{org.name || 'SAMPIGE'}</span>
             <p className="text-sm text-gray-400 leading-relaxed">
               {org.tagline || 'Transforming lives through education, healthcare, and sustainable development.'}
@@ -144,10 +168,10 @@ export default function Footer() {
                 { href: '/', label: 'Home' },
                 { href: '/about-us', label: 'About Us' },
                 { href: '/projects', label: 'Our Projects' },
+                { href: '/services', label: 'Our Services' },
+                { href: '/csr', label: 'CSR Programmes' },
                 { href: '/gallery', label: 'Gallery' },
                 { href: '/blogs', label: 'Blogs & Updates' },
-                { href: '/events', label: 'Events' },
-                { href: '/resources', label: 'Resources' },
                 { href: '/contact', label: 'Contact Us' },
               ].map((link) => (
                 <li key={link.href}>
@@ -156,6 +180,32 @@ export default function Footer() {
                   </Link>
                 </li>
               ))}
+            </ul>
+          </div>
+
+          {/* ⭐ Our Services (dynamic) */}
+          <div>
+            <h4 className="text-white font-semibold text-lg mb-4 border-l-2 border-gold-500 pl-3">Our Services</h4>
+            <ul className="space-y-2 text-sm">
+              {services.map((svc) => (
+                <li key={svc.slug}>
+                  <Link
+                    href={`/services/${svc.slug}`}
+                    className="hover:text-gold-500 transition-colors flex items-center gap-1.5"
+                  >
+                    <ArrowRight className="w-3.5 h-3.5 text-gold-500/60" />
+                    <span className="line-clamp-1">{svc.label}</span>
+                  </Link>
+                </li>
+              ))}
+              <li className="pt-2">
+                <Link
+                  href="/services"
+                  className="text-gold-500 font-semibold hover:underline flex items-center gap-1.5"
+                >
+                  View All Services <ArrowRight className="w-3.5 h-3.5" />
+                </Link>
+              </li>
             </ul>
           </div>
 
