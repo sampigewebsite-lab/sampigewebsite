@@ -26,7 +26,6 @@ import {
   Star,
   Target,
   Zap,
-  ExternalLink,
 } from 'lucide-react'
 
 export const dynamic = 'force-dynamic'
@@ -171,7 +170,7 @@ export default async function DynamicSeoServicePage({
       '@type': 'Offer',
       price: '0',
       priceCurrency: 'INR',
-      description: 'Free NGO service',
+      description: 'NGO community service',
     },
   }
 
@@ -182,7 +181,7 @@ export default async function DynamicSeoServicePage({
       )}
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(serviceSchema) }} />
 
-      {/* ===== HERO SECTION (Left Text, Right Image) ===== */}
+      {/* ===== HERO SECTION ===== */}
       <section className="relative pt-32 pb-24 md:pt-40 md:pb-36 overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-black via-[#0A0A0A] to-[#0D1500]" />
         <div className="absolute top-20 right-0 w-96 h-96 bg-gold-500/10 rounded-full blur-[120px] pointer-events-none" />
@@ -327,7 +326,7 @@ export default async function DynamicSeoServicePage({
         </div>
       </section>
 
-      {/* ===== GRID SECTION ("What We Offer") ===== */}
+      {/* ===== GRID SECTION ("What We Offer") — FIXED OVERLAPPING ICONS ===== */}
       {gridItems.length > 0 && (
         <section className="py-24 bg-black border-t border-gold-500/10">
           <div className="container mx-auto px-4">
@@ -344,22 +343,23 @@ export default async function DynamicSeoServicePage({
               {gridItems.map((card: any, idx: number) => {
                 const Icon = getIcon(card.icon)
                 return (
-                  <div key={idx} className="bg-[#141414] rounded-2xl border border-gold-500/10 overflow-hidden hover:border-gold-500/30 transition-all group flex flex-col justify-between">
+                  <div key={idx} className="bg-[#141414] rounded-2xl border border-gold-500/10 hover:border-gold-500/30 transition-all group flex flex-col justify-between relative">
                     <div>
-                      {/* Image container */}
-                      <div className="h-48 bg-black relative overflow-hidden">
+                      {/* Image container with rounded top and overflow-hidden for img scale effect */}
+                      <div className="relative h-48 bg-black rounded-t-2xl overflow-hidden">
                         {card.image ? (
                           <img src={card.image} alt={card.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                         ) : (
                           <div className="w-full h-full bg-[#1A1A1A] flex items-center justify-center text-gray-700">📸</div>
                         )}
-                        {/* Overlapping icon badge */}
-                        <div className="absolute -bottom-5 left-6 w-12 h-12 bg-black border border-gold-500/30 rounded-xl flex items-center justify-center shadow-lg">
-                          <Icon className="w-6 h-6 text-gold-500" />
-                        </div>
                       </div>
 
-                      <div className="p-6 pt-8">
+                      {/* ⭐ Overlapping Icon Badge — Floats outside overflow-hidden so it never clips */}
+                      <div className="relative -mt-6 ml-6 w-12 h-12 bg-black border border-gold-500/30 rounded-xl flex items-center justify-center shadow-xl z-10">
+                        <Icon className="w-6 h-6 text-gold-500" />
+                      </div>
+
+                      <div className="p-6 pt-4">
                         <h3 className="text-xl font-bold text-white mb-2">{card.title}</h3>
                         <p className="text-gray-400 text-xs leading-relaxed mb-4">{card.text}</p>
                       </div>
