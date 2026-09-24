@@ -29,7 +29,7 @@ export default function PoojaEnquiryForm() {
 
     const formData = new FormData(e.currentTarget)
     
-    // We get the selected collection point text, not ID, to make the admin view simpler
+    // We get the selected collection point text to find its ID
     const cpName = formData.get('collection_point') as string
     let cpId = null
     if (cpName && cpName !== 'Other / Not Sure' && cpName !== 'help') {
@@ -60,11 +60,14 @@ export default function PoojaEnquiryForm() {
 
     if (error) {
       toast.error('Something went wrong. Please try again.')
+      setLoading(false)
     } else {
-      toast.success('Thank you! A Sampige team member will contact you shortly.')
-      ;(e.target as HTMLFormElement).reset()
+      toast.success('Thank you! Redirecting to payment...')
+      // Wait 1 second so they see the success message, then redirect to the pay page
+      setTimeout(() => {
+        window.location.href = `/pooja-to-prakruthi/pay?phone=${encodeURIComponent(data.phone)}`
+      }, 1000)
     }
-    setLoading(false)
   }
 
   const types = [
@@ -245,7 +248,7 @@ export default function PoojaEnquiryForm() {
             disabled={loading}
             className="w-full py-4 bg-[#FFB300] text-black font-extrabold text-sm uppercase tracking-wider rounded-xl hover:bg-[#FFCA28] transition-all flex items-center justify-center gap-2 shadow-lg shadow-[#FFB300]/20"
           >
-            {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : `Submit & Join Pooja to Prakruthi`}
+            {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : `Submit & Continue to Payment`}
             {!loading && <ArrowRight className="w-4 h-4" />}
           </button>
         </div>
