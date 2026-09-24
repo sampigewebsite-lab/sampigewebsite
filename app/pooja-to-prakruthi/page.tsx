@@ -3,10 +3,11 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import OptimizedImage from '@/components/OptimizedImage'
 import PoojaEnquiryForm from '@/components/PoojaEnquiryForm'
+import PoojaImpactTracker from '@/components/PoojaImpactTracker'
 import {
-  ArrowRight, Leaf, Recycle, TreePine,
+  ArrowRight, Leaf, Recycle,
   CheckCircle2, XCircle, Home, Building2, Calendar,
-  Sparkles, Package, Truck, BarChart3, Share2, Search
+  Sparkles, Search,Flower2,
 } from 'lucide-react'
 
 export const revalidate = 60
@@ -22,7 +23,6 @@ export async function generateMetadata(): Promise<Metadata> {
   }
 }
 
-// Universal Benefits applied to all plans
 const UNIVERSAL_BENEFITS = [
   'Dedicated flower collection',
   'Segregation of plastics & wires',
@@ -45,9 +45,7 @@ export default async function PoojaToPrakruthiPage() {
   return (
     <main className="bg-black min-h-screen">
       
-      {/* ═══════════════════════════════════════════════════════════
-          1. HERO
-          ═══════════════════════════════════════════════════════════ */}
+      {/* 1. HERO */}
       <section className="relative min-h-[90vh] md:min-h-screen flex items-center overflow-hidden pt-20 pb-16 md:py-28">
         <div className="absolute inset-0 bg-black z-0" />
         <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-[#FFB300]/5 rounded-full blur-[150px] pointer-events-none" />
@@ -105,9 +103,7 @@ export default async function PoojaToPrakruthiPage() {
         </div>
       </section>
 
-      {/* ═══════════════════════════════════════════════════════════
-          2. THE PROBLEM
-          ═══════════════════════════════════════════════════════════ */}
+      {/* 2. THE PROBLEM */}
       <section className="py-20 md:py-32 bg-[#050505] border-t border-gray-900">
         <div className="container mx-auto px-4">
           <div className="text-center mb-16">
@@ -134,9 +130,7 @@ export default async function PoojaToPrakruthiPage() {
         </div>
       </section>
 
-      {/* ═══════════════════════════════════════════════════════════
-          3. THE SOLUTION
-          ═══════════════════════════════════════════════════════════ */}
+      {/* 3. THE SOLUTION */}
       <section className="py-20 md:py-32 bg-black">
         <div className="container mx-auto px-4 text-center">
           <h2 className="text-3xl md:text-5xl font-extrabold text-white max-w-4xl mx-auto mb-8 leading-tight">
@@ -157,9 +151,7 @@ export default async function PoojaToPrakruthiPage() {
         </div>
       </section>
 
-      {/* ═══════════════════════════════════════════════════════════
-          4. WHAT CAN I GIVE?
-          ═══════════════════════════════════════════════════════════ */}
+      {/* 4. WHAT CAN I GIVE */}
       <section className="py-20 bg-[#050505] border-t border-gray-900">
         <div className="container mx-auto px-4 max-w-5xl">
           <div className="text-center mb-12">
@@ -196,9 +188,7 @@ export default async function PoojaToPrakruthiPage() {
         </div>
       </section>
 
-      {/* ═══════════════════════════════════════════════════════════
-          5. HOW CAN YOU PARTICIPATE? (UNIFORM CARDS & RESPONSIVE)
-          ═══════════════════════════════════════════════════════════ */}
+      {/* 5. PARTICIPATION CARDS */}
       <section className="py-20 md:py-32 bg-black border-t border-gray-900">
         <div className="container mx-auto px-4 max-w-6xl">
           <div className="text-center mb-16">
@@ -249,7 +239,7 @@ export default async function PoojaToPrakruthiPage() {
               <div className="text-4xl md:text-5xl font-black text-white mb-1">
                 ₹100 <span className="text-base text-gray-500 font-normal">/ flat / month</span>
               </div>
-              <p className="text-[#FFB300] text-sm font-semibold mb-6 opacity-0 group-hover:opacity-100 transition-opacity">Community Collection Bins</p>
+              <p className="text-[#FFB300] text-sm font-semibold mb-6 uppercase tracking-wider">Community Bins Included</p>
               
               <ul className="space-y-3 mb-8 flex-1">
                 {UNIVERSAL_BENEFITS.map((item, i) => (
@@ -328,9 +318,7 @@ export default async function PoojaToPrakruthiPage() {
         </div>
       </section>
 
-      {/* ═══════════════════════════════════════════════════════════
-          6. TRACK YOUR IMPACT SECTION (NEW)
-          ═══════════════════════════════════════════════════════════ */}
+      {/* 6. TRACK YOUR IMPACT */}
       <section className="py-20 bg-[#050505] border-t border-gray-900">
         <div className="container mx-auto px-4">
           <div className="max-w-2xl mx-auto bg-gradient-to-b from-[#141414] to-black rounded-3xl p-8 md:p-12 border border-[#FFB300]/20 text-center shadow-xl">
@@ -339,33 +327,15 @@ export default async function PoojaToPrakruthiPage() {
             </div>
             <h2 className="text-2xl md:text-4xl font-bold text-white mb-4">Track Your Household Impact</h2>
             <p className="text-gray-400 text-sm md:text-base mb-8">
-              Already a member? Enter your registered phone number to see how much flower waste you have personally saved from landfills.
+              Already a member? Enter your registered phone number to see how much flower waste you have personally saved.
             </p>
             
-            <form className="flex flex-col sm:flex-row gap-3 max-w-md mx-auto">
-              <input 
-                type="tel" 
-                placeholder="Enter 10-digit mobile number" 
-                className="flex-1 bg-black border border-gray-800 rounded-xl px-5 py-4 text-white focus:border-[#FFB300] outline-none text-center sm:text-left"
-              />
-              <button 
-                type="button" 
-                className="bg-[#FFB300] text-black font-extrabold px-6 py-4 rounded-xl hover:bg-[#FFCA28] transition-colors whitespace-nowrap uppercase text-sm tracking-wider"
-                onClick={(e) => {
-                  e.preventDefault();
-                  alert("Impact tracking backend will be connected soon! Your data is safe.");
-                }}
-              >
-                Check Impact
-              </button>
-            </form>
+            <PoojaImpactTracker />
           </div>
         </div>
       </section>
 
-      {/* ═══════════════════════════════════════════════════════════
-          7. NEW ENQUIRY FORM
-          ═══════════════════════════════════════════════════════════ */}
+      {/* 7. ENQUIRY FORM */}
       <section className="py-20 md:py-32 bg-black border-t border-gray-900 relative">
         <div className="container mx-auto px-4 relative z-10">
           <PoojaEnquiryForm />
