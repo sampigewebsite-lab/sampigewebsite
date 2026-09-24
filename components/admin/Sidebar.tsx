@@ -15,6 +15,7 @@ import {
   Newspaper,
   Menu,
   X,
+  Leaf,
   Inbox,
   FileDown,
   Layout,
@@ -57,6 +58,7 @@ export default function Sidebar() {
     { icon: Layout, label: 'Page Heroes', href: '/admin/page-heroes' },
     { icon: Search, label: 'SEO Services', href: '/admin/seo-services' }, // ⭐ ADD THIS
     { icon: Settings, label: 'Settings', href: '/admin/settings' },
+    { icon: Leaf , label: 'Pooja to Prakruthi', href: '/admin/pooja-to-prakruthi',  },
   ]
 
   const handleLogout = async () => {
