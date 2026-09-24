@@ -1,11 +1,12 @@
 import Link from 'next/link'
+import Image from 'next/image'
 import { ArrowRight, Heart, Users, TreePine, Utensils, Sparkles, Recycle } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import WhatsAppFloat from '@/components/WhatsAppFloat'
 import BeTheChange from '@/components/BeTheChange'
 import OptimizedImage from '@/components/OptimizedImage'
 
-export const dynamic = 'force-dynamic'
+export const revalidate = 60
 
 export default async function Home() {
   const supabase = await createClient()
@@ -53,7 +54,7 @@ export default async function Home() {
     title_line1: 'Creating Change.',
     title_line2: 'Building Hope.',
     description:
-      'Sampige is committed to transforming lives through education, healthcare, and sustainable development initiatives in our community.',
+      'Sampige Foundation is committed to creating meaningful change by bringing people and communities together for a better, cleaner and more compassionate future.',
     sub_description: 'We turn compassion into organized, documented, community-led action.',
     background_image: '',
     cta_primary_label: 'Explore Our Work',
@@ -73,7 +74,6 @@ export default async function Home() {
   ]
   const displayStats = stats && stats.length > 0 ? stats : defaultStats
 
-  // Build services list
   const servicesList: any[] = [...(seoServices || [])]
   if (!servicesList.some((s) => s.slug === 'photo-frame-recycling-bangalore')) {
     servicesList.unshift({
@@ -87,42 +87,43 @@ export default async function Home() {
     })
   }
 
-  // ⭐ SHOW EXACTLY 3 CARDS ON HOMEPAGE FOR A PERFECT 3-COLUMN LAYOUT
   const homeServicesList = servicesList.slice(0, 3)
 
   return (
     <main className="bg-black">
-      {/* ===== HERO ===== */}
-      <section className="relative min-h-[85vh] md:min-h-screen flex items-end md:items-center overflow-hidden pt-20 pb-12 md:py-28">
+      {/* ===== HERO (FIXED LAYOUT) ===== */}
+      <section className="relative min-h-[85vh] md:min-h-screen flex items-center overflow-hidden pt-24 pb-16 md:py-28">
+        {/* Background Image - Absolute Positioned */}
         {hero.background_image ? (
-          <OptimizedImage
+          <Image
             src={hero.background_image}
-            alt="Hero Banner"
+            alt="Hero Background"
             fill
             priority
             quality={85}
-            supabaseWidth={1920}
-            className="absolute inset-0 w-full h-full object-cover object-[80%_center] md:object-center transition-all duration-300"
+            className="absolute inset-0 w-full h-full object-cover object-center z-0"
           />
         ) : (
-          <div className="absolute inset-0 bg-gradient-to-br from-black via-[#0A0A0A] to-[#1A0A00]" />
+          <div className="absolute inset-0 bg-gradient-to-br from-black via-[#0A0A0A] to-[#1A0A00] z-0" />
         )}
 
-        <div className="absolute inset-0 bg-gradient-to-b md:bg-gradient-to-r from-black/90 via-black/75 to-black/30 md:to-black/20" />
-        <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-black/40 md:to-transparent" />
+        {/* Gradient Overlays for Readability */}
+        <div className="absolute inset-0 bg-gradient-to-r from-black via-black/80 to-black/30 z-[1]" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-black/40 z-[1]" />
 
+        {/* Hero Content - Perfectly Aligned */}
         <div className="container mx-auto px-4 relative z-10">
-          <div className="max-w-3xl md:max-w-5xl">
+          <div className="max-w-3xl md:max-w-4xl">
             {hero.badge && (
-              <div className="flex items-center gap-2 mb-3 md:mb-6">
-                <Sparkles className="text-gold-500 h-4 w-4 shrink-0" />
-                <span className="text-gold-500 font-semibold tracking-[0.15em] text-[11px] md:text-sm uppercase">
+              <div className="flex items-center gap-2 mb-4 md:mb-6">
+                <Sparkles className="text-[#FFB300] h-4 w-4 shrink-0" />
+                <span className="text-[#FFB300] font-semibold tracking-[0.15em] text-[11px] md:text-sm uppercase">
                   {hero.badge}
                 </span>
               </div>
             )}
 
-            <h1 className="text-3xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-white leading-[1.1] md:leading-[1.05] mb-3 md:mb-6">
+            <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-white leading-[1.1] mb-4 md:mb-6">
               {hero.title_line1}
               {hero.title_line2 && (
                 <>
@@ -133,12 +134,12 @@ export default async function Home() {
             </h1>
 
             {hero.description && (
-              <p className="text-xs sm:text-base md:text-lg text-gray-200 mb-2 md:mb-3 max-w-4xl leading-relaxed md:leading-8">
+              <p className="text-sm sm:text-base md:text-lg text-gray-200 mb-3 max-w-3xl leading-relaxed">
                 {hero.description}
               </p>
             )}
             {hero.sub_description && (
-              <p className="text-xs sm:text-sm md:text-base text-gray-400 mb-6 md:mb-8 max-w-4xl leading-relaxed">
+              <p className="text-xs sm:text-sm md:text-base text-gray-400 mb-8 max-w-3xl leading-relaxed">
                 {hero.sub_description}
               </p>
             )}
@@ -146,7 +147,7 @@ export default async function Home() {
             <div className="flex flex-wrap gap-3 md:gap-4">
               <Link
                 href={hero.cta_primary_link || '/projects'}
-                className="inline-flex items-center px-5 md:px-8 py-3 md:py-4 bg-gold-500 text-black font-bold rounded-lg hover:bg-gold-600 transition-all hover:scale-[1.02] shadow-lg shadow-gold-500/20 uppercase text-xs md:text-sm tracking-wide"
+                className="inline-flex items-center px-6 md:px-8 py-3.5 md:py-4 bg-[#FFB300] text-black font-bold rounded-lg hover:bg-[#FFCA28] transition-all hover:scale-[1.02] shadow-lg shadow-[#FFB300]/20 uppercase text-xs md:text-sm tracking-wide"
               >
                 {hero.cta_primary_label || 'Explore Our Work'}
                 <ArrowRight className="ml-2 h-4 w-4 md:h-5 md:w-5" />
@@ -154,7 +155,7 @@ export default async function Home() {
 
               <Link
                 href={hero.cta_secondary_link || '/get-involved/donate'}
-                className="inline-flex items-center px-5 md:px-8 py-3 md:py-4 bg-transparent text-white font-semibold rounded-lg border border-white/40 hover:bg-white/10 transition-all uppercase text-xs md:text-sm tracking-wide gap-2"
+                className="inline-flex items-center px-6 md:px-8 py-3.5 md:py-4 bg-transparent text-white font-semibold rounded-lg border border-white/40 hover:bg-white/10 transition-all uppercase text-xs md:text-sm tracking-wide gap-2"
               >
                 {hero.cta_secondary_label || 'Donate Now'}
                 <Heart className="h-4 w-4" />
@@ -163,15 +164,15 @@ export default async function Home() {
           </div>
         </div>
 
-        <div className="absolute bottom-0 left-0 right-0 h-1 bg-gold-500" />
+        <div className="absolute bottom-0 left-0 right-0 h-1 bg-[#FFB300] z-10" />
       </section>
 
       {/* Impact */}
-      <section className="py-20 bg-gradient-to-b from-black to-[#0A0A0A] border-t border-gold-500/10">
+      <section className="py-20 bg-gradient-to-b from-black to-[#0A0A0A] border-t border-[#FFB300]/10">
         <div className="container mx-auto px-4">
           <div className="text-center mb-12">
             <h2 className="text-4xl md:text-5xl font-bold mb-4">
-              Our <span className="gradient-text">Impact</span>
+              Our <span className="bg-gradient-to-r from-[#FFB300] to-[#FF7A00] bg-clip-text text-transparent">Impact</span>
             </h2>
             <p className="text-gray-400 max-w-2xl mx-auto">
               Every number represents a life touched, a community transformed
@@ -191,11 +192,11 @@ export default async function Home() {
 
               return (
                 <div key={index} className="text-center group">
-                  <div className="text-4xl md:text-5xl font-bold gradient-text mb-2 group-hover:scale-105 transition-transform">
+                  <div className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-[#FFB300] to-[#FF7A00] bg-clip-text text-transparent mb-2 group-hover:scale-105 transition-transform">
                     {stat.value}
                   </div>
                   <div className="flex justify-center mb-2">
-                    <IconComponent className="h-8 w-8 text-gold-500" />
+                    <IconComponent className="h-8 w-8 text-[#FFB300]" />
                   </div>
                   <div className="text-white font-medium">{stat.title}</div>
                   {stat.description && (
@@ -216,7 +217,7 @@ export default async function Home() {
           <div className="container mx-auto px-4">
             <div className="text-center mb-12">
               <h2 className="text-4xl md:text-5xl font-bold mb-4">
-                Our <span className="gradient-text">Projects</span>
+                Our <span className="bg-gradient-to-r from-[#FFB300] to-[#FF7A00] bg-clip-text text-transparent">Projects</span>
               </h2>
               <p className="text-gray-400 max-w-2xl mx-auto">
                 Discover how we&apos;re making a difference in communities
@@ -228,7 +229,7 @@ export default async function Home() {
                 <Link
                   key={project.id}
                   href={`/projects/${project.slug}`}
-                  className="group bg-[#1A1A1A] rounded-2xl overflow-hidden border border-gold-500/10 hover:border-gold-500/30 transition-all flex flex-col"
+                  className="group bg-[#1A1A1A] rounded-2xl overflow-hidden border border-[#FFB300]/10 hover:border-[#FFB300]/30 transition-all flex flex-col"
                 >
                   {project.cover_image && (
                     <div className="h-56 bg-[#0A0A0A] relative overflow-hidden">
@@ -240,20 +241,20 @@ export default async function Home() {
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                       />
                       <div className="absolute top-4 right-4 z-10">
-                        <span className="px-4 py-1.5 bg-gold-500 text-black text-xs font-bold rounded-full uppercase tracking-wider">
+                        <span className="px-4 py-1.5 bg-[#FFB300] text-black text-xs font-bold rounded-full uppercase tracking-wider">
                           {project.status}
                         </span>
                       </div>
                     </div>
                   )}
                   <div className="p-6 flex flex-col flex-1">
-                    <h3 className="text-xl font-semibold text-white group-hover:text-gold-500 transition-colors mb-2">
+                    <h3 className="text-xl font-semibold text-white group-hover:text-[#FFB300] transition-colors mb-2">
                       {project.title}
                     </h3>
                     <p className="text-gray-400 text-sm mb-4 line-clamp-2">
                       {project.short_description || 'Making a difference in our community.'}
                     </p>
-                    <div className="flex items-center text-gold-500 font-medium mt-auto">
+                    <div className="flex items-center text-[#FFB300] font-medium mt-auto">
                       Learn More
                       <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
                     </div>
@@ -265,7 +266,7 @@ export default async function Home() {
             <div className="text-center mt-10">
               <Link
                 href="/projects"
-                className="inline-flex items-center px-8 py-3 bg-gold-500 text-black font-semibold rounded-full hover:bg-gold-600 transition-all"
+                className="inline-flex items-center px-8 py-3 bg-[#FFB300] text-black font-semibold rounded-full hover:bg-[#FFCA28] transition-all"
               >
                 View All Projects
                 <ArrowRight className="ml-2 h-5 w-5" />
@@ -275,15 +276,15 @@ export default async function Home() {
         </section>
       )}
 
-      {/* ===== CSR PREVIEW SECTION ===== */}
-      <section className="py-20 bg-black border-t border-gold-500/10">
+      {/* CSR Preview */}
+      <section className="py-20 bg-black border-t border-[#FFB300]/10">
         <div className="container mx-auto px-4">
-          <div className="bg-gradient-to-br from-[#0f0f0f] to-black rounded-3xl p-8 md:p-14 border border-gold-500/20 flex flex-col lg:flex-row items-center justify-between gap-12 overflow-hidden relative shadow-2xl">
-            <div className="absolute top-0 right-0 w-64 h-64 bg-gold-500/10 rounded-full blur-[100px] -mr-20 -mt-20 pointer-events-none"></div>
+          <div className="bg-gradient-to-br from-[#0f0f0f] to-black rounded-3xl p-8 md:p-14 border border-[#FFB300]/20 flex flex-col lg:flex-row items-center justify-between gap-12 overflow-hidden relative shadow-2xl">
+            <div className="absolute top-0 right-0 w-64 h-64 bg-[#FFB300]/10 rounded-full blur-[100px] -mr-20 -mt-20 pointer-events-none"></div>
 
             <div className="flex-1 relative z-10">
-              <div className="text-gold-500 text-xs font-bold uppercase tracking-widest mb-4 flex items-center gap-3">
-                <span className="w-8 h-px bg-gold-500"></span> Corporate Partnerships
+              <div className="text-[#FFB300] text-xs font-bold uppercase tracking-widest mb-4 flex items-center gap-3">
+                <span className="w-8 h-px bg-[#FFB300]"></span> Corporate Partnerships
               </div>
               <h2 className="text-3xl md:text-5xl font-bold text-white mb-6 leading-tight">
                 Create Meaningful Impact With Your Team
@@ -293,19 +294,19 @@ export default async function Home() {
               </p>
               <Link
                 href="/csr"
-                className="inline-flex items-center gap-2 bg-gold-500 text-black font-extrabold px-8 py-4 rounded-full text-sm uppercase tracking-wider hover:bg-gold-400 hover:scale-105 transition-all"
+                className="inline-flex items-center gap-2 bg-[#FFB300] text-black font-extrabold px-8 py-4 rounded-full text-sm uppercase tracking-wider hover:bg-[#FFCA28] hover:scale-105 transition-all"
               >
                 Explore CSR Programmes <ArrowRight className="w-4 h-4" />
               </Link>
             </div>
 
             <div className="w-full lg:w-5/12 grid grid-cols-2 gap-4 relative z-10">
-              <div className="bg-[#1A1A1A] p-8 rounded-2xl border border-gold-500/10 text-center hover:border-gold-500/30 transition-colors">
-                <div className="text-4xl md:text-5xl font-extrabold text-gold-500 mb-2">22</div>
+              <div className="bg-[#1A1A1A] p-8 rounded-2xl border border-[#FFB300]/10 text-center hover:border-[#FFB300]/30 transition-colors">
+                <div className="text-4xl md:text-5xl font-extrabold text-[#FFB300] mb-2">22</div>
                 <div className="text-xs text-[#B0B0B0] uppercase font-bold tracking-wider">Engagement Formats</div>
               </div>
-              <div className="bg-[#1A1A1A] p-8 rounded-2xl border border-gold-500/10 text-center lg:translate-y-6 hover:border-gold-500/30 transition-colors">
-                <div className="text-4xl md:text-5xl font-extrabold text-gold-500 mb-2">5</div>
+              <div className="bg-[#1A1A1A] p-8 rounded-2xl border border-[#FFB300]/10 text-center lg:translate-y-6 hover:border-[#FFB300]/30 transition-colors">
+                <div className="text-4xl md:text-5xl font-extrabold text-[#FFB300] mb-2">5</div>
                 <div className="text-xs text-[#B0B0B0] uppercase font-bold tracking-wider">Impact Pillars</div>
               </div>
             </div>
@@ -313,16 +314,16 @@ export default async function Home() {
         </div>
       </section>
 
-      {/* ===== ⭐ OUR SERVICES (CLEAN 3-CARD ROW) ===== */}
+      {/* Services */}
       {homeServicesList.length > 0 && (
-        <section className="py-20 bg-[#0A0A0A] border-t border-gold-500/10">
+        <section className="py-20 bg-[#0A0A0A] border-t border-[#FFB300]/10">
           <div className="container mx-auto px-4">
             <div className="text-center mb-12">
-              <div className="inline-flex items-center gap-2 text-gold-500 text-xs font-bold uppercase tracking-widest mb-3">
+              <div className="inline-flex items-center gap-2 text-[#FFB300] text-xs font-bold uppercase tracking-widest mb-3">
                 <Recycle className="h-4 w-4" /> Community Eco Services
               </div>
               <h2 className="text-4xl md:text-5xl font-bold mb-4">
-                Our <span className="gradient-text">Services</span>
+                Our <span className="bg-gradient-to-r from-[#FFB300] to-[#FF7A00] bg-clip-text text-transparent">Services</span>
               </h2>
               <p className="text-gray-400 max-w-2xl mx-auto">
                 Recycling and eco programmes for Bangalore communities — photo frames, divine items, temple waste, and more.
@@ -334,7 +335,7 @@ export default async function Home() {
                 <Link
                   key={svc.slug}
                   href={`/services/${svc.slug}`}
-                  className="group bg-[#1A1A1A] rounded-2xl overflow-hidden border border-gold-500/10 hover:border-gold-500/30 transition-all flex flex-col"
+                  className="group bg-[#1A1A1A] rounded-2xl overflow-hidden border border-[#FFB300]/10 hover:border-[#FFB300]/30 transition-all flex flex-col"
                 >
                   <div className="h-48 bg-[#0A0A0A] relative overflow-hidden">
                     {svc.hero_image ? (
@@ -347,17 +348,17 @@ export default async function Home() {
                       />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-[#0A0A0A] to-[#1A1500]">
-                        <Recycle className="h-12 w-12 text-gold-500/30 group-hover:text-gold-500/50 transition-colors" />
+                        <Recycle className="h-12 w-12 text-[#FFB300]/30 group-hover:text-[#FFB300]/50 transition-colors" />
                       </div>
                     )}
                     {svc.hero_badge && (
-                      <span className="absolute top-3 left-3 px-3 py-1 bg-black/80 border border-gold-500/30 text-gold-500 text-[10px] font-bold uppercase tracking-wider rounded-full z-10">
+                      <span className="absolute top-3 left-3 px-3 py-1 bg-black/80 border border-[#FFB300]/30 text-[#FFB300] text-[10px] font-bold uppercase tracking-wider rounded-full z-10">
                         {svc.hero_badge}
                       </span>
                     )}
                   </div>
                   <div className="p-6 flex flex-col flex-1">
-                    <h3 className="text-xl font-semibold text-white group-hover:text-gold-500 transition-colors mb-2 line-clamp-2">
+                    <h3 className="text-xl font-semibold text-white group-hover:text-[#FFB300] transition-colors mb-2 line-clamp-2">
                       {svc.hero_heading || svc.meta_title}
                     </h3>
                     <p className="text-gray-400 text-sm mb-4 line-clamp-2 flex-1">
@@ -365,7 +366,7 @@ export default async function Home() {
                         svc.meta_description ||
                         'Learn more about this community service in Bangalore.'}
                     </p>
-                    <div className="flex items-center text-gold-500 font-medium text-sm">
+                    <div className="flex items-center text-[#FFB300] font-medium text-sm">
                       Learn More
                       <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
                     </div>
@@ -377,7 +378,7 @@ export default async function Home() {
             <div className="text-center mt-10">
               <Link
                 href="/services"
-                className="inline-flex items-center px-8 py-3 bg-gold-500 text-black font-semibold rounded-full hover:bg-gold-600 transition-all"
+                className="inline-flex items-center px-8 py-3 bg-[#FFB300] text-black font-semibold rounded-full hover:bg-[#FFCA28] transition-all"
               >
                 View All Services
                 <ArrowRight className="ml-2 h-5 w-5" />
@@ -389,11 +390,11 @@ export default async function Home() {
 
       {/* Gallery */}
       {galleryAlbums && galleryAlbums.length > 0 && (
-        <section className="py-20 bg-[#0A0A0A] border-t border-gold-500/10">
+        <section className="py-20 bg-[#0A0A0A] border-t border-[#FFB300]/10">
           <div className="container mx-auto px-4">
             <div className="text-center mb-12">
               <h2 className="text-4xl md:text-5xl font-bold mb-4">
-                Our <span className="gradient-text">Gallery</span>
+                Our <span className="bg-gradient-to-r from-[#FFB300] to-[#FF7A00] bg-clip-text text-transparent">Gallery</span>
               </h2>
             </div>
             <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -401,7 +402,7 @@ export default async function Home() {
                 <Link
                   key={album.id}
                   href={`/gallery/${album.slug}`}
-                  className="group bg-[#1A1A1A] rounded-2xl overflow-hidden border border-gold-500/10 hover:border-gold-500/30 transition-all flex flex-col"
+                  className="group bg-[#1A1A1A] rounded-2xl overflow-hidden border border-[#FFB300]/10 hover:border-[#FFB300]/30 transition-all flex flex-col"
                 >
                   <div className="h-48 bg-[#0A0A0A] relative overflow-hidden">
                     {album.cover_image ? (
@@ -417,7 +418,7 @@ export default async function Home() {
                     )}
                   </div>
                   <div className="p-4">
-                    <h3 className="text-lg font-semibold text-white group-hover:text-gold-500 transition-colors">
+                    <h3 className="text-lg font-semibold text-white group-hover:text-[#FFB300] transition-colors">
                       {album.title}
                     </h3>
                   </div>
@@ -427,7 +428,7 @@ export default async function Home() {
             <div className="text-center mt-10">
               <Link
                 href="/gallery"
-                className="inline-flex items-center px-8 py-3 bg-gold-500 text-black font-semibold rounded-full hover:bg-gold-600"
+                className="inline-flex items-center px-8 py-3 bg-[#FFB300] text-black font-semibold rounded-full hover:bg-[#FFCA28]"
               >
                 View All Gallery
                 <ArrowRight className="ml-2 h-5 w-5" />
@@ -439,11 +440,11 @@ export default async function Home() {
 
       {/* Blogs */}
       {newsArticles && newsArticles.length > 0 && (
-        <section className="py-20 bg-black border-t border-gold-500/10">
+        <section className="py-20 bg-black border-t border-[#FFB300]/10">
           <div className="container mx-auto px-4">
             <div className="text-center mb-12">
               <h2 className="text-4xl md:text-5xl font-bold mb-4">
-                Latest <span className="gradient-text">Blogs</span>
+                Latest <span className="bg-gradient-to-r from-[#FFB300] to-[#FF7A00] bg-clip-text text-transparent">Blogs</span>
               </h2>
             </div>
             <div className="grid md:grid-cols-3 gap-6">
@@ -451,7 +452,7 @@ export default async function Home() {
                 <Link
                   key={article.id}
                   href={`/blogs/${article.slug}`}
-                  className="group bg-[#1A1A1A] rounded-2xl overflow-hidden border border-gold-500/10 hover:border-gold-500/30 transition-all flex flex-col"
+                  className="group bg-[#1A1A1A] rounded-2xl overflow-hidden border border-[#FFB300]/10 hover:border-[#FFB300]/30 transition-all flex flex-col"
                 >
                   {article.featured_image && (
                     <div className="h-48 bg-[#0A0A0A] relative overflow-hidden">
@@ -468,7 +469,7 @@ export default async function Home() {
                     <div className="text-sm text-gray-500 mb-2">
                       {new Date(article.published_at || article.created_at).toLocaleDateString()}
                     </div>
-                    <h3 className="text-xl font-semibold text-white group-hover:text-gold-500 transition-colors line-clamp-2">
+                    <h3 className="text-xl font-semibold text-white group-hover:text-[#FFB300] transition-colors line-clamp-2">
                       {article.title}
                     </h3>
                   </div>
@@ -478,7 +479,7 @@ export default async function Home() {
             <div className="text-center mt-10">
               <Link
                 href="/blogs"
-                className="inline-flex items-center px-8 py-3 bg-gold-500 text-black font-semibold rounded-full hover:bg-gold-600"
+                className="inline-flex items-center px-8 py-3 bg-[#FFB300] text-black font-semibold rounded-full hover:bg-[#FFCA28]"
               >
                 Read All Blogs
                 <ArrowRight className="ml-2 h-5 w-5" />
