@@ -7,8 +7,8 @@ import { createClient } from '@/lib/supabase/client'
 
 export default function Header() {
   const [isOpen, setIsOpen] = useState(false)
-  const [logo, setLogo] = useState('/logo.png')
-  const [orgName, setOrgName] = useState('SAMPIGE')
+  const [logo, setLogo] = useState<string | null>(null)
+  const [orgName, setOrgName] = useState('SAMPIGE FOUNDATION')
 
   useEffect(() => {
     const load = async () => {
@@ -21,7 +21,6 @@ export default function Header() {
       data?.forEach((row) => {
         if (row.key === 'general' && row.value?.logo) {
           const rawLogo = row.value.logo
-          // Resize Supabase logo URL to 250px wide for header
           const optimizedLogo = rawLogo.includes('supabase.co/storage/')
             ? `${rawLogo.split('?')[0]}?width=250&quality=85`
             : rawLogo
@@ -40,6 +39,7 @@ export default function Header() {
     { href: '/about-us', label: 'About' },
     { href: '/projects', label: 'Projects' },
     { href: '/services', label: 'Services' },
+    { href: '/pooja-to-prakruthi', label: 'Flower Recycling' },
     { href: '/csr', label: 'CSR' },
     { href: '/gallery', label: 'Gallery' },
     { href: '/blogs', label: 'Blogs' },
@@ -49,23 +49,22 @@ export default function Header() {
   ]
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 bg-black/90 backdrop-blur-md border-b border-gold-500/10">
+    <header className="fixed top-0 left-0 right-0 z-50 bg-black/90 backdrop-blur-md border-b border-[#FFB300]/10">
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-16 md:h-18">
-          <Link href="/" className="flex items-center gap-2 min-w-0">
-            {/* Optimized Logo with Fast Async Decoding */}
-            <img
-              src={logo}
-              alt={orgName}
-              width={140}
-              height={40}
-              decoding="async"
-              className="h-9 md:h-10 w-auto max-w-[140px] object-contain"
-              onError={(e) => {
-                ;(e.target as HTMLImageElement).src = '/logo.png'
-              }}
-            />
-            <span className="text-gold-500 font-bold text-lg md:text-xl hidden sm:block truncate">
+          <Link href="/" className="flex items-center gap-3 min-w-0">
+            {logo ? (
+              <img
+                src={logo}
+                alt={orgName}
+                width={140}
+                height={40}
+                decoding="async"
+                className="h-9 md:h-10 w-auto max-w-[140px] object-contain"
+                onError={() => setLogo(null)}
+              />
+            ) : null}
+            <span className="text-[#FFB300] font-extrabold text-lg md:text-xl truncate tracking-wide">
               {orgName}
             </span>
           </Link>
@@ -75,20 +74,20 @@ export default function Header() {
               <Link
                 key={item.href}
                 href={item.href}
-                className="text-gray-300 hover:text-gold-500 transition-colors text-sm font-medium uppercase tracking-wide"
+                className="text-gray-300 hover:text-[#FFB300] transition-colors text-sm font-medium uppercase tracking-wide"
               >
                 {item.label}
               </Link>
             ))}
             <Link
               href="/get-involved/volunteer"
-              className="px-4 py-2 border border-gold-500/40 text-gold-400 text-sm font-semibold rounded-full hover:bg-gold-500/10 transition-colors"
+              className="px-4 py-2 border border-[#FFB300]/40 text-[#FFB300] text-sm font-semibold rounded-full hover:bg-[#FFB300]/10 transition-colors"
             >
               Join
             </Link>
             <Link
               href="/get-involved/donate"
-              className="px-4 py-2 bg-gold-500 text-black text-sm font-semibold rounded-full hover:bg-gold-600 transition-colors"
+              className="px-4 py-2 bg-[#FFB300] text-black text-sm font-semibold rounded-full hover:bg-[#FFCA28] transition-colors"
             >
               Donate Now
             </Link>
@@ -104,13 +103,13 @@ export default function Header() {
         </div>
 
         {isOpen && (
-          <nav className="lg:hidden py-4 border-t border-gold-500/10 flex flex-col gap-3">
+          <nav className="lg:hidden py-4 border-t border-[#FFB300]/10 flex flex-col gap-3">
             {nav.map((item) => (
               <Link
                 key={item.href}
                 href={item.href}
                 onClick={() => setIsOpen(false)}
-                className="text-gray-300 hover:text-gold-500 transition-colors py-1"
+                className="text-gray-300 hover:text-[#FFB300] transition-colors py-1"
               >
                 {item.label}
               </Link>
@@ -118,14 +117,14 @@ export default function Header() {
             <Link
               href="/get-involved/volunteer"
               onClick={() => setIsOpen(false)}
-              className="px-4 py-2 border border-gold-500/40 text-gold-400 font-semibold rounded-full text-center"
+              className="px-4 py-2 border border-[#FFB300]/40 text-[#FFB300] font-semibold rounded-full text-center"
             >
               Join
             </Link>
             <Link
               href="/get-involved/donate"
               onClick={() => setIsOpen(false)}
-              className="px-4 py-2 bg-gold-500 text-black font-semibold rounded-full text-center"
+              className="px-4 py-2 bg-[#FFB300] text-black font-semibold rounded-full text-center"
             >
               Donate Now
             </Link>
