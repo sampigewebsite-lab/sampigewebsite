@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import toast, { Toaster } from 'react-hot-toast'
-import { Loader2, Save, Mail, Settings, MapPin, Upload, Plus, Trash2, CheckCircle2, XCircle, Image as ImageIcon } from 'lucide-react'
+import { Loader2, Save, Mail, Settings, MapPin, Upload, Plus,Flower2, Trash2, CheckCircle2, XCircle, Image as ImageIcon } from 'lucide-react'
 
 export default function PoojaAdminPage() {
   const [activeTab, setActiveTab] = useState<'enquiries' | 'content' | 'points'>('enquiries')
