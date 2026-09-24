@@ -39,7 +39,6 @@ export default function Header() {
     { href: '/about-us', label: 'About' },
     { href: '/projects', label: 'Projects' },
     { href: '/services', label: 'Services' },
-    { href: '/pooja-to-prakruthi', label: 'Flower Recycling' },
     { href: '/csr', label: 'CSR' },
     { href: '/gallery', label: 'Gallery' },
     { href: '/blogs', label: 'Blogs' },
