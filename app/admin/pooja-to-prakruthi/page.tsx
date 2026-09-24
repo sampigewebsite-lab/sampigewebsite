@@ -1,331 +1,580 @@
-import type { Metadata } from 'next'
-import Link from 'next/link'
-import { createClient } from '@/lib/supabase/server'
-import OptimizedImage from '@/components/OptimizedImage'
-import PoojaEnquiryForm from '@/components/PoojaEnquiryForm'
-import {
-  ArrowRight, Leaf, Recycle, TreePine,
-  CheckCircle2, XCircle, Home, Building2, Calendar,
-  Sparkles, Package, Truck, BarChart3, Share2
-} from 'lucide-react'
+'use client'
 
-// Fast ISR Caching (updates every 60s)
-export const revalidate = 60
+import { useState, useEffect } from 'react'
+import { createClient } from '@/lib/supabase/client'
+import toast, { Toaster } from 'react-hot-toast'
+import { Loader2, Save, Mail, Settings, MapPin, Upload, Plus, Trash2, CheckCircle2, XCircle, Image as ImageIcon } from 'lucide-react'
 
-const getBaseUrl = () => process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, '') || 'https://sampigefoundation.com'
+export default function PoojaAdminPage() {
+  const [activeTab, setActiveTab] = useState<'enquiries' | 'content' | 'points'>('enquiries')
+  const [content, setContent] = useState<any>(null)
+  const [enquiries, setEnquiries] = useState<any[]>([])
+  const [points, setPoints] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [uploadingField, setUploadingField] = useState<string | null>(null)
 
-// DEFAULT FALLBACK CONTENT (Guarantees the page ALWAYS loads instantly)
-const DEFAULT_CONTENT = {
-  hero_eyebrow: 'SAMPIGE FOUNDATION INITIATIVE',
-  hero_title_line1: 'Used Flower Waste',
-  hero_title_line2: 'Collection & Composting',
-  hero_programme_name: 'Pooja to Prakruthi',
-  hero_tagline: 'Every flower deserves a second life.',
-  hero_description: 'Your pooja flowers don\'t have to end up in mixed waste. Sampige collects, segregates and composts suitable flower waste through the Pooja to Prakruthi initiative.',
-  hero_cta_1_label: 'Give Your Flowers a Second Life',
-  hero_cta_1_link: '#membership',
-  hero_cta_2_label: 'Become a Green Member',
-  hero_cta_2_link: '#membership',
-  hero_image: null,
+  // New Collection Point Form State
+  const [newPointName, setNewPointName] = useState('')
+  const [newPointArea, setNewPointArea] = useState('')
+  const [newPointAddress, setNewPointAddress] = useState('')
 
-  options_heading: 'How Would You Like to Participate?',
-  options_subheading: 'Choose the option that fits your home, community or event.',
+  const supabase = createClient()
 
-  household_title: 'Household',
-  household_desc: 'Give your household\'s used pooja flowers a second life.',
-  household_price: '₹300',
-  household_price_unit: '/month',
-  household_note: 'Up to 30 kg per month',
-  household_cta_label: 'Join as a Household',
+  useEffect(() => {
+    fetchData()
+  }, [])
 
-  apartment_title: 'Apartment',
-  apartment_desc: 'Create a dedicated flower-waste collection system for your community.',
-  apartment_price: '₹100',
-  apartment_price_unit: '/flat/month',
-  apartment_note: 'Per participating flat',
-  apartment_cta_label: 'Start Apartment Programme',
+  async function fetchData() {
+    setLoading(true)
 
-  temple_title: 'Temple',
-  temple_desc: 'Create a dedicated flower collection and reporting system for your temple.',
-  temple_price: 'Partnership',
-  temple_price_unit: '',
-  temple_note: 'Custom programme',
-  temple_cta_label: 'Partner With Sampige',
+    // 1. Fetch Enquiries
+    const { data: enqData } = await supabase
+      .from('pooja_enquiries')
+      .select('*')
+      .order('created_at', { ascending: false })
 
-  event_title: 'Event',
-  event_desc: 'Responsible flower recovery for poojas, weddings, festivals and events.',
-  event_price: '₹200',
-  event_price_unit: '',
-  event_note: 'Up to 10 kg · ₹5/kg above',
-  event_cta_label: 'Book Event Collection',
+    // 2. Fetch Content
+    const { data: contentData } = await supabase
+      .from('pooja_to_prakruthi_content')
+      .select('*')
+      .eq('id', 1)
+      .single()
 
-  problem_heading: 'Where Do Your Pooja Flowers Go After the Pooja?',
-  problem_solution_heading: 'What if your flowers could have a second life?',
-  problem_solution_text: 'Sampige created Pooja to Prakruthi to collect, segregate and compost suitable flower waste. Instead of ending up in mixed garbage or polluting Bangalore\'s lakes, your flowers return to the earth as rich organic compost.',
+    // 3. Fetch Collection Points
+    const { data: pointsData } = await supabase
+      .from('pooja_collection_points')
+      .select('*')
+      .order('display_order', { ascending: true })
 
-  accepted_items: ['Pooja flowers (marigold, jasmine, rose, tulsi, hibiscus)', 'Natural garlands', 'Leaves used in pooja', 'Natural flower decorations', 'Temple flower offerings', 'Wedding & festival flower waste'],
-  not_accepted_items: ['Plastic & plastic covers', 'Thermocol', 'Glitter & decorative plastic', 'Metal wires', 'Rubber bands', 'Synthetic ribbons', 'Food waste'],
-
-  faqs: [
-    { q: 'What is Pooja to Prakruthi?', a: 'Pooja to Prakruthi is a Sampige Foundation initiative that collects used pooja flowers from households, apartments, temples and events in Bangalore, segregates them from non-organic waste, and composts the organic material into nutrient-rich fertiliser.' },
-    { q: 'What happens to the flowers after Sampige collects them?', a: 'Flowers go through 5 steps: Collection, Segregation (removing plastic and wires), Shredding & Sun-drying, Natural Composting (45–60 days with cow dung and neem cake), and finally the compost is used in gardens and farms across Bangalore.' },
-    { q: 'What flowers can I give?', a: 'We accept all natural pooja flowers — marigold, jasmine, rose, tulsi, hibiscus, natural garlands, leaves used in pooja, and natural flower decorations from weddings and festivals.' },
-    { q: 'How much is Sampige Green Membership?', a: 'Household membership is ₹300 per month, which includes up to 30 kg of flower waste collection, segregation, composting, responsible processing and monthly impact updates.' },
-    { q: 'How can my apartment join?', a: 'Apartment associations can contact Sampige Foundation to set up a dedicated flower waste collection system. Cost is ₹100 per month per participating flat, including collection bins, scheduled pickups, segregation, composting and monthly reports.' },
-    { q: 'Do you collect flowers from events?', a: 'Yes! We collect flower waste from weddings, poojas, festivals, housewarmings, corporate events and cultural programmes. Pricing is ₹200 for up to 10 kg, and ₹5 per kg above 10 kg.' },
-    { q: 'Where should I bring my flowers?', a: 'Drop off used flowers at the Sampige Foundation office at 18th Cross, Malleshwaram, Bengaluru 560003. Office hours: Monday to Saturday, 9 AM to 6 PM. For apartment and temple members, we collect from your premises.' }
-  ]
-}
-
-export async function generateMetadata(): Promise<Metadata> {
-  return {
-    title: 'Used Flower Waste Collection & Composting in Bangalore | Pooja to Prakruthi — Sampige Foundation',
-    description: 'Every flower deserves a second life. Sampige collects, segregates and composts used pooja flowers in Bangalore.',
-    alternates: { canonical: `${getBaseUrl()}/pooja-to-prakruthi` },
-  }
-}
-
-export default async function PoojaToPrakruthiPage() {
-  const supabase = await createClient()
-  
-  // Try fetching content from Supabase
-  let dbContent = null
-  try {
-    const { data } = await supabase.from('pooja_to_prakruthi_content').select('*').eq('id', 1).single()
-    dbContent = data
-  } catch (e) {
-    // Database fallback
+    setEnquiries(enqData || [])
+    setContent(contentData || {})
+    setPoints(pointsData || [])
+    setLoading(false)
   }
 
-  // Merge database content with fallback default content
-  const content = dbContent || DEFAULT_CONTENT
+  // Handle single image upload to Supabase Storage
+  async function handleImageUpload(e: React.ChangeEvent<HTMLInputElement>, fieldName: string) {
+    const file = e.target.files?.[0]
+    if (!file) return
 
-  const acceptedItems = content.accepted_items || DEFAULT_CONTENT.accepted_items
-  const notAcceptedItems = content.not_accepted_items || DEFAULT_CONTENT.not_accepted_items
-  const faqs = content.faqs || DEFAULT_CONTENT.faqs
+    setUploadingField(fieldName)
+    const fileExt = file.name.split('.').pop()
+    const fileName = `pooja_${fieldName}_${Date.now()}.${fileExt}`
+    const filePath = `media/${fileName}`
+
+    const { error: uploadError } = await supabase.storage
+      .from('media')
+      .upload(filePath, file, { upsert: true })
+
+    if (uploadError) {
+      toast.error('Failed to upload image')
+      setUploadingField(null)
+      return
+    }
+
+    const { data: publicUrlData } = supabase.storage
+      .from('media')
+      .getPublicUrl(filePath)
+
+    const publicUrl = publicUrlData.publicUrl
+
+    // Update state & save immediately
+    setContent((prev: any) => ({ ...prev, [fieldName]: publicUrl }))
+
+    const { error: updateError } = await supabase
+      .from('pooja_to_prakruthi_content')
+      .update({ [fieldName]: publicUrl })
+      .eq('id', 1)
+
+    if (updateError) {
+      toast.error('Failed to update content field')
+    } else {
+      toast.success('Image uploaded and saved!')
+    }
+    setUploadingField(null)
+  }
+
+  // Handle adding new gallery image
+  async function handleGalleryUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    setUploadingField('gallery')
+    const fileExt = file.name.split('.').pop()
+    const fileName = `pooja_gallery_${Date.now()}.${fileExt}`
+    const filePath = `media/${fileName}`
+
+    const { error: uploadError } = await supabase.storage.from('media').upload(filePath, file, { upsert: true })
+
+    if (uploadError) {
+      toast.error('Failed to upload gallery image')
+      setUploadingField(null)
+      return
+    }
+
+    const { data: publicUrlData } = supabase.storage.from('media').getPublicUrl(filePath)
+    const publicUrl = publicUrlData.publicUrl
+
+    const currentGallery = content?.real_work_images || []
+    const updatedGallery = [...currentGallery, publicUrl]
+
+    setContent((prev: any) => ({ ...prev, real_work_images: updatedGallery }))
+
+    await supabase.from('pooja_to_prakruthi_content').update({ real_work_images: updatedGallery }).eq('id', 1)
+    toast.success('Gallery photo added!')
+    setUploadingField(null)
+  }
+
+  // Delete image from gallery
+  async function removeGalleryImage(index: number) {
+    const currentGallery = content?.real_work_images || []
+    const updatedGallery = currentGallery.filter((_: any, i: number) => i !== index)
+    
+    setContent((prev: any) => ({ ...prev, real_work_images: updatedGallery }))
+    await supabase.from('pooja_to_prakruthi_content').update({ real_work_images: updatedGallery }).eq('id', 1)
+    toast.success('Photo removed')
+  }
+
+  // Save Content Text Form
+  async function handleSaveContent(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault()
+    setSaving(true)
+
+    const formData = new FormData(e.currentTarget)
+    const updates = {
+      hero_title_line1: formData.get('hero_title_line1'),
+      hero_title_line2: formData.get('hero_title_line2'),
+      hero_description: formData.get('hero_description'),
+      household_price: formData.get('household_price'),
+      apartment_price: formData.get('apartment_price'),
+      event_price: formData.get('event_price'),
+      problem_heading: formData.get('problem_heading'),
+      problem_solution_text: formData.get('problem_solution_text'),
+    }
+
+    const { error } = await supabase
+      .from('pooja_to_prakruthi_content')
+      .update(updates)
+      .eq('id', 1)
+
+    if (error) {
+      toast.error('Failed to save content')
+    } else {
+      toast.success('Text changes saved successfully!')
+    }
+    setSaving(false)
+  }
+
+  // Add Collection Point
+  async function handleAddPoint(e: React.FormEvent) {
+    e.preventDefault()
+    if (!newPointName || !newPointArea) {
+      toast.error('Name and Area are required')
+      return
+    }
+
+    const { error } = await supabase.from('pooja_collection_points').insert([{
+      name: newPointName,
+      area: newPointArea,
+      address: newPointAddress,
+      is_active: true
+    }])
+
+    if (error) {
+      toast.error('Failed to add collection point')
+    } else {
+      toast.success('Collection point added!')
+      setNewPointName('')
+      setNewPointArea('')
+      setNewPointAddress('')
+      fetchData()
+    }
+  }
+
+  // Toggle Collection Point Active Status
+  async function togglePointStatus(id: string, currentStatus: boolean) {
+    await supabase.from('pooja_collection_points').update({ is_active: !currentStatus }).eq('id', id)
+    toast.success('Status updated')
+    fetchData()
+  }
+
+  // Delete Collection Point
+  async function deletePoint(id: string) {
+    if (!confirm('Are you sure you want to delete this collection point?')) return
+    await supabase.from('pooja_collection_points').delete().eq('id', id)
+    toast.success('Collection point deleted')
+    fetchData()
+  }
+
+  if (loading) return <div className="p-10 text-white flex justify-center"><Loader2 className="animate-spin text-[#FFB300]" /></div>
 
   return (
-    <main className="bg-black min-h-screen">
-      {/* HERO SECTION */}
-      <section className="relative min-h-[85vh] md:min-h-screen flex items-center overflow-hidden pt-20 pb-16 md:py-28">
-        {content.hero_image ? (
-          <OptimizedImage src={content.hero_image} alt="Hero" fill priority className="absolute inset-0 w-full h-full object-cover z-0" />
-        ) : (
-          <div className="absolute inset-0 bg-gradient-to-br from-black via-[#0A0A0A] to-[#0A1500] z-0" />
-        )}
-        <div className="absolute inset-0 bg-black/70 z-[1]" />
+    <div className="p-6 md:p-10 max-w-7xl mx-auto text-gray-200">
+      <Toaster position="top-right" />
 
-        <div className="container mx-auto px-4 relative z-10">
-          <div className="max-w-4xl">
-            <div className="flex items-center gap-2 mb-4 md:mb-6">
-              <Sparkles className="text-[#FFB300] h-4 w-4 shrink-0" />
-              <span className="text-[#FFB300] font-semibold tracking-[0.2em] text-[10px] md:text-xs uppercase">
-                {content.hero_eyebrow}
-              </span>
-            </div>
-
-            <h1 className="text-3xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-white leading-[1.1] mb-3 md:mb-4">
-              {content.hero_title_line1}{' '}
-              <span className="bg-gradient-to-r from-[#FFB300] to-[#FF7A00] bg-clip-text text-transparent">
-                {content.hero_title_line2}
-              </span>
-            </h1>
-
-            <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-white/90 mb-4 md:mb-6">
-              {content.hero_programme_name}
-            </h2>
-
-            <p className="text-xl md:text-2xl text-[#FFB300] font-semibold mb-4 md:mb-6 italic">
-              &ldquo;{content.hero_tagline}&rdquo;
-            </p>
-
-            <p className="text-sm sm:text-base md:text-lg text-gray-300 mb-8 md:mb-10 max-w-3xl leading-relaxed">
-              {content.hero_description}
-            </p>
-
-            <div className="flex flex-wrap gap-3 md:gap-4">
-              <Link href="#join-form" className="inline-flex items-center px-6 md:px-8 py-3 md:py-4 bg-[#FFB300] text-black font-bold rounded-lg hover:bg-[#FFCA28] transition-all hover:scale-[1.02] shadow-lg shadow-[#FFB300]/20 uppercase text-xs md:text-sm tracking-wide">
-                {content.hero_cta_1_label} <ArrowRight className="ml-2 h-4 w-4" />
-              </Link>
-              <Link href="#join-form" className="inline-flex items-center px-6 md:px-8 py-3 md:py-4 bg-transparent text-white font-semibold rounded-lg border border-white/40 hover:bg-white/10 transition-all uppercase text-xs md:text-sm tracking-wide gap-2">
-                {content.hero_cta_2_label} <Leaf className="h-4 w-4" />
-              </Link>
-            </div>
-          </div>
+      {/* Header */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8 border-b border-gray-800 pb-6">
+        <div>
+          <h1 className="text-3xl font-bold text-white mb-2">Pooja to Prakruthi Admin</h1>
+          <p className="text-gray-400 text-sm">Manage flower recycling content, real photographs, collection points, and visitor requests.</p>
         </div>
-      </section>
+      </div>
 
-      {/* 4 PARTICIPATION OPTIONS */}
-      <section className="py-16 md:py-24 bg-gradient-to-b from-black to-[#0A0A0A] border-t border-[#FFB300]/10">
-        <div className="container mx-auto px-4">
-          <div className="text-center mb-12 md:mb-16">
-            <h2 className="text-3xl md:text-5xl font-bold text-white mb-4">{content.options_heading}</h2>
-            <p className="text-gray-400 max-w-2xl mx-auto">{content.options_subheading}</p>
-          </div>
+      {/* Tabs */}
+      <div className="flex flex-wrap gap-3 mb-8">
+        <button
+          onClick={() => setActiveTab('enquiries')}
+          className={`flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-bold transition-all ${
+            activeTab === 'enquiries' ? 'bg-[#FFB300] text-black shadow-lg shadow-[#FFB300]/20' : 'bg-[#141414] text-gray-400 hover:text-white border border-gray-800'
+          }`}
+        >
+          <Mail className="w-4 h-4" /> Form Enquiries ({enquiries.length})
+        </button>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 max-w-6xl mx-auto">
-            {/* Household */}
-            <div className="bg-[#1A1A1A] rounded-2xl p-6 md:p-8 border border-[#FFB300]/10 hover:border-[#FFB300]/40 transition-all flex flex-col">
-              <div className="w-14 h-14 rounded-2xl bg-[#FFB300]/10 flex items-center justify-center mb-5 border border-[#FFB300]/20">
-                <Home className="w-7 h-7 text-[#FFB300]" />
-              </div>
-              <h3 className="text-xl font-bold text-white mb-2">{content.household_title}</h3>
-              <p className="text-gray-400 text-sm mb-4 flex-1">{content.household_desc}</p>
-              <div className="text-3xl font-extrabold text-[#FFB300] mb-1">
-                {content.household_price}<span className="text-sm text-gray-400 font-normal">{content.household_price_unit}</span>
-              </div>
-              <p className="text-xs text-gray-500 mb-6">{content.household_note}</p>
-              <Link href="#join-form" className="block w-full text-center bg-[#FFB300] text-black font-bold py-3 rounded-xl hover:bg-[#FFCA28] transition-all text-sm uppercase tracking-wider">
-                {content.household_cta_label}
-              </Link>
+        <button
+          onClick={() => setActiveTab('content')}
+          className={`flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-bold transition-all ${
+            activeTab === 'content' ? 'bg-[#FFB300] text-black shadow-lg shadow-[#FFB300]/20' : 'bg-[#141414] text-gray-400 hover:text-white border border-gray-800'
+          }`}
+        >
+          <Settings className="w-4 h-4" /> Edit Content & Images
+        </button>
+
+        <button
+          onClick={() => setActiveTab('points')}
+          className={`flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-bold transition-all ${
+            activeTab === 'points' ? 'bg-[#FFB300] text-black shadow-lg shadow-[#FFB300]/20' : 'bg-[#141414] text-gray-400 hover:text-white border border-gray-800'
+          }`}
+        >
+          <MapPin className="w-4 h-4" /> Collection Points ({points.length})
+        </button>
+      </div>
+
+      {/* ═══════════════════════════════════════════════════════════
+          TAB 1: ENQUIRIES
+          ═══════════════════════════════════════════════════════════ */}
+      {activeTab === 'enquiries' && (
+        <div className="bg-[#141414] rounded-2xl border border-gray-800 overflow-hidden">
+          {enquiries.length === 0 ? (
+            <div className="p-12 text-center text-gray-500">No enquiries received yet.</div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-sm text-gray-300">
+                <thead className="bg-black text-gray-400 uppercase text-xs">
+                  <tr>
+                    <th className="px-6 py-4">Date</th>
+                    <th className="px-6 py-4">Name & Contact</th>
+                    <th className="px-6 py-4">Type</th>
+                    <th className="px-6 py-4">Area & Collection Point</th>
+                    <th className="px-6 py-4">Est. Volume</th>
+                    <th className="px-6 py-4">Details</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-800">
+                  {enquiries.map((enq) => (
+                    <tr key={enq.id} className="hover:bg-black/40">
+                      <td className="px-6 py-4 whitespace-nowrap text-xs text-gray-500">
+                        {new Date(enq.created_at).toLocaleDateString()}
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="font-bold text-white text-base">{enq.full_name || enq.contact_person || 'N/A'}</div>
+                        <div className="text-[#FFB300] font-mono text-xs">{enq.phone}</div>
+                        <div className="text-gray-500 text-xs">{enq.email}</div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className="px-3 py-1 bg-gray-800 text-[#FFB300] rounded-full text-xs font-bold uppercase tracking-wider">
+                          {enq.participation_type}
+                        </span>
+                        {enq.contact_role && <div className="text-[10px] text-gray-500 mt-1">{enq.contact_role}</div>}
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="text-white font-medium">{enq.area_locality || enq.venue_location || 'N/A'}</div>
+                        {enq.admin_notes && <div className="text-xs text-amber-400 mt-0.5">{enq.admin_notes}</div>}
+                      </td>
+                      <td className="px-6 py-4 text-xs font-semibold text-gray-300">
+                        {enq.estimated_volume || 'N/A'}
+                      </td>
+                      <td className="px-6 py-4 text-xs text-gray-400 max-w-xs">
+                        {enq.apartment_name && <div className="text-white font-semibold">{enq.apartment_name} ({enq.flats_participating} flats)</div>}
+                        {enq.event_type && <div className="text-white font-semibold">{enq.event_type} ({enq.event_date})</div>}
+                        {enq.address && <div>{enq.address}</div>}
+                        {enq.message && <div className="italic text-gray-500 mt-1">"{enq.message}"</div>}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
-
-            {/* Apartment */}
-            <div className="bg-gradient-to-b from-[#1A1500] to-[#1A1A1A] rounded-2xl p-6 md:p-8 border-2 border-[#FFB300]/40 hover:border-[#FFB300]/70 transition-all flex flex-col relative shadow-lg shadow-[#FFB300]/5">
-              <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-[#FFB300] text-black text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wider">Most Popular</div>
-              <div className="w-14 h-14 rounded-2xl bg-[#FFB300]/10 flex items-center justify-center mb-5 border border-[#FFB300]/20">
-                <Building2 className="w-7 h-7 text-[#FFB300]" />
-              </div>
-              <h3 className="text-xl font-bold text-white mb-2">{content.apartment_title}</h3>
-              <p className="text-gray-400 text-sm mb-4 flex-1">{content.apartment_desc}</p>
-              <div className="text-3xl font-extrabold text-[#FFB300] mb-1">
-                {content.apartment_price}<span className="text-sm text-gray-400 font-normal">{content.apartment_price_unit}</span>
-              </div>
-              <p className="text-xs text-gray-500 mb-6">{content.apartment_note}</p>
-              <Link href="#join-form" className="block w-full text-center bg-[#FFB300] text-black font-bold py-3 rounded-xl hover:bg-[#FFCA28] transition-all text-sm uppercase tracking-wider">
-                {content.apartment_cta_label}
-              </Link>
-            </div>
-
-            {/* Temple */}
-            <div className="bg-[#1A1A1A] rounded-2xl p-6 md:p-8 border border-[#FFB300]/10 hover:border-[#FFB300]/40 transition-all flex flex-col">
-              <div className="w-14 h-14 rounded-2xl bg-[#FFB300]/10 flex items-center justify-center mb-5 border border-[#FFB300]/20">
-                <Sparkles className="w-7 h-7 text-[#FFB300]" />
-              </div>
-              <h3 className="text-xl font-bold text-white mb-2">{content.temple_title}</h3>
-              <p className="text-gray-400 text-sm mb-4 flex-1">{content.temple_desc}</p>
-              <div className="text-xl font-extrabold text-[#FFB300] mb-1">{content.temple_price}</div>
-              <p className="text-xs text-gray-500 mb-6">{content.temple_note}</p>
-              <Link href="#join-form" className="block w-full text-center border border-[#FFB300]/40 text-[#FFB300] font-bold py-3 rounded-xl hover:bg-[#FFB300]/10 transition-all text-sm uppercase tracking-wider">
-                {content.temple_cta_label}
-              </Link>
-            </div>
-
-            {/* Event */}
-            <div className="bg-[#1A1A1A] rounded-2xl p-6 md:p-8 border border-[#FFB300]/10 hover:border-[#FFB300]/40 transition-all flex flex-col">
-              <div className="w-14 h-14 rounded-2xl bg-[#FFB300]/10 flex items-center justify-center mb-5 border border-[#FFB300]/20">
-                <Calendar className="w-7 h-7 text-[#FFB300]" />
-              </div>
-              <h3 className="text-xl font-bold text-white mb-2">{content.event_title}</h3>
-              <p className="text-gray-400 text-sm mb-4 flex-1">{content.event_desc}</p>
-              <div className="text-3xl font-extrabold text-[#FFB300] mb-1">{content.event_price}</div>
-              <p className="text-xs text-gray-500 mb-6">{content.event_note}</p>
-              <Link href="#join-form" className="block w-full text-center border border-[#FFB300]/40 text-[#FFB300] font-bold py-3 rounded-xl hover:bg-[#FFB300]/10 transition-all text-sm uppercase tracking-wider">
-                {content.event_cta_label}
-              </Link>
-            </div>
-          </div>
+          )}
         </div>
-      </section>
+      )}
 
-      {/* THE PROBLEM */}
-      <section className="py-16 md:py-24 bg-[#0A0A0A] border-t border-[#FFB300]/10">
-        <div className="container mx-auto px-4">
-          <div className="text-center mb-12 md:mb-16">
-            <h2 className="text-3xl md:text-5xl font-bold text-white mb-4">{content.problem_heading}</h2>
-          </div>
-
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6 max-w-5xl mx-auto mb-12 md:mb-16">
-            {[
-              { icon: '🌸', title: 'Pooja', desc: 'Beautiful flowers offered.', color: 'border-green-500/30' },
-              { icon: '🗑️', title: 'After Pooja', desc: 'Flowers are removed.', color: 'border-yellow-500/30' },
-              { icon: '⚠️', title: 'Mixed Waste', desc: 'Mixed with regular garbage.', color: 'border-red-500/30' },
-              { icon: '💔', title: 'Lost Potential', desc: 'Composting is wasted.', color: 'border-red-500/30' },
-            ].map((step, i) => (
-              <div key={i} className={`bg-[#141414] rounded-2xl p-5 md:p-6 border ${step.color} text-center`}>
-                <div className="text-4xl md:text-5xl mb-3">{step.icon}</div>
-                <h3 className="text-white font-bold text-sm md:text-base mb-2">{step.title}</h3>
-                <p className="text-gray-400 text-xs md:text-sm leading-relaxed">{step.desc}</p>
-              </div>
-            ))}
-          </div>
-
-          <div className="max-w-3xl mx-auto text-center bg-gradient-to-r from-[#141414] via-[#1A1A1A] to-[#141414] p-8 md:p-12 rounded-3xl border border-[#FFB300]/20">
-            <h3 className="text-2xl md:text-3xl font-bold text-white mb-4">{content.problem_solution_heading}</h3>
-            <p className="text-gray-300 text-base md:text-lg leading-relaxed">{content.problem_solution_text}</p>
-          </div>
-        </div>
-      </section>
-
-      {/* WHAT CAN YOU GIVE */}
-      <section className="py-16 md:py-24 bg-black border-t border-[#FFB300]/10">
-        <div className="container mx-auto px-4">
-          <div className="text-center mb-12 md:mb-16">
-            <h2 className="text-3xl md:text-5xl font-bold text-white mb-4">What Can Go Into the Flower Collection?</h2>
-          </div>
-
-          <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
-            <div className="bg-[#141414] rounded-2xl p-6 md:p-8 border border-green-500/20">
-              <h3 className="text-xl font-bold text-green-400 mb-6 flex items-center gap-2">
-                <CheckCircle2 className="w-6 h-6" /> Yes — Accepted
-              </h3>
-              <ul className="space-y-3">
-                {acceptedItems.map((item: string, i: number) => (
-                  <li key={i} className="flex items-start gap-3 text-gray-300 text-sm">
-                    <CheckCircle2 className="w-4 h-4 text-green-400 mt-0.5 shrink-0" />
-                    {item}
-                  </li>
-                ))}
-              </ul>
+      {/* ═══════════════════════════════════════════════════════════
+          TAB 2: EDIT CONTENT & IMAGES
+          ═══════════════════════════════════════════════════════════ */}
+      {activeTab === 'content' && (
+        <div className="space-y-10">
+          
+          {/* IMAGE UPLOAD SECTION */}
+          <div className="bg-[#141414] rounded-3xl p-8 border border-gray-800 space-y-8">
+            <div>
+              <h2 className="text-2xl font-bold text-white mb-2 flex items-center gap-2">
+                <ImageIcon className="text-[#FFB300] w-6 h-6" /> Upload Real Section Photographs
+              </h2>
+              <p className="text-gray-400 text-sm">Upload real photos for each section of the Pooja to Prakruthi page. They update on the website immediately!</p>
             </div>
 
-            <div className="bg-[#141414] rounded-2xl p-6 md:p-8 border border-red-500/20">
-              <h3 className="text-xl font-bold text-red-400 mb-6 flex items-center gap-2">
-                <XCircle className="w-6 h-6" /> No — Please Don&apos;t Mix
-              </h3>
-              <ul className="space-y-3">
-                {notAcceptedItems.map((item: string, i: number) => (
-                  <li key={i} className="flex items-start gap-3 text-gray-300 text-sm">
-                    <XCircle className="w-4 h-4 text-red-400 mt-0.5 shrink-0" />
-                    {item}
-                  </li>
-                ))}
-              </ul>
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+              
+              {/* Image 1: Hero Side Image */}
+              <ImageUploadCard
+                label="1. Hero Side Photo"
+                sublabel="Fresh or used pooja flowers"
+                fieldName="hero_side_image"
+                currentUrl={content?.hero_side_image}
+                uploading={uploadingField === 'hero_side_image'}
+                onFileChange={(e) => handleImageUpload(e, 'hero_side_image')}
+              />
+
+              {/* Image 2: Solution Image */}
+              <ImageUploadCard
+                label="2. Solution Photo"
+                sublabel="Sampige composting process"
+                fieldName="solution_image"
+                currentUrl={content?.solution_image}
+                uploading={uploadingField === 'solution_image'}
+                onFileChange={(e) => handleImageUpload(e, 'solution_image')}
+              />
+
+              {/* Image 3: Accepted Items Photo */}
+              <ImageUploadCard
+                label="3. Accepted Flowers Photo"
+                sublabel="Marigolds, roses, garlands"
+                fieldName="accepted_image"
+                currentUrl={content?.accepted_image}
+                uploading={uploadingField === 'accepted_image'}
+                onFileChange={(e) => handleImageUpload(e, 'accepted_image')}
+              />
+
+              {/* Problem Scene 1 */}
+              <ImageUploadCard
+                label="4. Offered With Devotion"
+                sublabel="Pooja flowers on altar"
+                fieldName="problem_scene_1_image"
+                currentUrl={content?.problem_scene_1_image}
+                uploading={uploadingField === 'problem_scene_1_image'}
+                onFileChange={(e) => handleImageUpload(e, 'problem_scene_1_image')}
+              />
+
+              {/* Problem Scene 2 */}
+              <ImageUploadCard
+                label="5. Pooja Ends Photo"
+                sublabel="Flowers removed from altar"
+                fieldName="problem_scene_2_image"
+                currentUrl={content?.problem_scene_2_image}
+                uploading={uploadingField === 'problem_scene_2_image'}
+                onFileChange={(e) => handleImageUpload(e, 'problem_scene_2_image')}
+              />
+
+              {/* Problem Scene 3 */}
+              <ImageUploadCard
+                label="6. Mixed Waste Photo"
+                sublabel="Flowers mixed in dustbin"
+                fieldName="problem_scene_3_image"
+                currentUrl={content?.problem_scene_3_image}
+                uploading={uploadingField === 'problem_scene_3_image'}
+                onFileChange={(e) => handleImageUpload(e, 'problem_scene_3_image')}
+              />
+
             </div>
-          </div>
-        </div>
-      </section>
 
-      {/* ENQUIRY FORM SECTION */}
-      <section className="py-16 md:py-24 bg-[#0A0A0A] border-t border-[#FFB300]/10">
-        <div className="container mx-auto px-4">
-          <PoojaEnquiryForm />
-        </div>
-      </section>
-
-      {/* FAQs */}
-      <section className="py-16 md:py-24 bg-black border-t border-[#FFB300]/10">
-        <div className="container mx-auto px-4">
-          <div className="text-center mb-12 md:mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
-              Frequently Asked <span className="text-[#FFB300]">Questions</span>
-            </h2>
-          </div>
-
-          <div className="max-w-3xl mx-auto space-y-4">
-            {faqs.map((faq: any, i: number) => (
-              <details key={i} className="group bg-[#141414] rounded-xl border border-[#FFB300]/10 hover:border-[#FFB300]/25 transition-colors overflow-hidden">
-                <summary className="flex items-center justify-between cursor-pointer p-5 md:p-6 list-none">
-                  <h3 className="text-white font-semibold text-sm md:text-base pr-4">{faq.q}</h3>
-                </summary>
-                <div className="px-5 md:px-6 pb-5 md:pb-6">
-                  <p className="text-gray-400 text-sm leading-relaxed">{faq.a}</p>
+            {/* REAL WORK GALLERY MULTI-PHOTO UPLOAD */}
+            <div className="border-t border-gray-800 pt-8 space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-lg font-bold text-white">Real Work Gallery Photographs</h3>
+                  <p className="text-gray-400 text-xs">Add photos of actual Sampige collections, sorting, and compost batches.</p>
                 </div>
-              </details>
-            ))}
+                <label className="cursor-pointer bg-[#FFB300] text-black font-bold px-4 py-2 rounded-xl text-xs uppercase tracking-wider hover:bg-[#FFCA28] flex items-center gap-2">
+                  <Upload className="w-4 h-4" /> Add Gallery Photo
+                  <input type="file" accept="image/*" className="hidden" onChange={handleGalleryUpload} disabled={uploadingField === 'gallery'} />
+                </label>
+              </div>
+
+              {uploadingField === 'gallery' && <p className="text-[#FFB300] text-xs animate-pulse">Uploading photo...</p>}
+
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-2">
+                {(content?.real_work_images || []).map((url: string, idx: number) => (
+                  <div key={idx} className="relative aspect-square bg-black rounded-2xl overflow-hidden border border-gray-800 group">
+                    <img src={url} alt={`Gallery ${idx+1}`} className="w-full h-full object-cover" />
+                    <button
+                      type="button"
+                      onClick={() => removeGalleryImage(idx)}
+                      className="absolute top-2 right-2 p-2 bg-red-600 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
+
+          {/* TEXT CONTENT EDIT FORM */}
+          <form onSubmit={handleSaveContent} className="bg-[#141414] rounded-3xl p-8 border border-gray-800 space-y-8">
+            <h2 className="text-2xl font-bold text-white border-b border-gray-800 pb-4">Edit Text & Pricing</h2>
+
+            <div className="grid md:grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Hero Headline Line 1</label>
+                <input type="text" name="hero_title_line1" defaultValue={content?.hero_title_line1} className="w-full bg-black border border-gray-800 rounded-xl px-4 py-3 text-white focus:border-[#FFB300] outline-none" />
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Hero Headline Line 2 (Gold)</label>
+                <input type="text" name="hero_title_line2" defaultValue={content?.hero_title_line2} className="w-full bg-black border border-gray-800 rounded-xl px-4 py-3 text-white focus:border-[#FFB300] outline-none" />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Hero Description</label>
+              <textarea name="hero_description" rows={3} defaultValue={content?.hero_description} className="w-full bg-black border border-gray-800 rounded-xl px-4 py-3 text-white focus:border-[#FFB300] outline-none" />
+            </div>
+
+            <div className="grid md:grid-cols-3 gap-6 pt-4 border-t border-gray-800">
+              <div className="space-y-2">
+                <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Household Price</label>
+                <input type="text" name="household_price" defaultValue={content?.household_price} className="w-full bg-black border border-gray-800 rounded-xl px-4 py-3 text-white focus:border-[#FFB300] outline-none" />
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Apartment Price</label>
+                <input type="text" name="apartment_price" defaultValue={content?.apartment_price} className="w-full bg-black border border-gray-800 rounded-xl px-4 py-3 text-white focus:border-[#FFB300] outline-none" />
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Event Base Price</label>
+                <input type="text" name="event_price" defaultValue={content?.event_price} className="w-full bg-black border border-gray-800 rounded-xl px-4 py-3 text-white focus:border-[#FFB300] outline-none" />
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              disabled={saving}
+              className="flex items-center gap-2 px-8 py-4 bg-[#FFB300] text-black font-extrabold text-sm uppercase tracking-wider rounded-xl hover:bg-[#FFCA28] transition-all"
+            >
+              {saving ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />}
+              Save All Text Changes
+            </button>
+          </form>
+
         </div>
-      </section>
-    </main>
+      )}
+
+      {/* ═══════════════════════════════════════════════════════════
+          TAB 3: COLLECTION POINTS MANAGER
+          ═══════════════════════════════════════════════════════════ */}
+      {activeTab === 'points' && (
+        <div className="space-y-8">
+          
+          {/* Add New Point Form */}
+          <form onSubmit={handleAddPoint} className="bg-[#141414] rounded-3xl p-8 border border-gray-800 space-y-6">
+            <h2 className="text-xl font-bold text-white flex items-center gap-2">
+              <Plus className="text-[#FFB300] w-5 h-5" /> Add New Collection Point
+            </h2>
+            
+            <div className="grid md:grid-cols-3 gap-6">
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Point Name *</label>
+                <input required type="text" value={newPointName} onChange={(e) => setNewPointName(e.target.value)} placeholder="e.g. Sampige – Malleshwaram" className="w-full bg-black border border-gray-800 rounded-xl px-4 py-3 text-white focus:border-[#FFB300] outline-none" />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Area / Locality *</label>
+                <input required type="text" value={newPointArea} onChange={(e) => setNewPointArea(e.target.value)} placeholder="e.g. Malleshwaram" className="w-full bg-black border border-gray-800 rounded-xl px-4 py-3 text-white focus:border-[#FFB300] outline-none" />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Full Address</label>
+                <input type="text" value={newPointAddress} onChange={(e) => setNewPointAddress(e.target.value)} placeholder="e.g. 18th Cross, Malleshwaram" className="w-full bg-black border border-gray-800 rounded-xl px-4 py-3 text-white focus:border-[#FFB300] outline-none" />
+              </div>
+            </div>
+
+            <button type="submit" className="px-6 py-3 bg-[#FFB300] text-black font-bold text-sm uppercase tracking-wider rounded-xl hover:bg-[#FFCA28]">
+              Add Collection Point
+            </button>
+          </form>
+
+          {/* List of Collection Points */}
+          <div className="bg-[#141414] rounded-3xl border border-gray-800 overflow-hidden">
+            <div className="p-6 border-b border-gray-800 font-bold text-white text-lg">Active Collection Points</div>
+            <div className="divide-y divide-gray-800">
+              {points.map((pt) => (
+                <div key={pt.id} className="p-6 flex items-center justify-between gap-4 hover:bg-black/30">
+                  <div>
+                    <div className="flex items-center gap-3">
+                      <span className="font-bold text-white text-base">{pt.name}</span>
+                      <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${pt.is_active ? 'bg-green-900/40 text-green-400 border border-green-800' : 'bg-red-900/40 text-red-400 border border-red-800'}`}>
+                        {pt.is_active ? 'Active' : 'Inactive'}
+                      </span>
+                    </div>
+                    <div className="text-gray-400 text-xs mt-1">{pt.address || pt.area}</div>
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={() => togglePointStatus(pt.id, pt.is_active)}
+                      className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+                        pt.is_active ? 'bg-gray-800 text-gray-300 hover:bg-gray-700' : 'bg-green-600 text-white hover:bg-green-500'
+                      }`}
+                    >
+                      {pt.is_active ? 'Disable' : 'Enable'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => deletePoint(pt.id)}
+                      className="p-2 bg-red-900/30 border border-red-800/50 text-red-400 rounded-xl hover:bg-red-800 hover:text-white transition-colors"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+        </div>
+      )}
+
+    </div>
+  )
+}
+
+// Single Image Upload Card Helper Component
+function ImageUploadCard({ label, sublabel, fieldName, currentUrl, uploading, onFileChange }: {
+  label: string
+  sublabel: string
+  fieldName: string
+  currentUrl?: string
+  uploading: boolean
+  onFileChange: (e: React.ChangeEvent<HTMLInputElement>) => void
+}) {
+  return (
+    <div className="bg-black p-5 rounded-2xl border border-gray-800 space-y-3">
+      <div>
+        <div className="font-bold text-white text-sm">{label}</div>
+        <div className="text-gray-500 text-xs">{sublabel}</div>
+      </div>
+
+      <div className="aspect-video bg-[#111] rounded-xl border border-gray-800 overflow-hidden relative flex items-center justify-center">
+        {currentUrl ? (
+          <img src={currentUrl} alt={label} className="w-full h-full object-cover" />
+        ) : (
+          <div className="text-gray-600 text-xs">No image uploaded</div>
+        )}
+      </div>
+
+      <label className="cursor-pointer block w-full text-center bg-gray-900 hover:bg-gray-800 border border-gray-700 text-gray-300 text-xs font-bold py-2.5 rounded-xl transition-colors">
+        {uploading ? 'Uploading...' : 'Choose & Upload Photo'}
+        <input type="file" accept="image/*" className="hidden" onChange={onFileChange} disabled={uploading} />
+      </label>
+    </div>
   )
 }

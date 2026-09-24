@@ -56,9 +56,9 @@ export default function Sidebar() {
     { icon: Handshake, label: 'CSR Partners', href: '/admin/csr' },
     { icon: FileText, label: 'Pages', href: '/admin/pages' },
     { icon: Layout, label: 'Page Heroes', href: '/admin/page-heroes' },
+    { icon: Leaf , label: 'Pooja to Prakruthi', href: '/admin/pooja-to-prakruthi'  },
     { icon: Search, label: 'SEO Services', href: '/admin/seo-services' }, // ⭐ ADD THIS
     { icon: Settings, label: 'Settings', href: '/admin/settings' },
-    { icon: Leaf , label: 'Pooja to Prakruthi', href: '/admin/pooja-to-prakruthi',  },
   ]
 
   const handleLogout = async () => {
