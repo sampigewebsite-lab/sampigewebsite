@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { ArrowRight } from 'lucide-react'
 import PageHero from '@/components/PageHero'
+import OptimizedImage from '@/components/OptimizedImage'
 import { getPageHero, heroToStats } from '@/lib/getPageHero'
 
 export default async function ProjectsPage() {
@@ -46,23 +47,25 @@ export default async function ProjectsPage() {
               <Link
                 key={project.id}
                 href={`/projects/${project.slug}`}
-                className="group bg-[#1A1A1A] rounded-2xl overflow-hidden border border-gold-500/10 hover:border-gold-500/30 transition-all"
+                className="group bg-[#1A1A1A] rounded-2xl overflow-hidden border border-gold-500/10 hover:border-gold-500/30 transition-all flex flex-col"
               >
                 {project.cover_image && (
                   <div className="h-56 bg-[#0A0A0A] relative overflow-hidden">
-                    <img
+                    <OptimizedImage
                       src={project.cover_image}
                       alt={project.title}
+                      fill
+                      supabaseWidth={500}
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                     />
-                    <div className="absolute top-4 right-4">
+                    <div className="absolute top-4 right-4 z-10">
                       <span className={`px-4 py-1.5 text-xs font-bold rounded-full uppercase tracking-wider ${getStatusColor(project.status)}`}>
                         {project.status}
                       </span>
                     </div>
                   </div>
                 )}
-                <div className="p-6">
+                <div className="p-6 flex flex-col flex-1">
                   <h3 className="text-xl font-semibold text-white group-hover:text-gold-500 transition-colors mb-2">
                     {project.title}
                   </h3>
@@ -72,7 +75,7 @@ export default async function ProjectsPage() {
                   <p className="text-gray-400 text-sm mb-4 line-clamp-2">
                     {project.short_description || 'Making a difference in our community.'}
                   </p>
-                  <div className="flex items-center text-gold-500 font-medium">
+                  <div className="flex items-center text-gold-500 font-medium mt-auto">
                     Learn More
                     <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
                   </div>

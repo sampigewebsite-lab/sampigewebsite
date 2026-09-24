@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
+import OptimizedImage from '@/components/OptimizedImage'
 import {
   ArrowRight,
   Recycle,
@@ -225,7 +226,14 @@ export default async function DynamicSeoServicePage({
             <div className="lg:col-span-5 relative">
               <div className="relative aspect-[4/3] rounded-3xl overflow-hidden border border-gold-500/20 shadow-2xl bg-[#1A1A1A]">
                 {page.hero_image ? (
-                  <img src={page.hero_image} alt={page.hero_heading} className="w-full h-full object-cover" />
+                  <OptimizedImage 
+                    src={page.hero_image} 
+                    alt={page.hero_heading} 
+                    fill 
+                    priority
+                    supabaseWidth={800}
+                    className="w-full h-full object-cover" 
+                  />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center text-gray-600 bg-gradient-to-tr from-black to-[#111]">
                     <Sparkles className="w-12 h-12 text-gold-500/40" />
@@ -301,14 +309,20 @@ export default async function DynamicSeoServicePage({
             <div className="lg:col-span-6 relative">
               <div className="relative aspect-[4/3] rounded-3xl overflow-hidden border border-gold-500/20 bg-[#1A1A1A]">
                 {page.split_image ? (
-                  <img src={page.split_image} alt={page.split_heading || 'Service'} className="w-full h-full object-cover" />
+                  <OptimizedImage 
+                    src={page.split_image} 
+                    alt={page.split_heading || 'Service section layout illustration'} 
+                    fill 
+                    supabaseWidth={800}
+                    className="w-full h-full object-cover" 
+                  />
                 ) : (
                   <div className="w-full h-full bg-[#141414]" />
                 )}
               </div>
 
               {page.split_floating_title && (
-                <div className="md:absolute -bottom-8 -left-8 bg-[#141414] border border-gold-500/30 p-6 rounded-2xl shadow-2xl max-w-sm mt-6 md:mt-0 space-y-2">
+                <div className="md:absolute -bottom-8 -left-8 bg-[#141414] border border-gold-500/30 p-6 rounded-2xl shadow-2xl max-w-sm mt-6 md:mt-0 space-y-2 z-10">
                   <div className="w-8 h-8 rounded-lg bg-gold-500/10 flex items-center justify-center">
                     <Sparkles className="w-4 h-4 text-gold-500" />
                   </div>
@@ -326,7 +340,7 @@ export default async function DynamicSeoServicePage({
         </div>
       </section>
 
-      {/* ===== GRID SECTION ("What We Offer") — FIXED OVERLAPPING ICONS ===== */}
+      {/* ===== GRID SECTION ("What We Offer") ===== */}
       {gridItems.length > 0 && (
         <section className="py-24 bg-black border-t border-gold-500/10">
           <div className="container mx-auto px-4">
@@ -343,12 +357,18 @@ export default async function DynamicSeoServicePage({
               {gridItems.map((card: any, idx: number) => {
                 const Icon = getIcon(card.icon)
                 return (
-                  <div key={idx} className="bg-[#141414] rounded-2xl border border-gold-500/10 hover:border-gold-500/30 transition-all group flex flex-col justify-between relative">
+                  <div key={idx} className="bg-[#141414] rounded-2xl border border-gold-500/10 hover:border-gold-500/30 transition-all group flex flex-col justify-between relative overflow-visible">
                     <div>
                       {/* Image container with rounded top and overflow-hidden for img scale effect */}
                       <div className="relative h-48 bg-black rounded-t-2xl overflow-hidden">
                         {card.image ? (
-                          <img src={card.image} alt={card.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                          <OptimizedImage 
+                            src={card.image} 
+                            alt={card.title} 
+                            fill 
+                            supabaseWidth={400}
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
+                          />
                         ) : (
                           <div className="w-full h-full bg-[#1A1A1A] flex items-center justify-center text-gray-700">📸</div>
                         )}

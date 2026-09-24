@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { ArrowLeft } from 'lucide-react'
 import Link from 'next/link'
 import PageHero from '@/components/PageHero'
+import OptimizedImage from '@/components/OptimizedImage'
 
 export default async function GalleryDetail({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
@@ -72,13 +73,15 @@ export default async function GalleryDetail({ params }: { params: Promise<{ slug
                 key={image.id}
                 className="relative aspect-square bg-[#1A1A1A] rounded-xl overflow-hidden border border-gold-500/10 hover:border-gold-500/30 transition-all group"
               >
-                <img
+                <OptimizedImage
                   src={image.image_url}
                   alt={image.caption || `Image ${index + 1}`}
+                  fill
+                  supabaseWidth={400}
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                 />
                 {image.caption && (
-                  <div className="absolute bottom-0 left-0 right-0 p-3 bg-gradient-to-t from-black to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
+                  <div className="absolute bottom-0 left-0 right-0 p-3 bg-gradient-to-t from-black to-transparent opacity-0 group-hover:opacity-100 transition-opacity z-10">
                     <p className="text-white text-sm">{image.caption}</p>
                   </div>
                 )}

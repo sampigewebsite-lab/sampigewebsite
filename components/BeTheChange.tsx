@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { Heart, GraduationCap, Star, Handshake, Laptop, Users, HandHeart, Briefcase } from 'lucide-react'
+import OptimizedImage from '@/components/OptimizedImage'
 
 export const dynamic = 'force-dynamic'
 
@@ -76,7 +77,7 @@ export default async function BeTheChange() {
           )}
         </div>
 
-        {/* Cards Grid with Increased Spacing (gap-x-12 md:gap-x-16 lg:gap-x-20 & gap-y-28) */}
+        {/* Cards Grid with Increased Spacing */}
         <div className="flex flex-wrap justify-center items-center gap-x-12 md:gap-x-16 lg:gap-x-20 gap-y-28 md:gap-y-32 pt-10 pb-8">
           {list.map((card, index) => {
             const Icon = ICON_MAP[card.icon_name] || Heart
@@ -116,10 +117,12 @@ export default async function BeTheChange() {
                 >
                   <div className="relative aspect-[3/4] w-full overflow-hidden bg-gray-200 rounded-xs">
                     {card.image_url ? (
-                      <img
+                      <OptimizedImage
                         src={card.image_url}
                         alt={card.title}
-                        className="absolute inset-0 w-full h-full object-cover grayscale transition-all duration-500 group-hover:grayscale-0 group-hover:scale-110"
+                        fill
+                        supabaseWidth={350}
+                        className="grayscale transition-all duration-500 group-hover:grayscale-0 group-hover:scale-110"
                       />
                     ) : (
                       <div className="absolute inset-0 flex items-center justify-center text-gray-400 text-sm">

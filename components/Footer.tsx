@@ -77,7 +77,6 @@ export default function Footer() {
         label: s.hero_heading || s.meta_title || s.slug,
       }))
 
-      // Always ensure photo-frame page is linked (static template page)
       if (!list.some((s) => s.slug === 'photo-frame-recycling-bangalore')) {
         list.unshift({
           slug: 'photo-frame-recycling-bangalore',

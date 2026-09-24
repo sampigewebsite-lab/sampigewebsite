@@ -3,6 +3,7 @@ import { ArrowRight, Heart, Users, TreePine, Utensils, Sparkles, Recycle } from 
 import { createClient } from '@/lib/supabase/server'
 import WhatsAppFloat from '@/components/WhatsAppFloat'
 import BeTheChange from '@/components/BeTheChange'
+import OptimizedImage from '@/components/OptimizedImage'
 
 export const dynamic = 'force-dynamic'
 
@@ -94,9 +95,13 @@ export default async function Home() {
       {/* ===== HERO ===== */}
       <section className="relative min-h-[85vh] md:min-h-screen flex items-end md:items-center overflow-hidden pt-20 pb-12 md:py-28">
         {hero.background_image ? (
-          <img
+          <OptimizedImage
             src={hero.background_image}
-            alt=""
+            alt="Hero Banner"
+            fill
+            priority
+            quality={85}
+            supabaseWidth={1920}
             className="absolute inset-0 w-full h-full object-cover object-[80%_center] md:object-center transition-all duration-300"
           />
         ) : (
@@ -223,30 +228,32 @@ export default async function Home() {
                 <Link
                   key={project.id}
                   href={`/projects/${project.slug}`}
-                  className="group bg-[#1A1A1A] rounded-2xl overflow-hidden border border-gold-500/10 hover:border-gold-500/30 transition-all"
+                  className="group bg-[#1A1A1A] rounded-2xl overflow-hidden border border-gold-500/10 hover:border-gold-500/30 transition-all flex flex-col"
                 >
                   {project.cover_image && (
                     <div className="h-56 bg-[#0A0A0A] relative overflow-hidden">
-                      <img
+                      <OptimizedImage
                         src={project.cover_image}
                         alt={project.title}
+                        fill
+                        supabaseWidth={600}
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                       />
-                      <div className="absolute top-4 right-4">
+                      <div className="absolute top-4 right-4 z-10">
                         <span className="px-4 py-1.5 bg-gold-500 text-black text-xs font-bold rounded-full uppercase tracking-wider">
                           {project.status}
                         </span>
                       </div>
                     </div>
                   )}
-                  <div className="p-6">
+                  <div className="p-6 flex flex-col flex-1">
                     <h3 className="text-xl font-semibold text-white group-hover:text-gold-500 transition-colors mb-2">
                       {project.title}
                     </h3>
                     <p className="text-gray-400 text-sm mb-4 line-clamp-2">
                       {project.short_description || 'Making a difference in our community.'}
                     </p>
-                    <div className="flex items-center text-gold-500 font-medium">
+                    <div className="flex items-center text-gold-500 font-medium mt-auto">
                       Learn More
                       <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
                     </div>
@@ -331,9 +338,11 @@ export default async function Home() {
                 >
                   <div className="h-48 bg-[#0A0A0A] relative overflow-hidden">
                     {svc.hero_image ? (
-                      <img
+                      <OptimizedImage
                         src={svc.hero_image}
                         alt={svc.hero_heading || svc.meta_title}
+                        fill
+                        supabaseWidth={600}
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                       />
                     ) : (
@@ -342,7 +351,7 @@ export default async function Home() {
                       </div>
                     )}
                     {svc.hero_badge && (
-                      <span className="absolute top-3 left-3 px-3 py-1 bg-black/80 border border-gold-500/30 text-gold-500 text-[10px] font-bold uppercase tracking-wider rounded-full">
+                      <span className="absolute top-3 left-3 px-3 py-1 bg-black/80 border border-gold-500/30 text-gold-500 text-[10px] font-bold uppercase tracking-wider rounded-full z-10">
                         {svc.hero_badge}
                       </span>
                     )}
@@ -392,17 +401,19 @@ export default async function Home() {
                 <Link
                   key={album.id}
                   href={`/gallery/${album.slug}`}
-                  className="group bg-[#1A1A1A] rounded-2xl overflow-hidden border border-gold-500/10 hover:border-gold-500/30 transition-all"
+                  className="group bg-[#1A1A1A] rounded-2xl overflow-hidden border border-gold-500/10 hover:border-gold-500/30 transition-all flex flex-col"
                 >
                   <div className="h-48 bg-[#0A0A0A] relative overflow-hidden">
                     {album.cover_image ? (
-                      <img
+                      <OptimizedImage
                         src={album.cover_image}
                         alt={album.title}
+                        fill
+                        supabaseWidth={400}
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                       />
                     ) : (
-                      <div className="w-full h-full flex items-center justify-center text-gray-600">📸</div>
+                      <div className="w-full h-full flex items-center justify-center text-gray-600 bg-[#1A1A1A]">📸</div>
                     )}
                   </div>
                   <div className="p-4">
@@ -440,18 +451,20 @@ export default async function Home() {
                 <Link
                   key={article.id}
                   href={`/blogs/${article.slug}`}
-                  className="group bg-[#1A1A1A] rounded-2xl overflow-hidden border border-gold-500/10 hover:border-gold-500/30 transition-all"
+                  className="group bg-[#1A1A1A] rounded-2xl overflow-hidden border border-gold-500/10 hover:border-gold-500/30 transition-all flex flex-col"
                 >
                   {article.featured_image && (
-                    <div className="h-48 bg-[#0A0A0A] overflow-hidden">
-                      <img
+                    <div className="h-48 bg-[#0A0A0A] relative overflow-hidden">
+                      <OptimizedImage
                         src={article.featured_image}
                         alt={article.title}
+                        fill
+                        supabaseWidth={500}
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                       />
                     </div>
                   )}
-                  <div className="p-6">
+                  <div className="p-6 flex flex-col flex-1">
                     <div className="text-sm text-gray-500 mb-2">
                       {new Date(article.published_at || article.created_at).toLocaleDateString()}
                     </div>

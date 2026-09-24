@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { Target, Lightbulb, ArrowLeft, ArrowRight, Recycle } from 'lucide-react'
 import Link from 'next/link'
 import PageHero from '@/components/PageHero'
+import OptimizedImage from '@/components/OptimizedImage'
 
 const getBaseUrl = () => {
   if (process.env.NEXT_PUBLIC_SITE_URL) {
@@ -131,11 +132,11 @@ export default async function ProjectDetail({
       slug: 'photo-frame-recycling-bangalore',
       hero_heading: 'Photo Frame Recycling in Malleshwaram, Bangalore',
       hero_subtext:
-        'Schedule free pickup or drop off old photo frames, god frames & divine items for eco-friendly recycling.',
+        'Drop off old photo frames, god frames & divine items for eco-friendly recycling at our office.',
       meta_title: 'Photo Frame Recycling',
       project_card_heading: 'Need to Recycle Photo Frames?',
       project_card_text:
-        'Visit our dedicated Photo Frame Recycling service page for free pickup, FAQs, and service areas across Bangalore.',
+        'Visit our dedicated Photo Frame Recycling service page for drop-off info, FAQs, and service areas across Bangalore.',
     })
   }
 
@@ -279,7 +280,7 @@ export default async function ProjectDetail({
           </div>
         </div>
 
-        {/* ⭐ OPTION D: Related SEO Service card(s) */}
+        {/* ⭐ Related SEO Service card(s) */}
         {servicesForCard.length > 0 && (
           <div className="space-y-4">
             {servicesForCard.map((svc) => (
@@ -298,7 +299,7 @@ export default async function ProjectDetail({
                   <p className="text-gray-400 text-sm max-w-2xl">
                     {svc.project_card_text ||
                       svc.hero_subtext ||
-                      'Get free pickup, FAQs, and full service details on our dedicated landing page.'}
+                      'Get full service details and FAQs on our dedicated landing page.'}
                   </p>
                 </div>
                 <Link
@@ -327,13 +328,16 @@ export default async function ProjectDetail({
                 >
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-0 items-stretch">
                     <div
-                      className={`${isImageLeft ? 'md:order-1' : 'md:order-2'} bg-black/40 flex items-center justify-center p-4 md:p-6`}
+                      className={`${isImageLeft ? 'md:order-1' : 'md:order-2'} bg-black/40 flex items-center justify-center p-4 md:p-6 min-h-[300px] relative`}
                     >
                       {section.image_url ? (
-                        <img
+                        <OptimizedImage
                           src={section.image_url}
                           alt={section.heading || project.title}
-                          className="max-w-full max-h-[420px] w-auto h-auto object-contain rounded-xl"
+                          fill
+                          objectFit="contain"
+                          supabaseWidth={600}
+                          className="rounded-xl"
                         />
                       ) : (
                         <div className="w-full h-64 bg-[#0A0A0A] rounded-xl" />

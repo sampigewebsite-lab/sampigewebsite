@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { ArrowRight, Recycle, MapPin, Sparkles } from 'lucide-react'
+import OptimizedImage from '@/components/OptimizedImage'
 
 export const dynamic = 'force-dynamic'
 
@@ -94,9 +95,11 @@ export default async function ServicesIndexPage() {
                 >
                   <div className="h-48 bg-[#0A0A0A] relative overflow-hidden">
                     {svc.hero_image ? (
-                      <img
+                      <OptimizedImage
                         src={svc.hero_image}
                         alt={svc.hero_heading || svc.meta_title}
+                        fill
+                        supabaseWidth={500}
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                       />
                     ) : (
@@ -105,7 +108,7 @@ export default async function ServicesIndexPage() {
                       </div>
                     )}
                     {svc.hero_badge && (
-                      <span className="absolute top-4 left-4 px-3 py-1 bg-black/80 border border-gold-500/30 text-gold-500 text-[10px] font-bold uppercase tracking-wider rounded-full">
+                      <span className="absolute top-4 left-4 px-3 py-1 bg-black/80 border border-gold-500/30 text-gold-500 text-[10px] font-bold uppercase tracking-wider rounded-full z-10">
                         {svc.hero_badge}
                       </span>
                     )}
@@ -117,7 +120,7 @@ export default async function ServicesIndexPage() {
                     <p className="text-gray-400 text-sm line-clamp-3 mb-4 flex-1">
                       {svc.hero_subtext || svc.meta_description || 'Learn more about this community service.'}
                     </p>
-                    <div className="flex items-center justify-between pt-2 border-t border-gold-500/10">
+                    <div className="flex items-center justify-between pt-2 border-t border-gold-500/10 mt-auto">
                       <span className="text-gold-500 font-semibold text-sm inline-flex items-center gap-1">
                         Learn More <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
                       </span>

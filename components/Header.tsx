@@ -20,7 +20,12 @@ export default function Header() {
 
       data?.forEach((row) => {
         if (row.key === 'general' && row.value?.logo) {
-          setLogo(row.value.logo)
+          const rawLogo = row.value.logo
+          // Resize Supabase logo URL to 250px wide for header
+          const optimizedLogo = rawLogo.includes('supabase.co/storage/')
+            ? `${rawLogo.split('?')[0]}?width=250&quality=85`
+            : rawLogo
+          setLogo(optimizedLogo)
         }
         if (row.key === 'organization' && row.value?.name) {
           setOrgName(row.value.name)
@@ -34,7 +39,7 @@ export default function Header() {
     { href: '/', label: 'Home' },
     { href: '/about-us', label: 'About' },
     { href: '/projects', label: 'Projects' },
-    { href: '/services', label: 'Services' }, // ⭐ NEW
+    { href: '/services', label: 'Services' },
     { href: '/csr', label: 'CSR' },
     { href: '/gallery', label: 'Gallery' },
     { href: '/blogs', label: 'Blogs' },
@@ -48,9 +53,13 @@ export default function Header() {
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-16 md:h-18">
           <Link href="/" className="flex items-center gap-2 min-w-0">
+            {/* Optimized Logo with Fast Async Decoding */}
             <img
               src={logo}
               alt={orgName}
+              width={140}
+              height={40}
+              decoding="async"
               className="h-9 md:h-10 w-auto max-w-[140px] object-contain"
               onError={(e) => {
                 ;(e.target as HTMLImageElement).src = '/logo.png'

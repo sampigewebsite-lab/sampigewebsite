@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation'
 import CsrSteps from '@/components/CsrSteps'
 import CsrCoverImage from '@/components/CsrCoverImage'
 import Link from 'next/link'
+import OptimizedImage from '@/components/OptimizedImage'
 import { 
   ArrowLeft, ArrowRight, Users, Clock, Leaf, GraduationCap, Heart, 
   Sparkles, Star, Target
@@ -184,7 +185,7 @@ export default async function CSRActivityPage({ params }: { params: Promise<{ sl
             </div>
           )}
 
-          {/* ═══ GALLERY (object-contain, supports 9:16 + 16:9 without cropping) ═══ */}
+          {/* ═══ GALLERY ═══ */}
           {gallery.length > 0 && (
             <div className="mb-20 pt-12 border-t border-gray-900">
               <div className="mb-8">
@@ -203,12 +204,15 @@ export default async function CSRActivityPage({ params }: { params: Promise<{ sl
                     key={index}
                     className="relative aspect-[9/16] rounded-2xl overflow-hidden border border-gold-500/15 bg-[#0A0A0A] group flex items-center justify-center"
                   >
-                    <img
+                    <OptimizedImage
                       src={imgUrl}
-                      alt={`${activity.title} gallery ${index + 1}`}
-                      className="max-w-full max-h-full w-full h-full object-contain transition-transform duration-500 group-hover:scale-[1.03]"
+                      alt={`${activity.title} gallery screenshot ${index + 1}`}
+                      fill
+                      objectFit="contain"
+                      supabaseWidth={400}
+                      className="transition-transform duration-500 group-hover:scale-[1.03]"
                     />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none z-10" />
                   </div>
                 ))}
               </div>

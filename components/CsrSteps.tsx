@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react'
 import { Image as ImageIcon } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
+import Image from 'next/image'
 
 export interface Step {
   title: string
@@ -15,6 +16,14 @@ export interface CsrStepsProps {
   activityTitle?: string
 }
 
+function getOptimizedStepUrl(url?: string): string {
+  if (!url) return ''
+  if (url.includes('supabase.co/storage/')) {
+    return `${url.split('?')[0]}?width=800&quality=80`
+  }
+  return url
+}
+
 export default function CsrSteps({ steps, activityTitle }: CsrStepsProps) {
   const [activeIndex, setActiveIndex] = useState(0)
 
@@ -22,9 +31,22 @@ export default function CsrSteps({ steps, activityTitle }: CsrStepsProps) {
     setActiveIndex(0)
   }, [steps, activityTitle])
 
+  // Preload all step images in browser memory so hovering is instant
+  useEffect(() => {
+    if (typeof window !== 'undefined' && steps && steps.length > 0) {
+      steps.forEach((step) => {
+        if (step.image) {
+          const img = new window.Image()
+          img.src = getOptimizedStepUrl(step.image)
+        }
+      })
+    }
+  }, [steps])
+
   if (!steps || steps.length === 0) return null
 
   const activeStep = steps[activeIndex] || steps[0]
+  const currentStepImage = getOptimizedStepUrl(activeStep?.image)
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
@@ -89,20 +111,25 @@ export default function CsrSteps({ steps, activityTitle }: CsrStepsProps) {
           transition={{ duration: 0.3 }}
         >
           <AnimatePresence mode="wait">
-            {activeStep?.image ? (
+            {currentStepImage ? (
               <motion.div
-                key={`img-${activeIndex}-${activeStep.image}`}
-                initial={{ opacity: 0, scale: 1.08, filter: 'blur(6px)' }}
+                key={`img-${activeIndex}-${currentStepImage}`}
+                initial={{ opacity: 0, scale: 1.05, filter: 'blur(4px)' }}
                 animate={{ opacity: 1, scale: 1, filter: 'blur(0px)' }}
-                exit={{ opacity: 0, scale: 0.96, filter: 'blur(4px)' }}
-                transition={{ duration: 0.45, ease: [0.25, 1, 0.5, 1] }}
+                exit={{ opacity: 0, scale: 0.98, filter: 'blur(2px)' }}
+                transition={{ duration: 0.35, ease: [0.25, 1, 0.5, 1] }}
                 className="absolute inset-0 w-full h-full flex items-center justify-center bg-[#050505]"
               >
-                <img
-                  src={activeStep.image}
-                  alt={activeStep.title || activityTitle || 'CSR activity step'}
-                  className="w-full h-full object-contain p-2 sm:p-3 transition-transform duration-700 ease-out group-hover:scale-105"
-                />
+                <div className="relative w-full h-full p-2 sm:p-3">
+                  <Image
+                    src={currentStepImage}
+                    alt={activeStep.title || activityTitle || 'CSR activity step'}
+                    fill
+                    sizes="(max-width: 1024px) 100vw, 55vw"
+                    quality={80}
+                    className="object-contain transition-transform duration-700 ease-out group-hover:scale-105"
+                  />
+                </div>
               </motion.div>
             ) : (
               <motion.div

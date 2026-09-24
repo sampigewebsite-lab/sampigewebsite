@@ -13,6 +13,15 @@ interface LogoMarqueeProps {
   direction?: 'left' | 'right'
 }
 
+// Automatically scales partner logos down to ~200px thumbnails
+function getOptimizedLogoUrl(url?: string): string {
+  if (!url) return ''
+  if (url.includes('supabase.co/storage/')) {
+    return `${url.split('?')[0]}?width=200&quality=80`
+  }
+  return url
+}
+
 export default function LogoMarquee({ partners, direction = 'left' }: LogoMarqueeProps) {
   if (!partners || partners.length === 0) return null
 
@@ -37,8 +46,10 @@ export default function LogoMarquee({ partners, direction = 'left' }: LogoMarque
           >
             {p.logo_url ? (
               <img
-                src={p.logo_url}
+                src={getOptimizedLogoUrl(p.logo_url)}
                 alt={p.company_name}
+                loading="lazy"
+                decoding="async"
                 className="max-w-full max-h-full object-contain opacity-75 hover:opacity-100 transition-opacity duration-300"
               />
             ) : (
