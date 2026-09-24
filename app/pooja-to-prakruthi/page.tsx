@@ -8,7 +8,7 @@ import {
   CheckCircle2, XCircle, Home, Building2, Calendar,
   Sparkles, Heart, Users, ChevronDown, MapPin, Phone,
   Mail, Star, HandHeart, Sprout, Package, Truck, BarChart3, Share2,
-  Trash2, AlertTriangle, CloudRain
+  Trash2, AlertTriangle, CloudRain, Flower2
 } from 'lucide-react'
 
 export const revalidate = 60
