@@ -4,15 +4,9 @@ import { createClient } from '@/lib/supabase/server'
 import { ArrowRight, Recycle, MapPin, Sparkles } from 'lucide-react'
 import OptimizedImage from '@/components/OptimizedImage'
 
-// ⭐ INSTANT PAGE LOADING (Caches on Vercel CDN, revalidates every 60s)
 export const revalidate = 60
 
-const getBaseUrl = () => {
-  if (process.env.NEXT_PUBLIC_SITE_URL) {
-    return process.env.NEXT_PUBLIC_SITE_URL.replace(/\/$/, '')
-  }
-  return 'https://sampigewebsite.vercel.app'
-}
+const getBaseUrl = () => process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, '') || 'https://sampigefoundation.com'
 
 export async function generateMetadata(): Promise<Metadata> {
   const siteUrl = getBaseUrl()
@@ -43,32 +37,22 @@ export default async function ServicesIndexPage() {
 
   const services: any[] = [...(seoServices || [])]
 
-  // Ensure Flower Recycling page is present
-  if (!services.some((s) => s.slug === 'pooja-to-prakruthi-bangalore')) {
-    services.unshift({
-      slug: 'pooja-to-prakruthi-bangalore',
-      hero_heading: 'Used Flower Waste Collection & Composting in Bangalore',
-      hero_subtext:
-        'Pooja to Prakruthi — Every flower deserves a second life. Flower waste collection, segregation and composting.',
-      hero_badge: 'POOJA TO PRAKRUTHI',
-      hero_image: '',
-      meta_title: 'Pooja to Prakruthi Flower Recycling',
-    })
-  }
+  // Filter out any duplicate flower entries and put the flagship Pooja to Prakruthi card FIRST
+  const filteredServices = services.filter(
+    (s) => s.slug !== 'pooja-to-prakruthi-bangalore' && s.slug !== 'used-flower-recycling-bangalore'
+  )
 
-  // Ensure Photo Frame page is present
-  if (!services.some((s) => s.slug === 'photo-frame-recycling-bangalore')) {
-    services.unshift({
-      slug: 'photo-frame-recycling-bangalore',
-      hero_heading: 'Photo Frame Recycling in Malleshwaram, Bangalore',
-      hero_subtext:
-        'Drop off old photo frames and divine items. Wooden, metal, plastic, glass & god frames — zero landfill.',
-      hero_badge: 'MURTHY SHODHANE',
-      hero_image: '',
-      meta_title: 'Photo Frame Recycling Bangalore',
-      related_project_slug: 'divine-items-photo-frame-disposal',
-    })
-  }
+  // Card #1: Pooja to Prakruthi Flagship Service
+  filteredServices.unshift({
+    slug: 'pooja-to-prakruthi',
+    targetUrl: '/pooja-to-prakruthi',
+    hero_heading: 'Pooja to Prakruthi — Used Flower Waste Collection & Composting',
+    hero_subtext:
+      'Every flower deserves a second life. Flower waste collection, segregation, and natural composting for households, apartments, temples, and events.',
+    hero_badge: 'POOJA TO PRAKRUTHI',
+    hero_image: '',
+    meta_title: 'Pooja to Prakruthi Flower Recycling Bangalore',
+  })
 
   return (
     <main className="bg-black min-h-screen">
@@ -89,30 +73,25 @@ export default async function ServicesIndexPage() {
             </h1>
             <p className="text-gray-400 text-base md:text-lg leading-relaxed max-w-2xl">
               Community-led recycling and eco programmes across Malleshwaram and Bangalore —
-              photo frames, divine items, temple waste, used flower composting, and more.
+              used flower composting, photo frame recycling, divine items disposal, and more.
             </p>
           </div>
         </div>
       </section>
 
-      {/* Services Grid (Fixed Card Heights & No Text Clipping) */}
+      {/* Services Grid */}
       <section className="py-16 md:py-20">
         <div className="container mx-auto px-4">
-          {services.length === 0 ? (
-            <div className="text-center py-20 text-gray-500">
-              <Sparkles className="h-10 w-10 mx-auto mb-4 text-[#FFB300]/40" />
-              <p>Services will appear here once published from the admin panel.</p>
-            </div>
-          ) : (
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {services.map((svc) => (
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {filteredServices.map((svc) => {
+              const cardLink = svc.targetUrl || `/services/${svc.slug}`
+              return (
                 <Link
                   key={svc.slug}
-                  href={svc.slug === 'pooja-to-prakruthi-bangalore' ? '/pooja-to-prakruthi' : `/services/${svc.slug}`}
+                  href={cardLink}
                   className="group bg-[#1A1A1A] rounded-2xl overflow-hidden border border-[#FFB300]/10 hover:border-[#FFB300]/40 transition-all flex flex-col justify-between h-full"
                 >
                   <div>
-                    {/* Image Container */}
                     <div className="h-52 bg-[#0A0A0A] relative overflow-hidden">
                       {svc.hero_image ? (
                         <OptimizedImage
@@ -134,7 +113,6 @@ export default async function ServicesIndexPage() {
                       )}
                     </div>
 
-                    {/* Content Section - Fully Visible Text */}
                     <div className="p-6">
                       <h2 className="text-lg md:text-xl font-bold text-white group-hover:text-[#FFB300] transition-colors mb-3 leading-snug">
                         {svc.hero_heading || svc.meta_title}
@@ -145,21 +123,18 @@ export default async function ServicesIndexPage() {
                     </div>
                   </div>
 
-                  {/* Footer Link */}
                   <div className="px-6 pb-6 pt-2 flex items-center justify-between border-t border-[#FFB300]/10 mt-auto">
                     <span className="text-[#FFB300] font-semibold text-sm inline-flex items-center gap-1.5 group-hover:translate-x-1 transition-transform">
                       Learn More <ArrowRight className="h-4 w-4" />
                     </span>
-                    {svc.related_project_slug && (
-                      <span className="text-[11px] text-gray-500 flex items-center gap-1">
-                        <MapPin className="h-3 w-3 text-[#FFB300]" /> Active in Bangalore
-                      </span>
-                    )}
+                    <span className="text-[11px] text-gray-500 flex items-center gap-1">
+                      <MapPin className="h-3 w-3 text-[#FFB300]" /> Bangalore
+                    </span>
                   </div>
                 </Link>
-              ))}
-            </div>
-          )}
+              )
+            })}
+          </div>
 
           <div className="text-center mt-14">
             <Link
