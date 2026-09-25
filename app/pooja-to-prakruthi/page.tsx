@@ -50,7 +50,7 @@ const TRANSLATIONS = {
     hero_title_1: "A Flower Offered With Devotion",
     hero_title_2: "Shouldn't End Up in the Garbage.",
     hero_tagline: "Every flower deserves a second life.",
-    hero_desc: "Every day, flowers are offered to God with devotion. But once the pooja is over, many of these flowers are simply mixed with everyday garbage.\n\nPooja to Prakruthi gives those flowers a better journey.",
+    hero_desc: "Every day, flowers are offered to God with devotion, faith and love. But once the pooja is over, many of these flowers are simply mixed with everyday garbage.\n\nPooja to Prakruthi gives those flowers a better journey.",
     btn_cta: "Give Your Flowers a Second Life",
     btn_renew: "Already a Member? Renew",
     heading_problem_1: "What Happens to the Flowers",
@@ -151,7 +151,6 @@ export default async function PoojaToPrakruthiPage({ searchParams }: PageProps) 
   const faqs = content.faqs || []
   const realPhotos: string[] = content.real_work_images || []
 
-  // "What Happens" cards data mapped with icons
   const problemSteps = [
     {
       title: dict.steps[0].title,
@@ -201,24 +200,6 @@ export default async function PoojaToPrakruthiPage({ searchParams }: PageProps) 
     <main className="bg-black min-h-screen text-gray-200 relative">
 
       {/* ═══════════════════════════════════════════
-          LANGUAGE TOGGLE & BAR
-          ═══════════════════════════════════════════ */}
-      <div className="absolute top-24 right-4 z-40 md:right-10 flex gap-2">
-        <Link
-          href={`/pooja-to-prakruthi?lang=en`}
-          className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all border flex items-center gap-1.5 ${!isKn ? 'bg-[#FFB300] text-black border-[#FFB300]' : 'bg-black text-gray-400 border-gray-800 hover:text-white'}`}
-        >
-          <Languages className="w-3.5 h-3.5" /> English
-        </Link>
-        <Link
-          href={`/pooja-to-prakruthi?lang=kn`}
-          className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all border flex items-center gap-1.5 ${isKn ? 'bg-[#FFB300] text-black border-[#FFB300]' : 'bg-black text-gray-400 border-gray-800 hover:text-white'}`}
-        >
-          <Languages className="w-3.5 h-3.5" /> ಕನ್ನಡ
-        </Link>
-      </div>
-
-      {/* ═══════════════════════════════════════════
           1. HERO
           ═══════════════════════════════════════════ */}
       <section className="relative min-h-[75vh] md:min-h-[85vh] flex items-center overflow-hidden pt-28 pb-10 md:pt-32 md:pb-12">
@@ -228,13 +209,33 @@ export default async function PoojaToPrakruthiPage({ searchParams }: PageProps) 
         <div className="container mx-auto px-4 relative z-10">
           <div className="grid lg:grid-cols-12 gap-6 lg:gap-10 items-center">
 
-            {/* Left text */}
+            {/* Left text column */}
             <div className="lg:col-span-7 max-w-2xl">
-              <div className="inline-flex items-center gap-2 mb-3 px-3.5 py-1 rounded-full border border-gray-800 bg-[#141414]">
-                <Sparkles className="text-[#FFB300] h-3.5 w-3.5" />
-                <span className="text-gray-300 font-semibold tracking-widest text-[10px] md:text-xs uppercase">
-                  {dict.badge}
-                </span>
+              
+              {/* TOP BAR: Badge + Aligned Language Switcher */}
+              <div className="flex flex-wrap items-center justify-between gap-3 mb-5">
+                <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full border border-gray-800 bg-[#141414]">
+                  <Sparkles className="text-[#FFB300] h-3.5 w-3.5" />
+                  <span className="text-gray-300 font-semibold tracking-widest text-[10px] md:text-xs uppercase">
+                    {dict.badge}
+                  </span>
+                </div>
+
+                {/* Clean inline language switcher */}
+                <div className="inline-flex items-center gap-1 p-1 bg-[#141414] border border-gray-800 rounded-full">
+                  <Link
+                    href="/pooja-to-prakruthi?lang=en"
+                    className={`px-3 py-1 rounded-full text-xs font-bold transition-all flex items-center gap-1.5 ${!isKn ? 'bg-[#FFB300] text-black shadow-sm' : 'text-gray-400 hover:text-white'}`}
+                  >
+                    <Languages className="w-3 h-3" /> English
+                  </Link>
+                  <Link
+                    href="/pooja-to-prakruthi?lang=kn"
+                    className={`px-3 py-1 rounded-full text-xs font-bold transition-all flex items-center gap-1.5 ${isKn ? 'bg-[#FFB300] text-black shadow-sm' : 'text-gray-400 hover:text-white'}`}
+                  >
+                    <Languages className="w-3 h-3" /> ಕನ್ನಡ
+                  </Link>
+                </div>
               </div>
 
               <h1 className="text-3xl sm:text-5xl md:text-6xl font-extrabold text-white leading-[1.1] mb-5">
@@ -275,7 +276,7 @@ export default async function PoojaToPrakruthiPage({ searchParams }: PageProps) 
               </div>
             </div>
 
-            {/* Right hero image */}
+            {/* Right hero image column */}
             <div className="lg:col-span-5 relative mt-6 lg:mt-0">
               <div className="relative aspect-[4/5] rounded-3xl overflow-hidden border border-gray-800 bg-[#0A0A0A] shadow-2xl">
                 {content.hero_side_image ? (
@@ -670,21 +671,19 @@ export default async function PoojaToPrakruthiPage({ searchParams }: PageProps) 
       )}
 
       {/* ═══════════════════════════════════════════
-          FLOATING WHATSAPP BUTTON (FEATURE C)
+          FLOATING WHATSAPP BUTTON (FIXED PERFECT CIRCLE)
           ═══════════════════════════════════════════ */}
       <a
-        href="https://wa.me/917760690264?text=Hi%20Sampige%20Foundation!%20I%20am%20interested%20in%20joining%20the%20Pooja%20to%20Prakruthi%20flower%20recycling%20initiative."
+        href="https://wa.me/9177606 90264?text=Hi%20Sampige%20Foundation!%20I%20am%20interested%20in%20joining%20the%20Pooja%20to%20Prakruthi%20flower%20recycling%20initiative."
         target="_blank"
         rel="noopener noreferrer"
-        className="fixed bottom-6 right-6 z-50 bg-[#25D366] text-white p-4 rounded-full shadow-2xl transition-all duration-300 hover:bg-[#20BA56] hover:scale-110 flex items-center justify-center gap-2 group cursor-pointer"
-        title="Chat on WhatsApp"
+        className="fixed bottom-6 right-6 z-50 w-14 h-14 bg-[#25D366] text-white rounded-full shadow-2xl border-2 border-white/20 transition-all duration-300 hover:bg-[#20BA56] hover:scale-110 flex items-center justify-center shrink-0 cursor-pointer"
+        aria-label="Chat on WhatsApp"
+        title="Chat with Sampige on WhatsApp"
       >
-        <svg className="w-6 h-6 fill-current" viewBox="0 0 24 24">
+        <svg className="w-7 h-7 fill-current" viewBox="0 0 24 24">
           <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946C.062 5.321 5.378.006 11.901.006c3.161.001 6.132 1.233 8.368 3.472 2.235 2.24 3.461 5.211 3.46 8.375-.005 6.579-5.322 11.898-11.846 11.898-2.001-.001-3.968-.51-5.719-1.482L0 24zm6.59-4.846c1.6.95 3.16 1.449 4.853 1.45 5.4 0 9.794-4.39 9.797-9.789.002-2.614-1.012-5.071-2.859-6.918C16.538 1.95 14.09 1.1 11.9 1.102 6.5 1.102 2.11 5.492 2.106 10.893c-.001 1.761.47 3.415 1.42 4.904l-.93 3.393 3.48-.913z"/>
         </svg>
-        <span className="max-w-0 overflow-hidden group-hover:max-w-xs transition-all duration-300 ease-out text-sm font-bold whitespace-nowrap">
-          WhatsApp Chat
-        </span>
       </a>
 
     </main>

@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { Plus, Edit, Trash2, Eye, Search, Newspaper, Sparkles } from 'lucide-react'
+import { Plus, Edit, Trash2, Eye, Search, Newspaper, Sparkles, Loader2 } from 'lucide-react'
 import toast, { Toaster } from 'react-hot-toast'
 import Sidebar from '@/components/admin/Sidebar'
 
@@ -90,9 +90,8 @@ export default function BlogsAdminPage() {
     }
   }
 
-  // Feature D: Auto-Seeding Script to feed pre-written high-quality SEO content
   async function seed8SEOBlogs() {
-    if (!confirm('This will seed 8 pre-written Bangalore Flower Recycling SEO blog posts directly into your draft bank. Proceed?')) return
+    if (!confirm('This will seed 4 pre-written Bangalore Flower Recycling SEO blog posts directly into your draft bank. Proceed?')) return
     setSeeding(true)
     
     const blogDrafts = [
