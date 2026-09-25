@@ -90,8 +90,9 @@ export default function BlogsAdminPage() {
     }
   }
 
+  // Feature D: Auto-Seeding Script with Upsert to avoid duplicate slug errors
   async function seed8SEOBlogs() {
-    if (!confirm('This will seed 4 pre-written Bangalore Flower Recycling SEO blog posts directly into your draft bank. Proceed?')) return
+    if (!confirm('This will load or update 4 pre-written Bangalore Flower Recycling SEO blog posts directly in your database. Proceed?')) return
     setSeeding(true)
     
     const blogDrafts = [
@@ -101,7 +102,7 @@ export default function BlogsAdminPage() {
         excerpt: "Learn how to respectfully dispose of sacred pooja flowers in Bangalore without polluting our lakes, rivers, or streets. Discover the Pooja to Prakruthi program.",
         category: "Pooja to Prakruthi",
         content: `Every single morning, thousands of homes and temples in Bangalore offer fresh, beautiful flowers like marigolds, roses, jasmine, and chrysanthemums during their daily pooja. These offerings represent love, faith, and complete devotion.\n\nHowever, once the rituals are complete, many find themselves faced with a difficult question: What should we do with these used flowers?\n\n### The Problem: Landfills and Water Pollution\nHistorically, sacred offerings were discarded in flowing rivers or under large old trees to allow them to degrade naturally. But modern Bangalore is different. With our lakes struggling against urban pollution and municipal landfills overflowing, tossing flowers into water bodies causes massive algae blooms, blocks sunlight, and depletes vital oxygen for aquatic life.\n\nMixing sacred flowers with plastics, kitchen garbage, and hospital waste in everyday garbage bins is also deeply disrespectful.\n\n### The Solution: Return Them to the Soil\nRather than letting devotion turn into garbage, the team at Sampige Foundation has created 'Pooja to Prakruthi' - a flagship initiative to recycle sacred flower waste into high-grade organic plant compost.\n\nHere is how you can be a part of the solution:\n1. **Separate Early:** Keep a dedicated green bucket or cotton bag at home strictly for your daily pooja offerings.\n2. **Remove All Plastic:** Ensure no plastic threads, incense sticks, metal wires, or matchsticks enter your flower bag.\n3. **Use Local Collection Points:** Drop off your flower waste at a designated Sampige collection point across Bangalore.\n4. **Join the Subscription Program:** Opt for our monthly doorstep pickup service designed for apartments and independent households.\n\nLet us make Bangalore a leading example of waste management while keeping our devotional traditions intact. Join Pooja to Prakruthi today.`,
-        published: false,
+        published: true,
         author: "Sampige Team"
       },
       {
@@ -110,7 +111,7 @@ export default function BlogsAdminPage() {
         excerpt: "Got damaged or old deity photo frames sitting inside your attic? Here is a practical, eco-friendly guide on how to safely recycle them in Bangalore.",
         category: "Recycling Guide",
         content: `During festival seasons like Ayudha Pooja, Diwali, or Ugadi, many households upgrade or replace older, damaged deity photo frames. Over time, wood rots, glass chips, and frames break. Because they contain sacred images, throwing them in municipal garbage feels wrong, leaving many boxes gathering dust in home attics.\n\nHere is a clean, practical, and highly eco-friendly way to handle them in Bangalore.\n\n### Step 1: Disassemble With Care\nBefore recycling, carefully segregate the materials:\n- **Glass:** Gently slide out the glass cover. Glass is 100% recyclable but must be kept clean.\n- **Paper Prints:** Gently remove the printed picture. If it is severely damaged, compost it or bury it in clean garden soil.\n- **The Frame (Wood or Metal):** Sort according to the material.\n\n### Step 2: Finding Recycling Partners\nMost dry waste collection centers (DWCC) in Bangalore accept glass and clean metals, but wooden framing elements require dedicated wood-recycling facilities.\n\nSampige Foundation regularly runs community collection drives in areas like Malleshwaram, Sadashivanagar, and Rajajinagar to accept deity frames, ensuring that metals are melted down, glass is ground safely, and wood is processed for biomass fuel or community reuse.\n\nStart sorting your storeroom today, and bring your old photo frames to our next collection drive!`,
-        published: false,
+        published: true,
         author: "Sampige Team"
       },
       {
@@ -119,7 +120,7 @@ export default function BlogsAdminPage() {
         excerpt: "Yes, pooja flowers make fantastic organic compost. We weigh the benefits of composting them at home versus subscribing to our Bangalore community collection program.",
         category: "Composting",
         content: `The short answer is: Yes, absolutely! Pooja flowers like marigold, hibiscus, roses, and jasmine make some of the richest organic compost available. They are packed with nitrogen, which is highly beneficial for soil health.\n\nBut should you try to compost them at home, or are you better off using a community recycling system like Pooja to Prakruthi?\n\n### Option A: Composting at Home (DIY)\nIf you have a balcony or garden, home composting is highly rewarding.\n- **The Pros:** Free fertilizer for your balcony plants, and complete control over the process.\n- **The Cons:** Marigolds contain natural pest-repellent compounds that can slow down bacteria activity. Additionally, flowers hold high moisture, requiring a careful balance of dry leaves or cocopeat to prevent bad odors.\n\n### Option B: Community Recycling with Sampige\nFor apartments, busy professionals, and temples, DIY home composting is often too slow or space-limiting.\n- **The Pros:** Zero maintenance for you. We pick up, handle segregation, balance the composting mixture professionally, and turn it into rich compost on a large scale.\n- **The Cons:** Small monthly program subscription fee.\n\nBy subscribing to Pooja to Prakruthi, your household can save up to 30 kg of green waste from reaching landfills every single month!`,
-        published: false,
+        published: true,
         author: "Sampige Team"
       },
       {
@@ -128,15 +129,16 @@ export default function BlogsAdminPage() {
         excerpt: "Discover how apartment complexes in Bangalore can easily set up community bins for pooja flower waste, reducing green waste and promoting clean living.",
         category: "Community Projects",
         content: `In high-rise apartment complexes across Bangalore, managing organic waste is a major logistical challenge. While wet kitchen waste is processed by standard digesters, sacred pooja flowers require special treatment because residents do not like throwing sacred offerings into kitchen garbage bins.\n\n### The Solution: A Dedicated Community Pooja Flower Bin\nSampige Foundation has partnered with over 25 apartment associations in Bangalore to implement simple, highly effective flower-segregation systems:\n\n1. **The Pooja Bin:** We place a beautifully marked, yellow collection bin in the common area (usually near the entrance or community temple).\n2. **Segregation Standards:** Clear signage explains that only natural flowers and leaves can enter the bin. Wires, plastic packaging, and cardboard are strictly excluded.\n3. **Weekly Sampige Pickup:** Our team visits your apartment weekly, empties the bins, and transports them to our composting yard.\n4. **Compost Returns:** Every month, Sampige returns a portion of the refined organic compost back to your apartment association to use in your community landscaping and gardens!\n\nIt is a perfect circular economy model. Contact us today to bring the Pooja to Prakruthi program to your apartment complex.`,
-        published: false,
+        published: true,
         author: "Sampige Team"
       }
     ]
 
     try {
-      const { error } = await supabase.from('news').insert(blogDrafts)
+      // .upsert with onConflict handles duplicate slugs gracefully
+      const { error } = await supabase.from('news').upsert(blogDrafts, { onConflict: 'slug' })
       if (error) throw error
-      toast.success('Successfully seeded 4 Bangalore Flower Recycling SEO drafts! Refreshing...')
+      toast.success('Successfully loaded/updated 4 Bangalore Flower Recycling SEO blogs!')
       fetchNews()
     } catch (e: any) {
       toast.error(e.message || 'Error seeding blogs')
@@ -171,7 +173,7 @@ export default function BlogsAdminPage() {
                 className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-amber-500 to-amber-600 text-black font-semibold rounded-lg hover:from-amber-400 hover:to-amber-500 transition-all shadow-md"
               >
                 {seeding ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-                Seed 4 Flagship SEO Drafts
+                Seed 4 Flagship SEO Articles
               </button>
               
               <button
