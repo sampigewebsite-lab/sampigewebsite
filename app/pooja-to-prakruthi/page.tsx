@@ -674,7 +674,7 @@ export default async function PoojaToPrakruthiPage({ searchParams }: PageProps) 
           FLOATING WHATSAPP BUTTON (FIXED PERFECT CIRCLE)
           ═══════════════════════════════════════════ */}
       <a
-        href="https://wa.me/9177606 90264?text=Hi%20Sampige%20Foundation!%20I%20am%20interested%20in%20joining%20the%20Pooja%20to%20Prakruthi%20flower%20recycling%20initiative."
+        href="https://wa.me/917760690264?text=Hi%20Sampige%20Foundation!%20I%20am%20interested%20in%20joining%20the%20Pooja%20to%20Prakruthi%20flower%20recycling%20initiative."
         target="_blank"
         rel="noopener noreferrer"
         className="fixed bottom-6 right-6 z-50 w-14 h-14 bg-[#25D366] text-white rounded-full shadow-2xl border-2 border-white/20 transition-all duration-300 hover:bg-[#20BA56] hover:scale-110 flex items-center justify-center shrink-0 cursor-pointer"
