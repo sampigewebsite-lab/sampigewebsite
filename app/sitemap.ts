@@ -2,14 +2,19 @@ import type { MetadataRoute } from 'next'
 import { createClient } from '@/lib/supabase/server'
 
 const getBaseUrl = () => {
-  if (process.env.NEXT_PUBLIC_SITE_URL) {
-    return process.env.NEXT_PUBLIC_SITE_URL.replace(/\/$/, '')
+  let url = process.env.NEXT_PUBLIC_SITE_URL || 'https://sampigefoundation.com'
+  // Clean trailing slashes and ensure https protocol
+  if (url.startsWith('http://')) {
+    url = url.replace('http://', 'https://')
   }
-  return 'https://sampigefoundation.com'
+  if (!url.startsWith('https://')) {
+    url = `https://${url}`
+  }
+  return url.replace(/\/$/, '')
 }
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const baseUrl = getBaseUrl()
+  const baseUrl = getBaseUrl() // Always resolves to https://sampigefoundation.com
   const currentDate = new Date()
 
   // 1. Static Core Pages
@@ -124,7 +129,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       })
     )
 
-    // 3. Dynamic Blogs (pulls automatically from your news table)
+    // 3. Dynamic Blogs
     const { data: blogs } = await supabase
       .from('news')
       .select('slug, updated_at, created_at')
