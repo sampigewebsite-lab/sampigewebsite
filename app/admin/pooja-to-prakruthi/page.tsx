@@ -6,7 +6,8 @@ import toast, { Toaster } from 'react-hot-toast'
 import Sidebar from '@/components/admin/Sidebar'
 import {
   Loader2, Save, Mail, Settings, MapPin, Upload, Plus,
-  Trash2, Image as ImageIcon, Edit2, Calendar, BarChart3, CreditCard
+  Trash2, Image as ImageIcon, Edit2, Calendar, BarChart3, CreditCard,
+  Phone, MessageSquare, AlertCircle, Copy, Check, Filter
 } from 'lucide-react'
 
 export default function PoojaAdminPage() {
@@ -19,6 +20,9 @@ export default function PoojaAdminPage() {
   const [saving, setSaving] = useState(false)
   const [uploadingField, setUploadingField] = useState<string | null>(null)
   const [editingEnquiry, setEditingEnquiry] = useState<any>(null)
+
+  // Filter State
+  const [filterType, setFilterType] = useState<'all' | 'due' | 'overdue' | 'unpaid' | 'paid'>('all')
 
   // Impact stats variables for the form
   const [impact1Value, setImpact1Value] = useState('')
@@ -56,7 +60,6 @@ export default function PoojaAdminPage() {
     setPoints(pointsData || [])
     setProofs(proofsData || [])
 
-    // Load universal impact stats into form fields
     const stats = contentData?.impact_stats
     if (Array.isArray(stats) && stats.length > 0) {
       setImpact1Value(stats[0]?.value || '')
@@ -102,7 +105,7 @@ export default function PoojaAdminPage() {
 
     toast.success('Image saved!')
     setUploadingField(null)
-    e.target.value = '' // reset input
+    e.target.value = ''
   }
 
   // Handle gallery upload
@@ -142,19 +145,32 @@ export default function PoojaAdminPage() {
     toast.success('Photo removed')
   }
 
-  // Handle Member Edits
+  // Handle Member Edits & Auto Next Due Date Calculation (Feature B)
   async function handleSaveEnquiryDetails(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     if (!editingEnquiry) return
     setSaving(true)
 
     const formData = new FormData(e.currentTarget)
+    const pStatus = formData.get('payment_status') as string
+    
+    // Auto shift next due date if marked paid manually
+    let calculatedDueDate = (formData.get('next_due_date') as string) || null
+    let calculatedLastPayment = editingEnquiry.last_payment_date
+
+    if (pStatus === 'Paid' && editingEnquiry.payment_status !== 'Paid') {
+      const today = new Date()
+      calculatedLastPayment = today.toISOString().split('T')[0]
+      calculatedDueDate = new Date(today.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+    }
+
     const updates = {
-      payment_status: formData.get('payment_status') as string,
+      payment_status: pStatus,
       subscription_status: formData.get('subscription_status') as string,
       total_kg_saved: Number(formData.get('total_kg_saved') || 0),
       compost_kg_produced: Number(formData.get('compost_kg_produced') || 0),
-      next_due_date: (formData.get('next_due_date') as string) || null,
+      last_payment_date: calculatedLastPayment,
+      next_due_date: calculatedDueDate,
       admin_notes: formData.get('admin_notes') as string,
     }
 
@@ -163,7 +179,7 @@ export default function PoojaAdminPage() {
     if (error) {
       toast.error('Update failed')
     } else {
-      toast.success('Member updated!')
+      toast.success('Member details updated!')
       setEditingEnquiry(null)
       fetchData()
     }
@@ -240,18 +256,26 @@ export default function PoojaAdminPage() {
     fetchData()
   }
 
-  // Handle Proofs Actions
+  // Auto sets last_payment_date & shifts next_due_date forward by 30 days dynamically on verification
   async function markProofStatus(id: string, status: string, phone: string) {
     await supabase.from('donation_payment_proofs').update({ status }).eq('id', id)
     
     if (status === 'verified') {
+      const today = new Date()
+      const calculatedLastPayment = today.toISOString().split('T')[0]
+      const calculatedDueDate = new Date(today.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+
       await supabase.from('pooja_enquiries').update({ 
         payment_status: 'Paid', 
-        subscription_status: 'Active' 
+        subscription_status: 'Active',
+        last_payment_date: calculatedLastPayment,
+        next_due_date: calculatedDueDate
       }).or(`phone.eq.${phone},phone.ilike.%${phone}%`)
+      
+      toast.success('Payment verified & subscription extended 30 days!')
+    } else {
+      toast.success('Proof updated')
     }
-    
-    toast.success('Proof updated')
     fetchData()
   }
 
@@ -268,6 +292,49 @@ export default function PoojaAdminPage() {
     fetchData()
   }
 
+  // Direct WhatsApp Reminder Generator (Feature B & C)
+  function getWhatsAppReminderLink(name: string, phone: string) {
+    const cleanPhone = phone.replace(/\D/g, '')
+    const formattedPhone = cleanPhone.startsWith('91') && cleanPhone.length === 12 ? cleanPhone : `91${cleanPhone.slice(-10)}`
+    
+    const message = `Hi ${name || 'Member'}, this is a gentle reminder from Sampige Foundation. Your monthly subscription of ₹300 for the Pooja to Prakruthi flower recycling initiative is due. You can renew easily online here: https://sampigefoundation.com/pooja-to-prakruthi/pay?phone=${phone}. Thank you for helping keep Bangalore green and clean! 🌸`
+    
+    return `https://wa.me/${formattedPhone}?text=${encodeURIComponent(message)}`
+  }
+
+  // Filter Logic (Feature B)
+  const filteredEnquiries = enquiries.filter((enq) => {
+    const todayStr = new Date().toISOString().split('T')[0]
+    
+    // Is Overdue if next_due_date exists, is less than today, and status is not Paid
+    const isOverdue = enq.next_due_date && enq.next_due_date < todayStr && enq.payment_status !== 'Paid'
+    
+    // Is Due This Month if next_due_date is in current month
+    const isDueThisMonth = enq.next_due_date && enq.next_due_date.slice(0, 7) === todayStr.slice(0, 7) && enq.payment_status !== 'Paid'
+
+    if (filterType === 'overdue') return isOverdue
+    if (filterType === 'due') return isDueThisMonth
+    if (filterType === 'unpaid') return enq.payment_status === 'Unpaid' || enq.payment_status === 'Pending'
+    if (filterType === 'paid') return enq.payment_status === 'Paid'
+    return true
+  })
+
+  // Bulk Clipboard Copy utility for Reminder messages
+  function copyBulkReminderNumbers() {
+    const overdueList = enquiries.filter(enq => {
+      const todayStr = new Date().toISOString().split('T')[0]
+      return enq.next_due_date && enq.next_due_date < todayStr && enq.payment_status !== 'Paid'
+    }).map(enq => enq.phone)
+
+    if (overdueList.length === 0) {
+      toast.error('No overdue members found.')
+      return
+    }
+
+    navigator.clipboard.writeText(overdueList.join(', '))
+    toast.success(`Copied ${overdueList.length} phone numbers!`)
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
@@ -282,11 +349,23 @@ export default function PoojaAdminPage() {
       <main className="flex-1 overflow-auto p-6 md:p-10 text-gray-200">
         <Toaster position="top-right" />
 
-        <div className="mb-8 border-b border-gray-800 pb-6">
-          <h1 className="text-3xl font-bold text-white mb-2">Pooja to Prakruthi Admin</h1>
-          <p className="text-gray-400 text-sm">
-            Manage members, payments, screenshots, and page content.
-          </p>
+        <div className="mb-8 border-b border-gray-800 pb-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+          <div>
+            <h1 className="text-3xl font-bold text-white mb-2">Pooja to Prakruthi Admin</h1>
+            <p className="text-gray-400 text-sm">
+              Manage members, automated next due dates, WhatsApp reminders, and live images.
+            </p>
+          </div>
+
+          {/* Quick Stats Helper Panel */}
+          <div className="flex gap-4">
+            <button
+              onClick={copyBulkReminderNumbers}
+              className="px-4 py-2 border border-amber-500/40 text-amber-400 text-xs font-bold rounded-xl hover:bg-amber-500/10 flex items-center gap-1.5 transition-all"
+            >
+              <Copy className="w-3.5 h-3.5" /> Copy Overdue Numbers
+            </button>
+          </div>
         </div>
 
         {/* TABS */}
@@ -324,60 +403,100 @@ export default function PoojaAdminPage() {
             TAB 1: ENQUIRIES & MEMBERS
             ═══════════════════════════════════════════ */}
         {activeTab === 'enquiries' && (
-          <div className="bg-[#141414] rounded-2xl border border-gray-800 overflow-hidden">
-            {enquiries.length === 0 ? (
-              <div className="p-12 text-center text-gray-500">No members yet.</div>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-sm text-gray-300">
-                  <thead className="bg-black text-gray-400 uppercase text-xs">
-                    <tr>
-                      <th className="px-6 py-4">Contact</th>
-                      <th className="px-6 py-4">Payment</th>
-                      <th className="px-6 py-4">Next Due</th>
-                      <th className="px-6 py-4">Impact</th>
-                      <th className="px-6 py-4">Action</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-800">
-                    {enquiries.map((enq) => (
-                      <tr key={enq.id} className="hover:bg-black/40">
-                        <td className="px-6 py-4">
-                          <div className="font-bold text-white">{enq.full_name || enq.contact_person}</div>
-                          <div className="text-[#FFB300] text-xs">{enq.phone} • {enq.participation_type}</div>
-                        </td>
-                        <td className="px-6 py-4">
-                          <span className={`px-2.5 py-1 rounded-full text-xs font-bold uppercase ${enq.payment_status === 'Paid' ? 'bg-green-900/40 text-green-400' : 'bg-red-900/40 text-red-400'}`}>
-                            {enq.payment_status || 'Unpaid'}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 text-xs">
-                          {enq.next_due_date ? (
-                            <span className="text-amber-400 flex items-center gap-1">
-                              <Calendar className="w-3 h-3"/> {enq.next_due_date}
-                            </span>
-                          ) : (
-                            '—'
-                          )}
-                        </td>
-                        <td className="px-6 py-4 text-xs">
-                          <div className="text-white font-bold">{enq.total_kg_saved || 0} kg saved</div>
-                          <div className="text-green-400">{enq.compost_kg_produced || 0} kg compost</div>
-                        </td>
-                        <td className="px-6 py-4">
-                          <button 
-                            onClick={() => setEditingEnquiry(enq)} 
-                            className="px-3 py-2 bg-[#FFB300] text-black rounded-lg text-xs font-bold hover:bg-[#FFCA28] flex items-center gap-1"
-                          >
-                            <Edit2 className="w-3.5 h-3.5" /> Manage
-                          </button>
-                        </td>
+          <div className="space-y-4">
+            
+            {/* Filter Pill Actions (Feature B) */}
+            <div className="flex flex-wrap items-center gap-2 bg-[#141414] p-3 rounded-xl border border-gray-800">
+              <span className="text-xs text-gray-400 px-2 flex items-center gap-1.5 font-bold uppercase">
+                <Filter className="w-3.5 h-3.5 text-[#FFB300]" /> Filters:
+              </span>
+              {(['all', 'due', 'overdue', 'unpaid', 'paid'] as const).map((t) => (
+                <button
+                  key={t}
+                  onClick={() => setFilterType(t)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold capitalize transition-all ${
+                    filterType === t 
+                      ? 'bg-[#FFB300] text-black' 
+                      : 'bg-black text-gray-400 hover:text-white border border-gray-800'
+                  }`}
+                >
+                  {t === 'due' ? 'Due This Month' : t === 'overdue' ? 'Overdue ⚠️' : t}
+                </button>
+              ))}
+            </div>
+
+            <div className="bg-[#141414] rounded-2xl border border-gray-800 overflow-hidden">
+              {filteredEnquiries.length === 0 ? (
+                <div className="p-12 text-center text-gray-500">No members match this filter.</div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-sm text-gray-300">
+                    <thead className="bg-black text-gray-400 uppercase text-xs">
+                      <tr>
+                        <th className="px-6 py-4">Contact</th>
+                        <th className="px-6 py-4">Payment</th>
+                        <th className="px-6 py-4">Next Due</th>
+                        <th className="px-6 py-4">Impact</th>
+                        <th className="px-6 py-4">Action</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
+                    </thead>
+                    <tbody className="divide-y divide-gray-800">
+                      {filteredEnquiries.map((enq) => {
+                        const todayStr = new Date().toISOString().split('T')[0]
+                        const isOverdue = enq.next_due_date && enq.next_due_date < todayStr && enq.payment_status !== 'Paid'
+
+                        return (
+                          <tr key={enq.id} className="hover:bg-black/40">
+                            <td className="px-6 py-4">
+                              <div className="font-bold text-white">{enq.full_name || enq.contact_person}</div>
+                              <div className="text-[#FFB300] text-xs font-mono">{enq.phone} • {enq.participation_type}</div>
+                            </td>
+                            <td className="px-6 py-4">
+                              <span className={`px-2.5 py-1 rounded-full text-xs font-bold uppercase ${enq.payment_status === 'Paid' ? 'bg-green-900/40 text-green-400' : 'bg-red-900/40 text-red-400'}`}>
+                                {enq.payment_status || 'Unpaid'}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4 text-xs">
+                              {enq.next_due_date ? (
+                                <span className={`flex items-center gap-1 font-semibold ${isOverdue ? 'text-red-500 animate-pulse font-extrabold' : 'text-amber-400'}`}>
+                                  {isOverdue && <AlertCircle className="w-3.5 h-3.5" />}
+                                  <Calendar className="w-3 h-3"/> {enq.next_due_date}
+                                  {isOverdue && ' (Overdue)'}
+                                </span>
+                              ) : (
+                                '—'
+                              )}
+                            </td>
+                            <td className="px-6 py-4 text-xs">
+                              <div className="text-white font-bold">{enq.total_kg_saved || 0} kg saved</div>
+                              <div className="text-green-400">{enq.compost_kg_produced || 0} kg compost</div>
+                            </td>
+                            <td className="px-6 py-4 flex gap-2">
+                              <button 
+                                onClick={() => setEditingEnquiry(enq)} 
+                                className="px-3 py-2 bg-[#FFB300] text-black rounded-lg text-xs font-bold hover:bg-[#FFCA28] flex items-center gap-1"
+                              >
+                                <Edit2 className="w-3.5 h-3.5" /> Manage
+                              </button>
+                              
+                              {/* Direct WhatsApp Reminder Action */}
+                              <a
+                                href={getWhatsAppReminderLink(enq.full_name || enq.contact_person, enq.phone)}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="px-3 py-2 bg-green-600 hover:bg-green-500 text-white rounded-lg text-xs font-bold flex items-center gap-1"
+                              >
+                                <MessageSquare className="w-3.5 h-3.5" /> Remind
+                              </a>
+                            </td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
           </div>
         )}
 
@@ -427,7 +546,7 @@ export default function PoojaAdminPage() {
         )}
 
         {/* ═══════════════════════════════════════════
-            TAB 2: PAYMENT PROOFS (NEW)
+            TAB 2: PAYMENT PROOFS
             ═══════════════════════════════════════════ */}
         {activeTab === 'proofs' && (
           <div className="bg-[#141414] rounded-2xl border border-gray-800 p-6">

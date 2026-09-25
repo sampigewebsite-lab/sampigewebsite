@@ -5,13 +5,19 @@ import { createClient } from '@/lib/supabase/client'
 import { Leaf, Loader2, Recycle, Sprout, Users } from 'lucide-react'
 import Link from 'next/link'
 
-export default function PoojaImpactTracker() {
+interface ImpactTrackerProps {
+  lang?: string
+}
+
+export default function PoojaImpactTracker({ lang = 'en' }: ImpactTrackerProps) {
   const [loading, setLoading] = useState(true)
+  const isKn = lang === 'kn'
+
   const [stats, setStats] = useState([
-    { value: '—', label: 'kg Flower Waste Collected', icon: Recycle },
-    { value: '—', label: 'Households Participating', icon: Users },
-    { value: '—', label: 'Collections Completed', icon: Leaf },
-    { value: '—', label: 'kg Compost Produced', icon: Sprout },
+    { value: '—', label: isKn ? 'ಕೆಜಿ ಹೂವಿನ ಕಸ ಸಂಗ್ರಹಣೆ' : 'kg Flower Waste Collected', icon: Recycle },
+    { value: '—', label: isKn ? 'ಭಾಗವಹಿಸುವ ಕುಟುಂಬಗಳು' : 'Households Participating', icon: Users },
+    { value: '—', label: isKn ? 'ಪೂರ್ಣಗೊಂಡ ಸಂಗ್ರಹಣೆಗಳು' : 'Collections Completed', icon: Leaf },
+    { value: '—', label: isKn ? 'ಉತ್ಪಾದಿಸಿದ ಸಾವಯವ ಗೊಬ್ಬರ' : 'kg Compost Produced', icon: Sprout },
   ])
 
   useEffect(() => {
@@ -26,10 +32,19 @@ export default function PoojaImpactTracker() {
       const raw = data?.impact_stats
       if (Array.isArray(raw) && raw.length > 0) {
         const icons = [Recycle, Users, Leaf, Sprout]
+        
+        // Dynamic labels with English fallback
+        const defaultLabelsKn = [
+          'ಕೆಜಿ ಹೂವಿನ ಕಸ ಸಂಗ್ರಹಣೆ',
+          'ಭಾಗವಹಿಸುವ ಕುಟುಂಬಗಳು',
+          'ಪೂರ್ಣಗೊಂಡ ಸಂಗ್ರಹಣೆಗಳು',
+          'ಉತ್ಪಾದಿಸಿದ ಸಾವಯವ ಗೊಬ್ಬರ'
+        ]
+
         setStats(
           raw.slice(0, 4).map((s: any, i: number) => ({
             value: s.value || '—',
-            label: s.label || 'Impact',
+            label: isKn ? (defaultLabelsKn[i] || s.label) : (s.label || 'Impact'),
             icon: icons[i] || Leaf,
           }))
         )
@@ -37,7 +52,7 @@ export default function PoojaImpactTracker() {
       setLoading(false)
     }
     load()
-  }, [])
+  }, [lang, isKn])
 
   if (loading) {
     return (
@@ -50,7 +65,7 @@ export default function PoojaImpactTracker() {
   return (
     <div className="w-full space-y-6">
       <p className="text-gray-400 text-sm text-center">
-        Shared impact of the entire Pooja to Prakruthi community — same for every visitor.
+        {isKn ? 'ಪೂಜೆಯಿಂದ ಪ್ರಕೃತಿ ಕಡೆಗೆ ಸಮುದಾಯದ ಒಟ್ಟು ಪರಿಸರ ಕೊಡುಗೆ' : 'Shared impact of the entire Pooja to Prakruthi community — same for every visitor.'}
       </p>
 
       <div className="grid grid-cols-2 gap-4">
@@ -69,10 +84,21 @@ export default function PoojaImpactTracker() {
       </div>
 
       <p className="text-center text-xs text-gray-500">
-        Numbers are updated by Sampige from real collections.{' '}
-        <Link href="#join-form" className="text-[#FFB300] hover:underline">
-          Join the programme
-        </Link>
+        {isKn ? (
+          <span>
+            ನೈಜ ಸಂಗ್ರಹಣೆಯ ಆಧಾರದ ಮೇಲೆ ನವೀಕರಿಸಲಾಗುತ್ತದೆ.{' '}
+            <Link href="#join-form" className="text-[#FFB300] hover:underline">
+              ಅಭಿಯಾನಕ್ಕೆ ಸೇರಿ
+            </Link>
+          </span>
+        ) : (
+          <span>
+            Numbers are updated by Sampige from real collections.{' '}
+            <Link href="#join-form" className="text-[#FFB300] hover:underline">
+              Join the programme
+            </Link>
+          </span>
+        )}
       </p>
     </div>
   )
