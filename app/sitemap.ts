@@ -5,7 +5,7 @@ const getBaseUrl = () => {
   if (process.env.NEXT_PUBLIC_SITE_URL) {
     return process.env.NEXT_PUBLIC_SITE_URL.replace(/\/$/, '')
   }
-  return 'https://sampigewebsite.vercel.app'
+  return 'https://sampigefoundation.com'
 }
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
@@ -19,6 +19,18 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       lastModified: currentDate,
       changeFrequency: 'daily',
       priority: 1.0,
+    },
+    {
+      url: `${baseUrl}/pooja-to-prakruthi`,
+      lastModified: currentDate,
+      changeFrequency: 'daily',
+      priority: 0.95,
+    },
+    {
+      url: `${baseUrl}/pooja-to-prakruthi/pay`,
+      lastModified: currentDate,
+      changeFrequency: 'monthly',
+      priority: 0.7,
     },
     {
       url: `${baseUrl}/about-us`,
@@ -112,7 +124,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       })
     )
 
-    // 3. Dynamic Blogs
+    // 3. Dynamic Blogs (pulls automatically from your news table)
     const { data: blogs } = await supabase
       .from('news')
       .select('slug, updated_at, created_at')
@@ -186,7 +198,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       })
     )
 
-    // 8. ⭐ Dynamic SEO Service Landing Pages (keyword ranking pages)
+    // 8. Dynamic SEO Service Landing Pages
     const { data: seoServices } = await supabase
       .from('seo_services')
       .select('slug, updated_at, created_at')
