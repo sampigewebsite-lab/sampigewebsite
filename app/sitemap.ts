@@ -2,19 +2,26 @@ import type { MetadataRoute } from 'next'
 import { createClient } from '@/lib/supabase/server'
 
 const getBaseUrl = () => {
-  let url = process.env.NEXT_PUBLIC_SITE_URL || 'https://sampigefoundation.com'
-  // Clean trailing slashes and ensure https protocol
+  let url = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.sampigefoundation.com'
+  
+  // Ensure https:// protocol
   if (url.startsWith('http://')) {
     url = url.replace('http://', 'https://')
   }
   if (!url.startsWith('https://')) {
     url = `https://${url}`
   }
+  
+  // Force www. for sampigefoundation.com so Google Search Console is 100% happy
+  if (url.includes('sampigefoundation.com') && !url.includes('www.sampigefoundation.com')) {
+    url = url.replace('sampigefoundation.com', 'www.sampigefoundation.com')
+  }
+  
   return url.replace(/\/$/, '')
 }
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const baseUrl = getBaseUrl() // Always resolves to https://sampigefoundation.com
+  const baseUrl = getBaseUrl() // Always resolves to https://www.sampigefoundation.com
   const currentDate = new Date()
 
   // 1. Static Core Pages
