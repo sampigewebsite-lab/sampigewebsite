@@ -24,7 +24,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = getBaseUrl() // Always resolves to https://www.sampigefoundation.com
   const currentDate = new Date()
 
-  // 1. Static Core Pages
+  // 1. Static Core Pages (Added Greens & Browns here with high priority)
   const staticRoutes: MetadataRoute.Sitemap = [
     {
       url: `${baseUrl}`,
@@ -43,6 +43,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       lastModified: currentDate,
       changeFrequency: 'monthly',
       priority: 0.7,
+    },
+    {
+      url: `${baseUrl}/greens-and-browns/temple-flower-composting`,
+      lastModified: currentDate,
+      changeFrequency: 'daily',
+      priority: 0.95,
     },
     {
       url: `${baseUrl}/about-us`,

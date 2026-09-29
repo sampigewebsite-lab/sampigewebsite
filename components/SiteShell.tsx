@@ -6,14 +6,17 @@ import Footer from '@/components/Footer'
 
 export default function SiteShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
-  const isAdmin = pathname?.startsWith('/admin')
 
-  // On Admin routes: hide public header & footer
-  if (isAdmin) {
+  // Hide header and footer on admin routes AND the standalone Greens & Browns page
+  const isStandalonePage = 
+    pathname?.startsWith('/admin') || 
+    pathname?.startsWith('/greens-and-browns')
+
+  if (isStandalonePage) {
     return <>{children}</>
   }
 
-  // On Public routes: show header & footer
+  // On standard public pages: show header & footer
   return (
     <>
       <Header />
