@@ -6,7 +6,7 @@ import {
   Leaf, ShieldAlert
 } from 'lucide-react'
 
-// Force Next.js to always fetch fresh data from Supabase
+// Force Next.js to fetch fresh data from Supabase (bypasses cache when you upload photos)
 export const dynamic = 'force-dynamic'
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -73,7 +73,7 @@ export default async function GreensAndBrownsStandalonePage() {
   return (
     <article className="min-h-screen bg-black text-white selection:bg-[#FFB300] selection:text-black font-sans">
       
-      {/* HEADER WITH LOGO + TITLE TEXT SIDE BY SIDE */}
+      {/* HEADER WITH LOGO + TITLE TEXT */}
       <header className="sticky top-0 z-50 bg-black/90 backdrop-blur-md border-b border-gray-800/80 px-4 py-3">
         <div className="container mx-auto max-w-5xl flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -233,7 +233,7 @@ export default async function GreensAndBrownsStandalonePage() {
         </div>
       </section>
 
-      {/* 6-STEP COMPOSTING FLOW */}
+      {/* 6-STEP COMPOSTING FLOW (NOW INCLUDES UPLOADED STEP IMAGES) */}
       <section id="composting-flow" className="py-16 bg-black relative">
         <div className="container mx-auto px-4 max-w-5xl">
           <div className="text-center space-y-2 mb-12">
@@ -245,7 +245,7 @@ export default async function GreensAndBrownsStandalonePage() {
 
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
             {steps?.map((st) => (
-              <div key={st.id} className="bg-[#141414] border border-gray-900 rounded-3xl p-6 relative flex flex-col justify-between hover:border-[#FFB300]/30 transition-all group">
+              <div key={st.id} className="bg-[#141414] border border-gray-900 rounded-3xl p-6 relative flex flex-col justify-between hover:border-[#FFB300]/30 transition-all group overflow-hidden">
                 <div className="space-y-3">
                   <div className="flex justify-between items-center">
                     <div className="p-2.5 bg-black rounded-2xl border border-gray-800">
@@ -255,14 +255,22 @@ export default async function GreensAndBrownsStandalonePage() {
                       0{st.step_number}
                     </span>
                   </div>
+
                   <div>
                     <h3 className="text-base font-bold text-white mb-1.5">{st.title}</h3>
                     <p className="text-gray-400 text-xs leading-relaxed">{st.description}</p>
                   </div>
+
+                  {/* DISPLAY UPLOADED STEP IMAGE HERE */}
+                  {st.image_url && (
+                    <div className="aspect-video w-full rounded-2xl overflow-hidden border border-gray-800 mt-3">
+                      <img src={st.image_url} alt={st.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                    </div>
+                  )}
                 </div>
 
                 {st.why_text && (
-                  <div className="mt-4 pt-3 border-t border-gray-900 text-[11px] text-[#FFB300] bg-[#FFB300]/5 p-2 rounded-xl">
+                  <div className="mt-4 pt-3 border-t border-gray-900 text-[11px] text-[#FFB300] bg-[#FFB300]/5 p-2.5 rounded-xl">
                     <strong>Why?</strong> {st.why_text}
                   </div>
                 )}
