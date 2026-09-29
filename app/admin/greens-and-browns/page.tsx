@@ -8,7 +8,7 @@ import {
   Loader2, Save, Settings, Plus, Trash2, 
   Image as ImageIcon, Edit2, BarChart3, 
   CheckCircle2, Share2, Download,
-  Link as LinkIcon, Layers, Sparkles
+  Link as LinkIcon, Layers, Sparkles, X, Upload
 } from 'lucide-react'
 
 export default function GreensAndBrownsAdminPage() {
@@ -23,6 +23,7 @@ export default function GreensAndBrownsAdminPage() {
   const [saving, setSaving] = useState(false)
   const [uploadingField, setUploadingField] = useState<string | null>(null)
 
+  // Edit states
   const [editingStep, setEditingStep] = useState<any>(null)
   const [editingStat, setEditingStat] = useState<any>(null)
   const [editingCard, setEditingCard] = useState<any>(null)
@@ -111,6 +112,9 @@ export default function GreensAndBrownsAdminPage() {
       setSettings((prev: any) => ({ ...prev, [fieldName]: publicMediaUrl }))
     } else if (table === 'gb_process_steps' && recordId) {
       setSteps(prev => prev.map(s => s.id === recordId ? { ...s, image_url: publicMediaUrl } : s))
+      if (editingStep && editingStep.id === recordId) {
+        setEditingStep((prev: any) => ({ ...prev, image_url: publicMediaUrl }))
+      }
       await supabase.from('gb_process_steps').update({ image_url: publicMediaUrl }).eq('id', recordId)
     } else if (table === 'gb_gallery_new') {
       setNewGallery(prev => ({ ...prev, image_url: publicMediaUrl }))
@@ -186,7 +190,7 @@ export default function GreensAndBrownsAdminPage() {
       sort_order: Number(formData.get('step_number'))
     }
     await supabase.from('gb_process_steps').update(updates).eq('id', editingStep.id)
-    toast.success('Step saved')
+    toast.success('Step saved successfully!')
     setEditingStep(null)
     fetchData()
   }
@@ -419,7 +423,7 @@ export default function GreensAndBrownsAdminPage() {
                 
                 <div className="pt-4 border-t border-gray-800">
                   <label className="text-xs text-gray-400 uppercase font-extrabold tracking-wider block mb-2">
-                    Hero Section Photo (Appears on the right side of the Hero section)
+                    Hero Section Photo
                   </label>
                   <div className="flex items-center gap-4">
                     {settings?.hero_image_url ? (
@@ -598,7 +602,7 @@ export default function GreensAndBrownsAdminPage() {
                   </h3>
                   <div className="space-y-3">
                     {steps.map((st) => (
-                      <div key={st.id} className="flex gap-4 p-4 border border-gray-800 rounded-2xl bg-black/40 items-center justify-between">
+                      <div key={st.id} className="flex flex-col sm:flex-row gap-4 p-4 border border-gray-800 rounded-2xl bg-black/40 items-start sm:items-center justify-between">
                         <div className="flex gap-4 items-center">
                           <span className="text-2xl font-black text-amber-500/30">#{st.step_number}</span>
                           <div>
@@ -606,16 +610,33 @@ export default function GreensAndBrownsAdminPage() {
                             <p className="text-xs text-gray-400 max-w-md line-clamp-1">{st.description}</p>
                           </div>
                         </div>
-                        <div className="flex items-center gap-2">
+
+                        {/* Step Image & Action Buttons */}
+                        <div className="flex items-center gap-3 self-end sm:self-center">
+                          <div className="flex items-center gap-2">
+                            {st.image_url ? (
+                              <img src={st.image_url} className="w-10 h-10 rounded-xl object-cover border border-gray-800" />
+                            ) : (
+                              <div className="w-10 h-10 rounded-xl bg-black border border-gray-800 flex items-center justify-center text-[10px] text-gray-600">No Image</div>
+                            )}
+                            <label className="cursor-pointer p-2 bg-gray-800 hover:bg-gray-700 text-white rounded-xl text-[10px] font-bold flex items-center gap-1">
+                              <Upload className="w-3 h-3" />
+                              {uploadingField === `step_${st.id}` ? '...' : 'Photo'}
+                              <input type="file" accept="image/*" className="hidden" onChange={(e) => handleMediaUpload(e, `step_${st.id}`, 'gb_process_steps', st.id)} />
+                            </label>
+                          </div>
+
                           <button
                             onClick={() => setEditingStep(st)}
-                            className="p-2 bg-gray-800 text-[#FFB300] rounded-xl"
+                            className="p-2 bg-gray-800 text-[#FFB300] hover:bg-gray-700 rounded-xl"
+                            title="Edit Step Text"
                           >
                             <Edit2 className="w-3.5 h-3.5" />
                           </button>
                           <button
                             onClick={() => handleDeleteStep(st.id)}
-                            className="p-2 bg-red-950/20 text-red-400 rounded-xl"
+                            className="p-2 bg-red-950/20 text-red-400 hover:bg-red-900/40 rounded-xl"
+                            title="Delete Step"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
                           </button>
@@ -644,9 +665,9 @@ export default function GreensAndBrownsAdminPage() {
                   <p className="text-xs text-gray-300 font-bold">{st.label}</p>
                   <button
                     onClick={() => setEditingStat(st)}
-                    className="w-full py-2 bg-gray-900 border border-gray-800 rounded-xl text-xs hover:text-[#FFB300]"
+                    className="w-full py-2 bg-gray-900 border border-gray-800 rounded-xl text-xs hover:text-[#FFB300] flex items-center justify-center gap-1.5"
                   >
-                    Edit Value
+                    <Edit2 className="w-3 h-3" /> Edit Value
                   </button>
                 </div>
               ))}
@@ -808,7 +829,9 @@ export default function GreensAndBrownsAdminPage() {
                     <h4 className="font-bold text-white">{card.title}</h4>
                   </div>
                   <p className="text-xs text-gray-400">{card.description}</p>
-                  <button onClick={() => setEditingCard(card)} className="py-2 px-4 bg-gray-900 border border-gray-800 rounded-xl text-xs text-[#FFB300]">Edit Card</button>
+                  <button onClick={() => setEditingCard(card)} className="py-2 px-4 bg-gray-900 border border-gray-800 rounded-xl text-xs text-[#FFB300] flex items-center gap-1.5">
+                    <Edit2 className="w-3 h-3" /> Edit Card
+                  </button>
                 </div>
               ))}
             </div>
@@ -852,6 +875,149 @@ export default function GreensAndBrownsAdminPage() {
                   <Download className="w-3.5 h-3.5" /> Download High-Res 1000px QR
                 </a>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* ========================================================= */}
+        {/* EDIT MODAL POPUPS (FIXES THE FROZEN EDIT BUTTON ISSUE)   */}
+        {/* ========================================================= */}
+
+        {/* 1. EDIT PROCESS STEP MODAL */}
+        {editingStep && (
+          <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <div className="bg-[#141414] border border-gray-800 p-6 md:p-8 rounded-3xl max-w-lg w-full space-y-4 shadow-2xl">
+              <div className="flex justify-between items-center border-b border-gray-800 pb-3">
+                <h3 className="text-lg font-bold text-white">Edit Step #{editingStep.step_number}</h3>
+                <button onClick={() => setEditingStep(null)} className="p-1 hover:bg-gray-800 rounded-lg text-gray-400 hover:text-white">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <form onSubmit={handleUpdateStep} className="space-y-4">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="text-xs text-gray-400">Step #</label>
+                    <input name="step_number" defaultValue={editingStep.step_number} className="w-full bg-black border border-gray-800 rounded-xl p-3 text-white text-xs outline-none focus:border-[#FFB300]" />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs text-gray-400">Icon Name</label>
+                    <input name="icon_name" defaultValue={editingStep.icon_name} className="w-full bg-black border border-gray-800 rounded-xl p-3 text-white text-xs font-mono outline-none focus:border-[#FFB300]" />
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs text-gray-400">Title</label>
+                  <input name="title" defaultValue={editingStep.title} className="w-full bg-black border border-gray-800 rounded-xl p-3 text-white text-xs outline-none focus:border-[#FFB300]" />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs text-gray-400">Description</label>
+                  <textarea name="description" defaultValue={editingStep.description} rows={2} className="w-full bg-black border border-gray-800 rounded-xl p-3 text-white text-xs outline-none focus:border-[#FFB300]" />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs text-gray-400">Why Explanation</label>
+                  <textarea name="why_text" defaultValue={editingStep.why_text} rows={2} className="w-full bg-black border border-gray-800 rounded-xl p-3 text-white text-xs outline-none focus:border-[#FFB300]" />
+                </div>
+
+                <div className="space-y-1 pt-2">
+                  <label className="text-xs text-gray-400 block mb-1">Step Photo / Image</label>
+                  <div className="flex items-center gap-4">
+                    {editingStep.image_url ? (
+                      <img src={editingStep.image_url} className="w-16 h-16 rounded-xl object-cover border border-gray-800" />
+                    ) : (
+                      <div className="w-16 h-16 rounded-xl bg-black border border-gray-800 flex items-center justify-center text-[10px] text-gray-500">No Image</div>
+                    )}
+                    <label className="cursor-pointer bg-gray-800 hover:bg-gray-700 text-white font-bold py-2 px-3 rounded-xl text-xs flex items-center gap-1.5">
+                      <Upload className="w-3.5 h-3.5" />
+                      {uploadingField === `step_${editingStep.id}` ? 'Uploading...' : 'Upload Image'}
+                      <input type="file" accept="image/*" className="hidden" onChange={(e) => handleMediaUpload(e, `step_${editingStep.id}`, 'gb_process_steps', editingStep.id)} />
+                    </label>
+                  </div>
+                </div>
+
+                <div className="flex gap-2 justify-end pt-4 border-t border-gray-800">
+                  <button type="button" onClick={() => setEditingStep(null)} className="px-4 py-2 bg-gray-800 rounded-xl text-xs text-gray-300 hover:bg-gray-700">Cancel</button>
+                  <button type="submit" className="px-5 py-2 bg-[#FFB300] text-black font-bold rounded-xl text-xs uppercase hover:bg-[#FFCA28]">Save Changes</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* 2. EDIT COUNTER / METRIC MODAL */}
+        {editingStat && (
+          <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <div className="bg-[#141414] border border-gray-800 p-6 rounded-3xl max-w-md w-full space-y-4 shadow-2xl">
+              <div className="flex justify-between items-center border-b border-gray-800 pb-3">
+                <h3 className="text-lg font-bold text-white">Edit Impact Counter</h3>
+                <button onClick={() => setEditingStat(null)} className="p-1 hover:bg-gray-800 rounded-lg text-gray-400 hover:text-white">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <form onSubmit={handleSaveStat} className="space-y-4">
+                <div className="space-y-1">
+                  <label className="text-xs text-gray-400">Value (e.g. 5,000+)</label>
+                  <input name="value" defaultValue={editingStat.value} className="w-full bg-black border border-gray-800 rounded-xl p-3 text-white text-xs outline-none focus:border-[#FFB300]" />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs text-gray-400">Unit (e.g. KG, Temples, Tons)</label>
+                  <input name="unit" defaultValue={editingStat.unit} className="w-full bg-black border border-gray-800 rounded-xl p-3 text-white text-xs outline-none focus:border-[#FFB300]" />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs text-gray-400">Label Text</label>
+                  <input name="label" defaultValue={editingStat.label} className="w-full bg-black border border-gray-800 rounded-xl p-3 text-white text-xs outline-none focus:border-[#FFB300]" />
+                </div>
+
+                <div className="flex gap-2 justify-end pt-4 border-t border-gray-800">
+                  <button type="button" onClick={() => setEditingStat(null)} className="px-4 py-2 bg-gray-800 rounded-xl text-xs text-gray-300 hover:bg-gray-700">Cancel</button>
+                  <button type="submit" className="px-5 py-2 bg-[#FFB300] text-black font-bold rounded-xl text-xs uppercase hover:bg-[#FFCA28]">Save Counter</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* 3. EDIT INVOLVEMENT CARD MODAL */}
+        {editingCard && (
+          <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <div className="bg-[#141414] border border-gray-800 p-6 rounded-3xl max-w-md w-full space-y-4 shadow-2xl">
+              <div className="flex justify-between items-center border-b border-gray-800 pb-3">
+                <h3 className="text-lg font-bold text-white">Edit Involvement Card</h3>
+                <button onClick={() => setEditingCard(null)} className="p-1 hover:bg-gray-800 rounded-lg text-gray-400 hover:text-white">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <form onSubmit={handleUpdateCard} className="space-y-4">
+                <div className="space-y-1">
+                  <label className="text-xs text-gray-400">Emoji Icon</label>
+                  <input name="icon_emoji" defaultValue={editingCard.icon_emoji} className="w-full bg-black border border-gray-800 rounded-xl p-3 text-white text-xs outline-none focus:border-[#FFB300]" />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs text-gray-400">Title</label>
+                  <input name="title" defaultValue={editingCard.title} className="w-full bg-black border border-gray-800 rounded-xl p-3 text-white text-xs outline-none focus:border-[#FFB300]" />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs text-gray-400">Description</label>
+                  <textarea name="description" defaultValue={editingCard.description} rows={2} className="w-full bg-black border border-gray-800 rounded-xl p-3 text-white text-xs outline-none focus:border-[#FFB300]" />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs text-gray-400">Button Label</label>
+                  <input name="cta_text" defaultValue={editingCard.cta_text} className="w-full bg-black border border-gray-800 rounded-xl p-3 text-white text-xs outline-none focus:border-[#FFB300]" />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs text-gray-400">Button Link</label>
+                  <input name="cta_url" defaultValue={editingCard.cta_url} className="w-full bg-black border border-gray-800 rounded-xl p-3 text-white text-xs outline-none focus:border-[#FFB300]" />
+                </div>
+
+                <div className="flex gap-2 justify-end pt-4 border-t border-gray-800">
+                  <button type="button" onClick={() => setEditingCard(null)} className="px-4 py-2 bg-gray-800 rounded-xl text-xs text-gray-300 hover:bg-gray-700">Cancel</button>
+                  <button type="submit" className="px-5 py-2 bg-[#FFB300] text-black font-bold rounded-xl text-xs uppercase hover:bg-[#FFCA28]">Save Card</button>
+                </div>
+              </form>
             </div>
           </div>
         )}
