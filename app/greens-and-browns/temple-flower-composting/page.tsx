@@ -6,18 +6,17 @@ import {
   Leaf, ShieldAlert
 } from 'lucide-react'
 
-// Force Next.js to always fetch fresh data from Supabase (bypasses cache when logo/text changes in Admin)
 export const dynamic = 'force-dynamic'
 
 export async function generateMetadata(): Promise<Metadata> {
   const supabase = await createClient()
-  const { data: settings } = await supabase
+  const { data: settingsList } = await supabase
     .from('gb_project_settings')
     .select('*')
     .order('created_at', { ascending: false })
     .limit(1)
-    .maybeSingle()
 
+  const settings = settingsList?.[0]
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.sampigefoundation.com'
   const finalTitle = settings?.meta_title || 'Greens & Browns — Temple Flower Composting'
   const finalDesc = settings?.meta_description || 'Discover how Greens & Browns diverts temple flower and leaf waste from landfills through a 6-step composting process.'
@@ -51,14 +50,14 @@ export default async function GreensAndBrownsStandalonePage() {
   const supabase = await createClient()
 
   const [
-    { data: settings },
+    { data: settingsList },
     { data: steps },
     { data: stats },
     { data: monthlyData },
     { data: gallery },
     { data: participation }
   ] = await Promise.all([
-    supabase.from('gb_project_settings').select('*').order('created_at', { ascending: false }).limit(1).maybeSingle(),
+    supabase.from('gb_project_settings').select('*').order('created_at', { ascending: false }).limit(1),
     supabase.from('gb_process_steps').select('*').eq('is_active', true).order('sort_order', { ascending: true }),
     supabase.from('gb_impact_stats').select('*').eq('is_active', true).order('sort_order', { ascending: true }),
     supabase.from('gb_monthly_impact').select('*').eq('is_active', true).order('year', { ascending: false }).order('sort_order', { ascending: true }),
@@ -66,13 +65,14 @@ export default async function GreensAndBrownsStandalonePage() {
     supabase.from('gb_participation').select('*').eq('is_active', true).order('sort_order', { ascending: true })
   ])
 
+  const settings = settingsList?.[0]
   const sumCollected = monthlyData?.reduce((acc, curr) => acc + (curr.waste_collected_kg || 0), 0) || 0
   const sumDiverted = monthlyData?.reduce((acc, curr) => acc + (curr.waste_diverted_kg || 0), 0) || 0
 
   return (
     <article className="min-h-screen bg-black text-white selection:bg-[#FFB300] selection:text-black font-sans">
       
-      {/* DEDICATED HEADER WITH YOUR UPLOADED LOGO */}
+      {/* HEADER WITH LOGO */}
       <header className="sticky top-0 z-50 bg-black/90 backdrop-blur-md border-b border-gray-800/80 px-4 py-3">
         <div className="container mx-auto max-w-5xl flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -137,6 +137,11 @@ export default async function GreensAndBrownsStandalonePage() {
               {settings?.hero_image_url ? (
                 <div className="rounded-3xl overflow-hidden aspect-[4/3] border border-gray-800 shadow-2xl">
                   <img src={settings.hero_image_url} alt="Temple Flower waste collection" className="w-full h-full object-cover" />
+                </div>
+              ) : settings?.logo_url ? (
+                <div className="rounded-3xl overflow-hidden aspect-[4/3] bg-[#141414] border border-gray-800 flex flex-col items-center justify-center p-8 text-center shadow-2xl">
+                  <img src={settings.logo_url} alt="Greens & Browns" className="max-h-32 w-auto object-contain mb-4" />
+                  <span className="text-xs text-[#FFB300] font-bold uppercase tracking-widest">Temple Flower Composting Initiative</span>
                 </div>
               ) : (
                 <div className="rounded-3xl overflow-hidden aspect-[4/3] bg-zinc-900 border border-gray-800 flex flex-col items-center justify-center p-6 text-center">

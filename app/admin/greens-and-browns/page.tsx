@@ -5,10 +5,10 @@ import { createClient } from '@/lib/supabase/client'
 import toast, { Toaster } from 'react-hot-toast'
 import Sidebar from '@/components/admin/Sidebar'
 import {
-  Loader2, Save, Settings, Upload, Plus, Trash2, 
-  Image as ImageIcon, Edit2, BarChart3, HelpCircle, 
-  MapPin, CheckCircle2, ChevronRight, Share2, Download,
-  Link as LinkIcon, RefreshCw, Layers, Sparkles, AlertTriangle
+  Loader2, Save, Settings, Plus, Trash2, 
+  Image as ImageIcon, Edit2, BarChart3, 
+  CheckCircle2, Share2, Download,
+  Link as LinkIcon, Layers, Sparkles
 } from 'lucide-react'
 
 export default function GreensAndBrownsAdminPage() {
@@ -23,7 +23,6 @@ export default function GreensAndBrownsAdminPage() {
   const [saving, setSaving] = useState(false)
   const [uploadingField, setUploadingField] = useState<string | null>(null)
 
-  // Modals / Add states
   const [editingStep, setEditingStep] = useState<any>(null)
   const [editingStat, setEditingStat] = useState<any>(null)
   const [editingCard, setEditingCard] = useState<any>(null)
@@ -44,14 +43,14 @@ export default function GreensAndBrownsAdminPage() {
     setLoading(true)
     try {
       const [
-        { data: settingsData },
+        { data: settingsList },
         { data: stepsData },
         { data: statsData },
         { data: monthlyDataRes },
         { data: galleryData },
         { data: partData }
       ] = await Promise.all([
-        supabase.from('gb_project_settings').select('*').limit(1).maybeSingle(),
+        supabase.from('gb_project_settings').select('*').order('created_at', { ascending: false }),
         supabase.from('gb_process_steps').select('*').order('sort_order', { ascending: true }),
         supabase.from('gb_impact_stats').select('*').order('sort_order', { ascending: true }),
         supabase.from('gb_monthly_impact').select('*').order('year', { ascending: false }).order('sort_order', { ascending: true }),
@@ -59,12 +58,11 @@ export default function GreensAndBrownsAdminPage() {
         supabase.from('gb_participation').select('*').order('sort_order', { ascending: true })
       ])
 
-      if (settingsData) {
-        setSettings(settingsData)
+      if (settingsList && settingsList.length > 0) {
+        setSettings(settingsList[0])
       } else {
-        // Auto-create initial settings row if database table is empty
-        const { data: newSettings } = await supabase.from('gb_project_settings').insert([{}]).select().single()
-        setSettings(newSettings)
+        const { data: created } = await supabase.from('gb_project_settings').insert([{}]).select().single()
+        setSettings(created)
       }
 
       setSteps(stepsData || [])
@@ -74,20 +72,16 @@ export default function GreensAndBrownsAdminPage() {
       setParticipation(partData || [])
     } catch (error) {
       console.error(error)
-      toast.error('Failed to load settings')
+      toast.error('Error fetching settings')
     } finally {
       setLoading(false)
     }
   }
 
-  // Handle media uploads safely
+  // Handle direct image uploads securely
   async function handleMediaUpload(e: React.ChangeEvent<HTMLInputElement>, fieldName: string, table: string = 'gb_project_settings', recordId?: string) {
     const file = e.target.files?.[0]
     if (!file) return
-    if (!file.type.startsWith('image/')) {
-      toast.error('Please upload an image file.')
-      return
-    }
 
     setUploadingField(fieldName)
     const fileExt = file.name.split('.').pop()
@@ -98,7 +92,7 @@ export default function GreensAndBrownsAdminPage() {
       .upload(fileName, file, { upsert: true, contentType: file.type })
 
     if (uploadError) {
-      toast.error('Upload failed')
+      toast.error('Image upload failed')
       setUploadingField(null)
       return
     }
@@ -107,15 +101,14 @@ export default function GreensAndBrownsAdminPage() {
     const publicMediaUrl = pub.publicUrl
 
     if (table === 'gb_project_settings') {
-      setSettings((prev: any) => ({ ...prev, [fieldName]: publicMediaUrl }))
-      
-      // Safe check: If settings row exists, update it. If null, insert a new row.
-      if (settings?.id) {
-        await supabase.from('gb_project_settings').update({ [fieldName]: publicMediaUrl }).eq('id', settings.id)
+      const targetId = settings?.id
+      if (targetId) {
+        await supabase.from('gb_project_settings').update({ [fieldName]: publicMediaUrl }).eq('id', targetId)
       } else {
         const { data: created } = await supabase.from('gb_project_settings').insert([{ [fieldName]: publicMediaUrl }]).select().single()
         if (created) setSettings(created)
       }
+      setSettings((prev: any) => ({ ...prev, [fieldName]: publicMediaUrl }))
     } else if (table === 'gb_process_steps' && recordId) {
       setSteps(prev => prev.map(s => s.id === recordId ? { ...s, image_url: publicMediaUrl } : s))
       await supabase.from('gb_process_steps').update({ image_url: publicMediaUrl }).eq('id', recordId)
@@ -128,7 +121,7 @@ export default function GreensAndBrownsAdminPage() {
     e.target.value = ''
   }
 
-  // Save settings safely
+  // Save Text Fields
   async function handleSaveSettings(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     setSaving(true)
@@ -161,31 +154,23 @@ export default function GreensAndBrownsAdminPage() {
     }
 
     if (settings?.id) {
-      const { error } = await supabase.from('gb_project_settings').update(updates).eq('id', settings.id)
-      if (error) toast.error('Failed to update')
-      else toast.success('Saved live!')
+      await supabase.from('gb_project_settings').update(updates).eq('id', settings.id)
     } else {
       const { data: created } = await supabase.from('gb_project_settings').insert([updates]).select().single()
       if (created) setSettings(created)
-      toast.success('Saved live!')
     }
 
+    toast.success('Settings saved live!')
     setSaving(false)
   }
 
-  // Manage Process Steps
+  // Manage Steps
   async function handleCreateStep(e: React.FormEvent) {
     e.preventDefault()
-    const { error } = await supabase.from('gb_process_steps').insert([{
-      ...newStep,
-      sort_order: newStep.step_number
-    }])
-    if (error) toast.error('Failed to add step')
-    else {
-      toast.success('Step added!')
-      setNewStep({ step_number: steps.length + 2, title: '', description: '', why_text: '', icon_name: 'Leaf' })
-      fetchData()
-    }
+    await supabase.from('gb_process_steps').insert([{ ...newStep, sort_order: newStep.step_number }])
+    toast.success('Step added!')
+    setNewStep({ step_number: steps.length + 2, title: '', description: '', why_text: '', icon_name: 'Leaf' })
+    fetchData()
   }
 
   async function handleUpdateStep(e: React.FormEvent<HTMLFormElement>) {
@@ -228,7 +213,7 @@ export default function GreensAndBrownsAdminPage() {
     fetchData()
   }
 
-  // Manage Monthly Records
+  // Manage Monthly
   async function handleAddMonth(e: React.FormEvent) {
     e.preventDefault()
     await supabase.from('gb_monthly_impact').insert([newMonth])
@@ -251,7 +236,7 @@ export default function GreensAndBrownsAdminPage() {
       return
     }
     await supabase.from('gb_gallery').insert([newGallery])
-    toast.success('Photo added to gallery')
+    toast.success('Photo added')
     setNewGallery({ category: 'Collection', caption: '', image_url: '' })
     fetchData()
   }
@@ -293,9 +278,6 @@ export default function GreensAndBrownsAdminPage() {
     }
     if (settings?.id) {
       await supabase.from('gb_project_settings').update(updates).eq('id', settings.id)
-    } else {
-      const { data: created } = await supabase.from('gb_project_settings').insert([updates]).select().single()
-      if (created) setSettings(created)
     }
     toast.success('SEO updated!')
     setSaving(false)
@@ -385,7 +367,7 @@ export default function GreensAndBrownsAdminPage() {
                       Greens & Browns Campaign Logo
                     </label>
                     <p className="text-xs text-gray-500">
-                      Upload campaign logo. Transparent background PNG recommended.
+                      Upload campaign logo. Appears in the top header and hero section.
                     </p>
                     <div className="flex items-center gap-4 mt-3">
                       {settings?.logo_url ? (
@@ -419,7 +401,7 @@ export default function GreensAndBrownsAdminPage() {
 
               {/* Hero Section */}
               <div className="bg-[#141414] p-6 md:p-8 rounded-3xl border border-gray-800 space-y-4">
-                <h3 className="text-lg font-bold text-white border-b border-gray-800 pb-4">Hero Section</h3>
+                <h3 className="text-lg font-bold text-white border-b border-gray-800 pb-4">Hero Section & Photo</h3>
                 <div className="grid md:grid-cols-2 gap-4">
                   <div className="space-y-1">
                     <label className="text-xs text-gray-400">Hero Badge Subheading</label>
@@ -434,20 +416,10 @@ export default function GreensAndBrownsAdminPage() {
                   <label className="text-xs text-gray-400">Hero Description</label>
                   <textarea name="hero_description" defaultValue={settings?.hero_description} rows={3} className="w-full bg-black border border-gray-800 rounded-xl px-4 py-3 text-white focus:border-[#FFB300] outline-none" />
                 </div>
-                <div className="grid md:grid-cols-2 gap-4">
-                  <div className="space-y-1">
-                    <label className="text-xs text-gray-400">Primary Button Text</label>
-                    <input name="hero_cta_text" defaultValue={settings?.hero_cta_text || 'Explore the Process'} className="w-full bg-black border border-gray-800 rounded-xl px-4 py-3 text-white focus:border-[#FFB300] outline-none" />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-xs text-gray-400">Secondary Button Text</label>
-                    <input name="hero_cta_secondary_text" defaultValue={settings?.hero_cta_secondary_text || 'See Our Impact'} className="w-full bg-black border border-gray-800 rounded-xl px-4 py-3 text-white focus:border-[#FFB300] outline-none" />
-                  </div>
-                </div>
                 
-                <div className="pt-4">
+                <div className="pt-4 border-t border-gray-800">
                   <label className="text-xs text-gray-400 uppercase font-extrabold tracking-wider block mb-2">
-                    Hero Section Photo
+                    Hero Section Photo (Appears on the right side of the Hero section)
                   </label>
                   <div className="flex items-center gap-4">
                     {settings?.hero_image_url ? (
@@ -455,10 +427,10 @@ export default function GreensAndBrownsAdminPage() {
                         <img src={settings.hero_image_url} className="w-full h-full object-cover" />
                       </div>
                     ) : (
-                      <div className="w-48 aspect-video bg-black rounded-xl border border-gray-800 flex items-center justify-center text-xs text-gray-600">No Image Uploaded</div>
+                      <div className="w-48 aspect-video bg-black rounded-xl border border-gray-800 flex items-center justify-center text-xs text-gray-600">No Photo Uploaded</div>
                     )}
                     <label className="cursor-pointer bg-gray-800 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-xl text-xs">
-                      {uploadingField === 'hero_image_url' ? 'Uploading...' : 'Upload Image'}
+                      {uploadingField === 'hero_image_url' ? 'Uploading...' : 'Upload Hero Photo'}
                       <input type="file" accept="image/*" className="hidden" onChange={(e) => handleMediaUpload(e, 'hero_image_url')} />
                     </label>
                   </div>
@@ -467,7 +439,7 @@ export default function GreensAndBrownsAdminPage() {
 
               {/* Problem Section */}
               <div className="bg-[#141414] p-6 md:p-8 rounded-3xl border border-gray-800 space-y-4">
-                <h3 className="text-lg font-bold text-white border-b border-gray-800 pb-4">The Problem</h3>
+                <h3 className="text-lg font-bold text-white border-b border-gray-800 pb-4">The Problem & Photo</h3>
                 <div className="space-y-1">
                   <label className="text-xs text-gray-400">Problem Title</label>
                   <input name="problem_heading" defaultValue={settings?.problem_heading} className="w-full bg-black border border-gray-800 rounded-xl px-4 py-3 text-white focus:border-[#FFB300] outline-none" />
@@ -482,7 +454,7 @@ export default function GreensAndBrownsAdminPage() {
                     <textarea name="problem_quote" defaultValue={settings?.problem_quote} rows={4} className="w-full bg-black border border-gray-800 rounded-xl px-4 py-3 text-white focus:border-[#FFB300] outline-none" />
                   </div>
                 </div>
-                <div className="pt-4">
+                <div className="pt-4 border-t border-gray-800">
                   <label className="text-xs text-gray-400 uppercase font-extrabold tracking-wider block mb-2">
                     Problem Section Photo
                   </label>
@@ -492,10 +464,10 @@ export default function GreensAndBrownsAdminPage() {
                         <img src={settings.problem_image_url} className="w-full h-full object-cover" />
                       </div>
                     ) : (
-                      <div className="w-48 aspect-video bg-black rounded-xl border border-gray-800 flex items-center justify-center text-xs text-gray-600">No Image Uploaded</div>
+                      <div className="w-48 aspect-video bg-black rounded-xl border border-gray-800 flex items-center justify-center text-xs text-gray-600">No Photo Uploaded</div>
                     )}
                     <label className="cursor-pointer bg-gray-800 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-xl text-xs">
-                      {uploadingField === 'problem_image_url' ? 'Uploading...' : 'Upload Image'}
+                      {uploadingField === 'problem_image_url' ? 'Uploading...' : 'Upload Problem Photo'}
                       <input type="file" accept="image/*" className="hidden" onChange={(e) => handleMediaUpload(e, 'problem_image_url')} />
                     </label>
                   </div>
@@ -550,7 +522,7 @@ export default function GreensAndBrownsAdminPage() {
                   disabled={saving}
                   className="px-8 py-4 bg-[#FFB300] text-black text-sm font-extrabold uppercase rounded-xl hover:bg-[#FFCA28] flex items-center gap-2"
                 >
-                  {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />} Save Changes Live
+                  {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />} Save Text Changes
                 </button>
               </div>
             </form>
