@@ -6,6 +6,7 @@ import {
   Leaf, ShieldAlert
 } from 'lucide-react'
 
+// Force Next.js to always fetch fresh data from Supabase
 export const dynamic = 'force-dynamic'
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -72,7 +73,7 @@ export default async function GreensAndBrownsStandalonePage() {
   return (
     <article className="min-h-screen bg-black text-white selection:bg-[#FFB300] selection:text-black font-sans">
       
-      {/* HEADER WITH LOGO */}
+      {/* HEADER WITH LOGO + TITLE TEXT SIDE BY SIDE */}
       <header className="sticky top-0 z-50 bg-black/90 backdrop-blur-md border-b border-gray-800/80 px-4 py-3">
         <div className="container mx-auto max-w-5xl flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -80,16 +81,14 @@ export default async function GreensAndBrownsStandalonePage() {
               <img 
                 src={settings.logo_url} 
                 alt="Greens & Browns Logo" 
-                className="h-10 md:h-12 w-auto object-contain" 
+                className="h-8 md:h-10 w-auto object-contain" 
               />
             ) : (
-              <div className="flex items-center gap-2">
-                <Leaf className="w-5 h-5 text-[#FFB300]" />
-                <span className="font-extrabold text-white text-base md:text-lg tracking-wide">
-                  {settings?.project_name || 'GREENS & BROWNS'}
-                </span>
-              </div>
+              <Leaf className="w-5 h-5 text-[#FFB300]" />
             )}
+            <span className="font-black text-white text-base md:text-lg tracking-wider uppercase">
+              {settings?.project_name || 'GREENS & BROWNS'}
+            </span>
           </div>
         </div>
       </header>
