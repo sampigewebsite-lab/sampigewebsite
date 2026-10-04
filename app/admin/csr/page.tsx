@@ -30,7 +30,8 @@ type Tab = 'enquiries' | 'partners' | 'activities' | 'statistics' | 'content'
 
 interface Partner {
   id: string
-  company_name: string
+  company_name?: string
+  name?: string
   logo_url: string
   website_url: string
   display_order: number
@@ -160,15 +161,25 @@ export default function AdminCSRPage() {
     return data.publicUrl
   }
 
-  // Partners CRUD
+  // Partners CRUD (FIXED: Included `name` column mapping for Supabase constraint)
   const savePartner = async () => {
     if (!partnerForm.company_name.trim()) return toast.error('Company name required')
+    
+    const partnerPayload = {
+      name: partnerForm.company_name.trim(),
+      company_name: partnerForm.company_name.trim(),
+      logo_url: partnerForm.logo_url,
+      website_url: partnerForm.website_url,
+      display_order: partnerForm.display_order,
+      is_active: partnerForm.is_active,
+    }
+
     if (editingPartner) {
-      const { error } = await supabase.from('csr_partners').update({ ...partnerForm, updated_at: new Date().toISOString() }).eq('id', editingPartner.id)
+      const { error } = await supabase.from('csr_partners').update({ ...partnerPayload, updated_at: new Date().toISOString() }).eq('id', editingPartner.id)
       if (error) return toast.error(error.message)
       toast.success('Partner updated')
     } else {
-      const { error } = await supabase.from('csr_partners').insert(partnerForm)
+      const { error } = await supabase.from('csr_partners').insert(partnerPayload)
       if (error) return toast.error(error.message)
       toast.success('Partner added')
     }
@@ -436,7 +447,7 @@ export default function AdminCSRPage() {
                       {p.logo_url ? <img src={p.logo_url} className="max-h-full max-w-full object-contain" /> : <Landmark className="text-gray-700" />}
                     </div>
                     <div>
-                      <h4 className="text-white font-bold">{p.company_name}</h4>
+                      <h4 className="text-white font-bold">{p.company_name || p.name}</h4>
                       <p className="text-xs text-[#B0B0B0]">Order: {p.display_order}</p>
                     </div>
                   </div>
@@ -444,7 +455,13 @@ export default function AdminCSRPage() {
                     <button
                       onClick={() => {
                         setEditingPartner(p)
-                        setPartnerForm({ company_name: p.company_name, logo_url: p.logo_url || '', website_url: p.website_url || '', display_order: p.display_order, is_active: p.is_active })
+                        setPartnerForm({ 
+                          company_name: p.company_name || p.name || '', 
+                          logo_url: p.logo_url || '', 
+                          website_url: p.website_url || '', 
+                          display_order: p.display_order, 
+                          is_active: p.is_active 
+                        })
                         setShowPartnerForm(true)
                       }}
                       className="text-gold-500 p-2 hover:bg-white/5 rounded"
@@ -576,7 +593,7 @@ export default function AdminCSRPage() {
                     </div>
                   </div>
 
-                  {/* Event Gallery (optional, max 6) */}
+                  {/* Event Gallery */}
                   <div className="md:col-span-2 space-y-3 border-t border-gray-800 pt-5">
                     <div className="flex items-center justify-between">
                       <label className="text-sm text-gold-500 font-bold uppercase tracking-wider">
@@ -685,7 +702,7 @@ export default function AdminCSRPage() {
                   />
                 </div>
 
-                {/* Steps + hover images */}
+                {/* Steps */}
                 <div className="space-y-4 border-t border-gray-800 pt-4">
                   <label className="text-sm text-gold-500 font-bold block uppercase tracking-wider">
                     Implementation Steps & Hover Images
