@@ -41,12 +41,7 @@ export default function EditSeoService() {
     hero_cta_2_label: 'Learn More',
     hero_cta_2_link: '#features',
 
-    hero_strip_items: [
-      { icon: 'MapPin', title: 'Malleshwaram Based', desc: 'Local community center' },
-      { icon: 'Recycle', title: '100% Recycled', desc: 'Zero landfill policy' },
-      { icon: 'Users', title: 'Community Led', desc: 'Working together for Bangalore' },
-      { icon: 'Shield', title: 'CSR Certified', desc: 'Documented social impact' },
-    ],
+    hero_strip_items: [] as any[], // Start empty to match DB
 
     split_badge: 'Grow Together',
     split_heading: '',
@@ -195,7 +190,7 @@ export default function EditSeoService() {
             </button>
             <div>
               <h1 className="text-2xl font-bold text-white">{isNew ? 'Create New SEO Landing Page' : 'Edit SEO Landing Page'}</h1>
-              <p className="text-xs text-gray-400 mt-1">Structured GreenRoots layout adapted for Sampige dark/gold theme.</p>
+              <p className="text-xs text-gray-400 mt-1">Structured layout adapted for Sampige dark/gold theme.</p>
             </div>
           </div>
           <button
@@ -208,6 +203,7 @@ export default function EditSeoService() {
         </div>
 
         <form onSubmit={handleSave} className="space-y-8">
+          {/* 1. Page Meta & URL Slug */}
           <div className="bg-[#1A1A1A] rounded-2xl p-6 border border-gold-500/10 space-y-4">
             <h2 className="text-lg font-bold text-gold-500 border-b border-gold-500/10 pb-2">1. Page Meta & URL Slug</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -251,6 +247,7 @@ export default function EditSeoService() {
             </div>
           </div>
 
+          {/* 2. Hero Banner */}
           <div className="bg-[#1A1A1A] rounded-2xl p-6 border border-gold-500/10 space-y-4">
             <h2 className="text-lg font-bold text-gold-500 border-b border-gold-500/10 pb-2">2. Hero Banner (Left Text, Right Image)</h2>
             <div className="grid md:grid-cols-2 gap-4">
@@ -278,7 +275,7 @@ export default function EditSeoService() {
               <div className="flex items-center gap-4">
                 {form.hero_image ? (
                   <div className="relative w-32 h-20 rounded-lg overflow-hidden border border-gold-500/30">
-                    <img src={form.hero_image} className="w-full h-full object-cover" />
+                    <img src={form.hero_image} className="w-full h-full object-cover" alt="Hero" />
                     <button type="button" onClick={() => setForm({ ...form, hero_image: '' })} className="absolute top-1 right-1 bg-red-600 rounded-full p-1"><X className="w-3 h-3" /></button>
                   </div>
                 ) : (
@@ -292,24 +289,64 @@ export default function EditSeoService() {
             </div>
           </div>
 
+          {/* 3. Hero Overlapping Feature Strip - UPDATED WITH ADD BUTTON */}
           <div className="bg-[#1A1A1A] rounded-2xl p-6 border border-gold-500/10 space-y-4">
-            <h2 className="text-lg font-bold text-gold-500 border-b border-gold-500/10 pb-2">3. Hero Overlapping Feature Strip (4 Cards)</h2>
+            <h2 className="text-lg font-bold text-gold-500 border-b border-gold-500/10 pb-2">3. Hero Overlapping Feature Strip (Up to 4 Cards)</h2>
+            
+            {form.hero_strip_items.length === 0 && (
+              <p className="text-gray-500 text-sm italic">No feature cards added yet.</p>
+            )}
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {form.hero_strip_items.map((item, idx) => (
                 <div key={idx} className="bg-black/50 p-4 rounded-xl border border-gray-800 space-y-2">
-                  <div className="flex justify-between items-center">
-                    <span className="text-xs font-bold text-gold-500">Card {idx + 1}</span>
+                  <div className="flex justify-between items-center mb-1">
+                    <span className="text-xs font-bold text-gold-500 uppercase tracking-wider">Card {idx + 1}</span>
+                    <button 
+                      type="button" 
+                      onClick={() => setForm({ ...form, hero_strip_items: form.hero_strip_items.filter((_, i) => i !== idx) })} 
+                      className="text-red-400 p-1 hover:bg-red-900/30 rounded transition-colors"
+                      title="Delete Card"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
                   </div>
-                  <select value={item.icon} onChange={(e) => { const next = [...form.hero_strip_items]; next[idx].icon = e.target.value; setForm({ ...form, hero_strip_items: next }) }} className={inputClass}>
+                  <select 
+                    value={item.icon} 
+                    onChange={(e) => { const next = [...form.hero_strip_items]; next[idx].icon = e.target.value; setForm({ ...form, hero_strip_items: next }) }} 
+                    className={inputClass}
+                  >
                     {ICON_OPTIONS.map((ic) => <option key={ic} value={ic}>{ic}</option>)}
                   </select>
-                  <input value={item.title} onChange={(e) => { const next = [...form.hero_strip_items]; next[idx].title = e.target.value; setForm({ ...form, hero_strip_items: next }) }} placeholder="Card Title" className={inputClass} />
-                  <input value={item.desc} onChange={(e) => { const next = [...form.hero_strip_items]; next[idx].desc = e.target.value; setForm({ ...form, hero_strip_items: next }) }} placeholder="Card Description" className={inputClass} />
+                  <input 
+                    value={item.title} 
+                    onChange={(e) => { const next = [...form.hero_strip_items]; next[idx].title = e.target.value; setForm({ ...form, hero_strip_items: next }) }} 
+                    placeholder="Card Title (e.g. 100% Recycled)" 
+                    className={inputClass} 
+                  />
+                  <input 
+                    value={item.desc} 
+                    onChange={(e) => { const next = [...form.hero_strip_items]; next[idx].desc = e.target.value; setForm({ ...form, hero_strip_items: next }) }} 
+                    placeholder="Card Description" 
+                    className={inputClass} 
+                  />
                 </div>
               ))}
             </div>
+
+            {/* The Missing Add Button! */}
+            {form.hero_strip_items.length < 4 && (
+              <button 
+                type="button" 
+                onClick={() => setForm({ ...form, hero_strip_items: [...form.hero_strip_items, { icon: 'Star', title: '', desc: '' }] })} 
+                className="text-sm text-gold-500 flex items-center gap-1 font-bold mt-2 hover:text-gold-400 transition-colors bg-gold-500/10 px-4 py-2 rounded-lg w-fit"
+              >
+                <Plus className="w-4 h-4" /> Add Feature Card
+              </button>
+            )}
           </div>
 
+          {/* 4. Split Section */}
           <div className="bg-[#1A1A1A] rounded-2xl p-6 border border-gold-500/10 space-y-4">
             <h2 className="text-lg font-bold text-gold-500 border-b border-gold-500/10 pb-2">4. Split Section ("Grow Together" Layout)</h2>
             <div className="grid md:grid-cols-2 gap-4">
@@ -344,7 +381,7 @@ export default function EditSeoService() {
                 <div className="flex items-center gap-4">
                   {form.split_image ? (
                     <div className="relative w-28 h-20 rounded-lg overflow-hidden border border-gold-500/30">
-                      <img src={form.split_image} className="w-full h-full object-cover" />
+                      <img src={form.split_image} className="w-full h-full object-cover" alt="Split" />
                       <button type="button" onClick={() => setForm({ ...form, split_image: '' })} className="absolute top-1 right-1 bg-red-600 rounded-full p-1"><X className="w-3 h-3" /></button>
                     </div>
                   ) : (
@@ -366,6 +403,7 @@ export default function EditSeoService() {
             </div>
           </div>
 
+          {/* 5. Grid Cards */}
           <div className="bg-[#1A1A1A] rounded-2xl p-6 border border-gold-500/10 space-y-4">
             <h2 className="text-lg font-bold text-gold-500 border-b border-gold-500/10 pb-2">5. Grid Cards Section ("What We Offer")</h2>
             <div className="grid md:grid-cols-2 gap-4">
@@ -391,7 +429,7 @@ export default function EditSeoService() {
                   
                   <div className="flex items-center gap-3">
                     {card.image ? (
-                      <img src={card.image} className="w-16 h-12 object-cover rounded border border-gold-500/20" />
+                      <img src={card.image} className="w-16 h-12 object-cover rounded border border-gold-500/20" alt="Grid" />
                     ) : (
                       <span className="text-xs text-gray-500">No Image</span>
                     )}
@@ -406,6 +444,7 @@ export default function EditSeoService() {
             </div>
           </div>
 
+          {/* 6. FAQ & Service Areas */}
           <div className="bg-[#1A1A1A] rounded-2xl p-6 border border-gold-500/10 space-y-4">
             <h2 className="text-lg font-bold text-gold-500 border-b border-gold-500/10 pb-2">6. FAQ Accordion & Service Areas</h2>
             
