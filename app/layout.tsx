@@ -1,8 +1,11 @@
 import type { Metadata } from 'next'
+import Script from 'next/script'
 import './globals.css'
 import { Toaster } from 'react-hot-toast'
 import SiteShell from '@/components/SiteShell'
 import { createClient } from '@/lib/supabase/server'
+
+const GA_MEASUREMENT_ID = 'G-6GPBQQBQCC'
 
 const getBaseUrl = () => {
   if (process.env.NEXT_PUBLIC_SITE_URL) {
@@ -313,6 +316,23 @@ export default async function RootLayout({
         />
       </head>
       <body className="bg-black text-white font-sans antialiased flex flex-col min-h-screen">
+        {/* ═══════════════════════════════════════════
+            GOOGLE ANALYTICS (gtag.js)
+            Measurement ID: G-6GPBQQBQCC
+            ═══════════════════════════════════════════ */}
+        <Script
+          src={`https://www.googletagmanager.com/gtag/js?id=${GA_MEASUREMENT_ID}`}
+          strategy="afterInteractive"
+        />
+        <Script id="google-analytics" strategy="afterInteractive">
+          {`
+            window.dataLayer = window.dataLayer || [];
+            function gtag(){dataLayer.push(arguments);}
+            gtag('js', new Date());
+            gtag('config', '${GA_MEASUREMENT_ID}');
+          `}
+        </Script>
+
         <SiteShell>{children}</SiteShell>
         <Toaster
           position="top-right"
