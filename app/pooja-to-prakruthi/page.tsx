@@ -18,7 +18,8 @@ import {
   Trash2,
   AlertTriangle,
   CreditCard,
-  Languages
+  Languages,
+  User
 } from 'lucide-react'
 
 export const revalidate = 60
@@ -53,6 +54,7 @@ const TRANSLATIONS = {
     hero_desc: "Every day, flowers are offered to God with devotion, faith and love. But once the pooja is over, many of these flowers are simply mixed with everyday garbage.\n\nPooja to Prakruthi gives those flowers a better journey.",
     btn_cta: "Give Your Flowers a Second Life",
     btn_renew: "Already a Member? Renew",
+    btn_account: "My Account",
     heading_problem_1: "What Happens to the Flowers",
     heading_problem_2: "After Your Pooja?",
     steps: [
@@ -94,6 +96,7 @@ const TRANSLATIONS = {
     hero_desc: "ಪ್ರತಿದಿನ ದೇವರ ಆರಾಧನೆಗೆ ಭಕ್ತಿಯಿಂದ ಹೂವುಗಳನ್ನು ಅರ್ಪಿಸಲಾಗುತ್ತದೆ. ಆದರೆ ಪೂಜೆ ಮುಗಿದ ನಂತರ, ಈ ಹೂವುಗಳನ್ನು ಬೇರೆ ಕಸದ ಜೊತೆ ಸೇರಿಸಿ ಎಸೆಯಲಾಗುತ್ತದೆ.\n\n'ಪೂಜೆಯಿಂದ ಪ್ರಕೃತಿ ಕಡೆಗೆ' ಕಾರ್ಯಕ್ರಮವು ಈ ಪವಿತ್ರ ಹೂವುಗಳಿಗೆ ಗೌರವಯುತವಾದ ಪ್ರವಾಸವನ್ನು ನೀಡುತ್ತದೆ.",
     btn_cta: "ನಿಮ್ಮ ಪೂಜಾ ಹೂವುಗಳಿಗೆ ಪುನರ್ಜನ್ಮ ನೀಡಿ",
     btn_renew: "ಸದಸ್ಯರೇ? ನವೀಕರಿಸಿ",
+    btn_account: "ನನ್ನ ಖಾತೆ",
     heading_problem_1: "ಪೂಜೆಯ ನಂತರ ಹೂವುಗಳು",
     heading_problem_2: "ಏನಾಗುತ್ತವೆ ಗೊತ್ತೇ?",
     steps: [
@@ -257,7 +260,8 @@ export default async function PoojaToPrakruthiPage({ searchParams }: PageProps) 
                 </p>
               </div>
 
-              <div className="flex flex-col sm:flex-row gap-3">
+              {/* ACTION BUTTONS */}
+              <div className="flex flex-col sm:flex-row flex-wrap gap-3">
                 <Link
                   href="#join-form"
                   className="inline-flex items-center justify-center px-6 py-3.5 bg-[#FFB300] text-black font-extrabold rounded-xl hover:bg-[#FFCA28] transition-all shadow-lg shadow-[#FFB300]/20 uppercase text-xs tracking-wider text-center"
@@ -265,10 +269,19 @@ export default async function PoojaToPrakruthiPage({ searchParams }: PageProps) 
                   {dict.btn_cta}
                   <ArrowRight className="ml-2 h-4 w-4 shrink-0" />
                 </Link>
+
+                {/* MY ACCOUNT BUTTON */}
+                <Link
+                  href="/my-membership"
+                  className="inline-flex items-center justify-center px-6 py-3.5 border border-[#FFB300]/40 text-[#FFB300] font-bold rounded-xl hover:bg-[#FFB300]/10 transition-all uppercase text-xs tracking-wider text-center"
+                >
+                  <User className="mr-2 h-4 w-4 shrink-0" />
+                  {dict.btn_account}
+                </Link>
                 
                 <Link
                   href="/pooja-to-prakruthi/pay"
-                  className="inline-flex items-center justify-center px-6 py-3.5 border border-[#FFB300]/40 text-[#FFB300] font-bold rounded-xl hover:bg-[#FFB300]/10 transition-all uppercase text-xs tracking-wider text-center"
+                  className="inline-flex items-center justify-center px-6 py-3.5 border border-gray-700 text-gray-300 font-bold rounded-xl hover:border-[#FFB300]/40 hover:text-[#FFB300] transition-all uppercase text-xs tracking-wider text-center"
                 >
                   <CreditCard className="mr-2 h-4 w-4 shrink-0" />
                   {dict.btn_renew}
@@ -625,8 +638,11 @@ export default async function PoojaToPrakruthiPage({ searchParams }: PageProps) 
             
             <PoojaImpactTracker lang={currentLang} />
             
-            <div className="mt-6 pt-6 border-t border-gray-800">
-              <Link href="/pooja-to-prakruthi/pay" className="inline-flex items-center gap-2 text-[#FFB300] text-xs md:text-sm font-bold hover:underline">
+            <div className="mt-6 pt-6 border-t border-gray-800 flex flex-col gap-3 items-center">
+              <Link href="/my-membership" className="inline-flex items-center gap-2 text-[#FFB300] text-xs md:text-sm font-bold hover:underline">
+                <User className="w-4 h-4" /> {dict.btn_account}
+              </Link>
+              <Link href="/pooja-to-prakruthi/pay" className="inline-flex items-center gap-2 text-gray-400 text-xs md:text-sm hover:text-white transition-colors">
                 <CreditCard className="w-4 h-4" /> {dict.go_renew}
               </Link>
             </div>
