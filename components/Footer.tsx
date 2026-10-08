@@ -49,7 +49,6 @@ export default function Footer() {
     address: 'Bangalore, Karnataka, India',
   })
   const [social, setSocial] = useState<any>({})
-  const [services, setServices] = useState<{ slug: string; label: string }[]>([])
 
   useEffect(() => {
     const loadSettings = async () => {
@@ -63,40 +62,27 @@ export default function Footer() {
         if (row.key === 'organization' && row.value) setOrg(row.value)
         if (row.key === 'social' && row.value) setSocial(row.value)
       })
-
-      // Load published SEO services for footer links
-      const { data: seoData } = await supabase
-        .from('seo_services')
-        .select('slug, hero_heading, meta_title')
-        .eq('published', true)
-        .order('created_at', { ascending: false })
-        .limit(6)
-
-      const list: { slug: string; label: string }[] = (seoData || []).map((s: any) => ({
-        slug: s.slug,
-        label: s.hero_heading || s.meta_title || s.slug,
-      }))
-
-      if (!list.some((s) => s.slug === 'photo-frame-recycling-bangalore')) {
-        list.unshift({
-          slug: 'photo-frame-recycling-bangalore',
-          label: 'Photo Frame Recycling',
-        })
-      }
-
-      setServices(list)
     }
     loadSettings()
   }, [])
 
   const currentYear = new Date().getFullYear()
   const iconClass =
-    'w-9 h-9 rounded-full bg-[#1A1A1A] border border-gold-500/20 flex items-center justify-center text-gold-400 hover:text-black hover:bg-gold-500 transition-all'
+    'w-9 h-9 rounded-full bg-[#1A1A1A] border border-[#FFB300]/20 flex items-center justify-center text-[#FFB300] hover:text-black hover:bg-[#FFB300] transition-all'
+
+  // Hardcoded SEO-optimized service links for footer consistency
+  const footerServices = [
+    { href: '/pooja-to-prakruthi', label: 'Pooja to Prakruthi' },
+    { href: '/greens-and-browns/temple-flower-composting', label: 'Temple Flower Composting' },
+    { href: '/services/divine-items-and-photo-frame-disposal', label: 'Disposal & Recycling Hub' },
+    { href: '/services/god-photo-frames-and-idols-disposal-bangalore', label: 'God Photo Frames Disposal' },
+    { href: '/services/old-photo-frame-recycling-malleshwaram-bangalore', label: 'Photo Frame Recycling' },
+  ]
 
   return (
-    <footer className="bg-[#0A0A0A] border-t border-gold-500/15 text-gray-300">
+    <footer className="bg-[#0A0A0A] border-t border-[#FFB300]/15 text-gray-300">
       {/* CTA Banner */}
-      <div className="border-b border-gold-500/10 py-10 bg-gradient-to-r from-black via-[#141414] to-black">
+      <div className="border-b border-[#FFB300]/10 py-10 bg-gradient-to-r from-black via-[#141414] to-black">
         <div className="container mx-auto px-4 flex flex-col md:flex-row items-center justify-between gap-6">
           <div>
             <h3 className="text-2xl font-bold text-white mb-1">Be a part of the change.</h3>
@@ -107,13 +93,13 @@ export default function Footer() {
           <div className="flex items-center gap-4">
             <Link
               href="/get-involved/donate"
-              className="px-6 py-3 bg-gold-500 text-black font-semibold rounded-full hover:bg-gold-600 transition-all"
+              className="px-6 py-3 bg-[#FFB300] text-black font-semibold rounded-full hover:bg-[#FFCA28] transition-all"
             >
               Donate Now
             </Link>
             <Link
               href="/contact"
-              className="px-6 py-3 border border-gold-500/40 text-gold-400 font-semibold rounded-full hover:bg-gold-500/10 transition-all"
+              className="px-6 py-3 border border-[#FFB300]/40 text-[#FFB300] font-semibold rounded-full hover:bg-[#FFB300]/10 transition-all"
             >
               Get in Touch
             </Link>
@@ -126,7 +112,7 @@ export default function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-10">
           {/* Org Details */}
           <div className="space-y-4 lg:col-span-1">
-            <span className="text-2xl font-bold text-gold-500">{org.name || 'SAMPIGE'}</span>
+            <span className="text-2xl font-bold text-[#FFB300]">{org.name || 'SAMPIGE'}</span>
             <p className="text-sm text-gray-400 leading-relaxed">
               {org.tagline || 'Transforming lives through education, healthcare, and sustainable development.'}
             </p>
@@ -161,7 +147,7 @@ export default function Footer() {
 
           {/* Quick Links */}
           <div>
-            <h4 className="text-white font-semibold text-lg mb-4 border-l-2 border-gold-500 pl-3">Quick Links</h4>
+            <h4 className="text-white font-semibold text-lg mb-4 border-l-2 border-[#FFB300] pl-3">Quick Links</h4>
             <ul className="space-y-2 text-sm">
               {[
                 { href: '/', label: 'Home' },
@@ -174,25 +160,25 @@ export default function Footer() {
                 { href: '/contact', label: 'Contact Us' },
               ].map((link) => (
                 <li key={link.href}>
-                  <Link href={link.href} className="hover:text-gold-500 transition-colors flex items-center gap-1.5">
-                    <ArrowRight className="w-3.5 h-3.5 text-gold-500/60" /> {link.label}
+                  <Link href={link.href} className="hover:text-[#FFB300] transition-colors flex items-center gap-1.5">
+                    <ArrowRight className="w-3.5 h-3.5 text-[#FFB300]/60" /> {link.label}
                   </Link>
                 </li>
               ))}
             </ul>
           </div>
 
-          {/* ⭐ Our Services (dynamic) */}
+          {/* ⭐ Our Services (Updated to feature the Hub & Sub-pages) */}
           <div>
-            <h4 className="text-white font-semibold text-lg mb-4 border-l-2 border-gold-500 pl-3">Our Services</h4>
+            <h4 className="text-white font-semibold text-lg mb-4 border-l-2 border-[#FFB300] pl-3">Our Services</h4>
             <ul className="space-y-2 text-sm">
-              {services.map((svc) => (
-                <li key={svc.slug}>
+              {footerServices.map((svc) => (
+                <li key={svc.href}>
                   <Link
-                    href={`/services/${svc.slug}`}
-                    className="hover:text-gold-500 transition-colors flex items-center gap-1.5"
+                    href={svc.href}
+                    className="hover:text-[#FFB300] transition-colors flex items-center gap-1.5"
                   >
-                    <ArrowRight className="w-3.5 h-3.5 text-gold-500/60" />
+                    <ArrowRight className="w-3.5 h-3.5 text-[#FFB300]/60" />
                     <span className="line-clamp-1">{svc.label}</span>
                   </Link>
                 </li>
@@ -200,7 +186,7 @@ export default function Footer() {
               <li className="pt-2">
                 <Link
                   href="/services"
-                  className="text-gold-500 font-semibold hover:underline flex items-center gap-1.5"
+                  className="text-[#FFB300] font-semibold hover:underline flex items-center gap-1.5"
                 >
                   View All Services <ArrowRight className="w-3.5 h-3.5" />
                 </Link>
@@ -210,24 +196,24 @@ export default function Footer() {
 
           {/* Contact */}
           <div>
-            <h4 className="text-white font-semibold text-lg mb-4 border-l-2 border-gold-500 pl-3">Contact Info</h4>
+            <h4 className="text-white font-semibold text-lg mb-4 border-l-2 border-[#FFB300] pl-3">Contact Info</h4>
             <ul className="space-y-3 text-sm">
               {org.address && (
                 <li className="flex items-start gap-3 text-gray-400">
-                  <MapPin className="w-4 h-4 text-gold-500 shrink-0 mt-1" />
+                  <MapPin className="w-4 h-4 text-[#FFB300] shrink-0 mt-1" />
                   <span>{org.address}</span>
                 </li>
               )}
               {org.phone && (
                 <li className="flex items-center gap-3 text-gray-400">
-                  <Phone className="w-4 h-4 text-gold-500 shrink-0" />
-                  <a href={`tel:${org.phone}`} className="hover:text-gold-500 transition-colors">{org.phone}</a>
+                  <Phone className="w-4 h-4 text-[#FFB300] shrink-0" />
+                  <a href={`tel:${org.phone}`} className="hover:text-[#FFB300] transition-colors">{org.phone}</a>
                 </li>
               )}
               {org.email && (
                 <li className="flex items-center gap-3 text-gray-400">
-                  <Mail className="w-4 h-4 text-gold-500 shrink-0" />
-                  <a href={`mailto:${org.email}`} className="hover:text-gold-500 transition-colors">{org.email}</a>
+                  <Mail className="w-4 h-4 text-[#FFB300] shrink-0" />
+                  <a href={`mailto:${org.email}`} className="hover:text-[#FFB300] transition-colors">{org.email}</a>
                 </li>
               )}
             </ul>
@@ -235,7 +221,7 @@ export default function Footer() {
 
           {/* Newsletter */}
           <div>
-            <h4 className="text-white font-semibold text-lg mb-4 border-l-2 border-gold-500 pl-3">Stay Connected</h4>
+            <h4 className="text-white font-semibold text-lg mb-4 border-l-2 border-[#FFB300] pl-3">Stay Connected</h4>
             <p className="text-sm text-gray-400 mb-4">
               Subscribe for project updates, stories, and impact news.
             </p>
@@ -243,11 +229,11 @@ export default function Footer() {
               <input
                 type="email"
                 placeholder="Enter your email"
-                className="w-full px-4 py-2.5 bg-black border border-gray-800 rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:border-gold-500 transition-colors"
+                className="w-full px-4 py-2.5 bg-black border border-gray-800 rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:border-[#FFB300] transition-colors"
               />
               <button
                 type="submit"
-                className="w-full py-2.5 bg-gold-500 text-black font-semibold rounded-lg text-sm hover:bg-gold-600 transition-colors flex items-center justify-center gap-2"
+                className="w-full py-2.5 bg-[#FFB300] text-black font-semibold rounded-lg text-sm hover:bg-[#FFCA28] transition-colors flex items-center justify-center gap-2"
               >
                 Subscribe <ArrowRight className="w-4 h-4" />
               </button>
@@ -257,14 +243,14 @@ export default function Footer() {
       </div>
 
       {/* Bottom */}
-      <div className="border-t border-gold-500/10 py-6 bg-black">
+      <div className="border-t border-[#FFB300]/10 py-6 bg-black">
         <div className="container mx-auto px-4 flex flex-col sm:flex-row items-center justify-between text-xs text-gray-500 gap-4">
           <p className="flex items-center gap-2">
             <span>© {currentYear} {org.name || 'Sampige Foundation'}. All rights reserved.</span>
             <span>•</span>
             <Link
               href="/admin/login"
-              className="text-gray-600 hover:text-gold-500 transition-colors flex items-center gap-1"
+              className="text-gray-600 hover:text-[#FFB300] transition-colors flex items-center gap-1"
               title="Admin Portal"
             >
               <Lock className="w-3 h-3" />
@@ -273,7 +259,7 @@ export default function Footer() {
           </p>
           <div className="flex items-center gap-1">
             <span>Built with</span>
-            <Heart className="w-3.5 h-3.5 text-gold-500 fill-gold-500" />
+            <Heart className="w-3.5 h-3.5 text-[#FFB300] fill-[#FFB300]" />
             <span>for community development</span>
           </div>
         </div>

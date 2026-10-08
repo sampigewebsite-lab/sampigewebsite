@@ -29,6 +29,7 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function ServicesIndexPage() {
   const supabase = await createClient()
 
+  // Fetch all dynamically created SEO service pages (Hub + Sub-pages)
   const { data: seoServices } = await supabase
     .from('seo_services')
     .select('slug, hero_heading, hero_subtext, hero_badge, hero_image, meta_title, meta_description, related_project_slug')
@@ -37,16 +38,28 @@ export default async function ServicesIndexPage() {
 
   const services: any[] = [...(seoServices || [])]
 
-  // Filter out any duplicate flower entries and put the flagship Pooja to Prakruthi card FIRST
+  // Filter out any old/duplicate flower entries to keep the list clean
   const filteredServices = services.filter(
     (s) => s.slug !== 'pooja-to-prakruthi-bangalore' && s.slug !== 'used-flower-recycling-bangalore'
   )
+
+  // Card #2: Greens & Browns (Standalone QR Page)
+  filteredServices.unshift({
+    slug: 'greens-and-browns',
+    targetUrl: '/greens-and-browns/temple-flower-composting',
+    hero_heading: 'Greens & Browns — Temple Flower Composting',
+    hero_subtext:
+      'A dedicated initiative converting temple flower waste into organic compost across Bangalore. Scan the QR at partner temples to learn more.',
+    hero_badge: 'GREENS & BROWNS',
+    hero_image: '',
+    meta_title: 'Greens & Browns Composting',
+  })
 
   // Card #1: Pooja to Prakruthi Flagship Service
   filteredServices.unshift({
     slug: 'pooja-to-prakruthi',
     targetUrl: '/pooja-to-prakruthi',
-    hero_heading: 'Pooja to Prakruthi — Used Flower Waste Collection & Composting',
+    hero_heading: 'Pooja to Prakruthi — Used Flower Waste Collection',
     hero_subtext:
       'Every flower deserves a second life. Flower waste collection, segregation, and natural composting for households, apartments, temples, and events.',
     hero_badge: 'POOJA TO PRAKRUTHI',
@@ -103,7 +116,7 @@ export default async function ServicesIndexPage() {
                         />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-[#0A0A0A] to-[#1A1A00]">
-                          <Recycle className="h-12 w-12 text-[#FFB300]/30" />
+                          <Sparkles className="h-12 w-12 text-[#FFB300]/30" />
                         </div>
                       )}
                       {svc.hero_badge && (
