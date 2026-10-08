@@ -37,7 +37,7 @@ export default function Header() {
     load()
   }, [])
 
-  // Close desktop dropdown when clicking outside
+  // Close dropdown if user clicks anywhere outside
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
@@ -52,7 +52,6 @@ export default function Header() {
     { href: '/', label: 'Home' },
     { href: '/about-us', label: 'About' },
     { href: '/projects', label: 'Projects' },
-    // Services is handled separately as dropdown
     { href: '/csr', label: 'CSR' },
     { href: '/gallery', label: 'Gallery' },
     { href: '/blogs', label: 'Blogs' },
@@ -85,7 +84,7 @@ export default function Header() {
     {
       href: '/services',
       label: 'All Services →',
-      desc: 'View complete list',
+      desc: 'View complete service directory',
     },
   ]
 
@@ -126,26 +125,27 @@ export default function Header() {
             {/* ===== SERVICES DROPDOWN (Desktop) ===== */}
             <div
               ref={dropdownRef}
-              className="relative"
+              className="relative py-3"
               onMouseEnter={() => setServicesOpen(true)}
               onMouseLeave={() => setServicesOpen(false)}
             >
-              <button
-                onClick={() => setServicesOpen(!servicesOpen)}
+              <Link
+                href="/services"
+                onClick={() => setServicesOpen(false)}
                 className="flex items-center gap-1 text-gray-300 hover:text-[#FFB300] transition-colors text-sm font-medium uppercase tracking-wide"
               >
                 Services
                 <ChevronDown
                   className={`h-3.5 w-3.5 transition-transform duration-200 ${
-                    servicesOpen ? 'rotate-180' : ''
+                    servicesOpen ? 'rotate-180 text-[#FFB300]' : ''
                   }`}
                 />
-              </button>
+              </Link>
 
-              {/* Dropdown Panel */}
+              {/* Dropdown Wrapper with pt-2 Invisible Bridge */}
               {servicesOpen && (
-                <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-80 bg-[#111111] border border-[#FFB300]/20 rounded-2xl shadow-2xl shadow-black/50 overflow-hidden z-50">
-                  <div className="p-2">
+                <div className="absolute top-full left-1/2 -translate-x-1/2 pt-2 w-80 z-50">
+                  <div className="bg-[#111111] border border-[#FFB300]/25 rounded-2xl shadow-2xl shadow-black/80 overflow-hidden p-2">
                     {serviceLinks.map((link) => (
                       <Link
                         key={link.href}
@@ -191,7 +191,7 @@ export default function Header() {
             </Link>
           </nav>
 
-          {/* Mobile Hamburger */}
+          {/* Mobile Hamburger Button */}
           <button
             onClick={() => setIsOpen(!isOpen)}
             className="lg:hidden text-gray-300 hover:text-white p-2"
@@ -225,7 +225,7 @@ export default function Header() {
                 <span>Services</span>
                 <ChevronDown
                   className={`h-4 w-4 transition-transform duration-200 ${
-                    mobileServicesOpen ? 'rotate-180' : ''
+                    mobileServicesOpen ? 'rotate-180 text-[#FFB300]' : ''
                   }`}
                 />
               </button>
@@ -240,9 +240,10 @@ export default function Header() {
                         setIsOpen(false)
                         setMobileServicesOpen(false)
                       }}
-                      className="text-gray-400 hover:text-[#FFB300] transition-colors py-1.5 text-sm"
+                      className="text-gray-400 hover:text-[#FFB300] transition-colors py-2 text-sm block"
                     >
-                      {link.label}
+                      <div className="font-semibold text-white">{link.label}</div>
+                      <div className="text-xs text-gray-500">{link.desc}</div>
                     </Link>
                   ))}
                 </div>
