@@ -5,6 +5,7 @@ const nextConfig = {
     ignoreBuildErrors: true,
   },
   images: {
+    unoptimized: true, // Bypasses Vercel's image optimization limits and loads directly from Supabase
     remotePatterns: [
       {
         protocol: 'https',
