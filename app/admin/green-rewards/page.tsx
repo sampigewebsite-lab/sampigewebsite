@@ -255,7 +255,7 @@ export default function GreenRewardsAdminPage() {
   }
 
   return (
-    <div className="min-h-screen bg-black text-white p-4 md:p-8">
+    <div className="min-h-screen bg-black text-white pt-20 md:pt-24 p-4 md:p-8">
       {/* Header */}
       <div className="max-w-7xl mx-auto mb-8 border-b border-zinc-800 pb-6">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">

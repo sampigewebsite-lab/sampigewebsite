@@ -8,17 +8,13 @@ import {
   Gift, 
   History, 
   Scale, 
-  Plus, 
   MapPin, 
   Calendar, 
   Clock, 
   Award, 
-  IndianRupee, 
-  TreePine, 
   Loader2, 
   LogOut,
   CheckCircle2,
-  ChevronRight,
   Globe
 } from 'lucide-react'
 import toast from 'react-hot-toast'
@@ -83,7 +79,7 @@ export default function GreenRewardsDashboard() {
     const { data: addrs } = await supabase.from('gr_addresses').select('*').eq('user_id', authUser.id)
     setUserAddresses(addrs || [])
 
-    // Fetch Public Settings, Categories & Active Locations
+    // Fetch Settings, Categories & Active Locations
     const settingsRes = await fetch('/api/green-rewards/admin/settings')
     if (settingsRes.ok) {
       const sData = await settingsRes.json()
@@ -96,10 +92,7 @@ export default function GreenRewardsDashboard() {
       }
     }
 
-    // Fetch Redemptions & Balance
     fetchRedemptionsData()
-
-    // Fetch Requests
     fetchPickupRequests()
 
     setLoading(false)
@@ -123,7 +116,6 @@ export default function GreenRewardsDashboard() {
     }
   }
 
-  // --- SUBMIT PICKUP BOOKING ---
   async function handleBookPickup(e: React.FormEvent) {
     e.preventDefault()
     if (!streetAddress || !pickupDate) {
@@ -134,7 +126,6 @@ export default function GreenRewardsDashboard() {
     setIsBooking(true)
 
     try {
-      // 1. Save or reuse address
       let addressId = userAddresses.find((a) => a.street_address === streetAddress)?.id
 
       if (!addressId) {
@@ -157,7 +148,6 @@ export default function GreenRewardsDashboard() {
         addressId = newAddr.id
       }
 
-      // 2. Submit Pickup Request
       const res = await fetch('/api/green-rewards/pickup-request', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -192,7 +182,6 @@ export default function GreenRewardsDashboard() {
     }
   }
 
-  // --- SUBMIT REWARD REDEMPTION ---
   async function handleRedeemReward() {
     if (!selectedReward) return
     setIsRedeeming(true)
@@ -200,7 +189,7 @@ export default function GreenRewardsDashboard() {
     let payoutDetails: any = {}
     if (selectedReward.reward_type === 'upi') {
       if (!upiId) {
-        toast.error('Please enter your UPI ID (e.g. name@okaxis)')
+        toast.error('Please enter your UPI ID')
         setIsRedeeming(false)
         return
       }
@@ -220,7 +209,7 @@ export default function GreenRewardsDashboard() {
 
     setIsRedeeming(false)
     if (res.ok) {
-      toast.success(lang === 'en' ? 'Redemption request submitted!' : 'ಬಹುಮಾನದ ವಿನಂತಿ ಸಲ್ಲಿಸಲಾಗಿದೆ!')
+      toast.success(lang === 'en' ? 'Redemption request submitted!' : 'ವಿನಂತಿ ಸಲ್ಲಿಸಲಾಗಿದೆ!')
       setSelectedReward(null)
       setUpiId('')
       setTreeName('')
@@ -239,33 +228,32 @@ export default function GreenRewardsDashboard() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-black text-white flex items-center justify-center">
+      <div className="min-h-screen bg-black text-white flex items-center justify-center pt-24">
         <Loader2 className="w-8 h-8 text-[#FFB300] animate-spin" />
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-black text-white pb-16">
-      {/* Top Header */}
-      <div className="bg-zinc-950 border-b border-zinc-800 sticky top-0 z-40">
-        <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
+    <div className="min-h-screen bg-black text-white pt-20 md:pt-24 pb-16">
+      {/* Top Header - Positioned safely below main site header */}
+      <div className="bg-zinc-950/90 backdrop-blur-md border-b border-zinc-800 sticky top-[72px] md:top-[80px] z-30">
+        <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-[#FFB300]/10 border border-[#FFB300]/30 rounded-xl flex items-center justify-center text-[#FFB300]">
-              <Recycle className="w-6 h-6" />
+            <div className="w-9 h-9 bg-[#FFB300]/10 border border-[#FFB300]/30 rounded-xl flex items-center justify-center text-[#FFB300]">
+              <Recycle className="w-5 h-5" />
             </div>
             <div>
-              <span className="text-xs text-[#FFB300] font-semibold uppercase tracking-wide block">
+              <span className="text-[10px] text-[#FFB300] font-semibold uppercase tracking-wider block">
                 Sampige Green Rewards
               </span>
-              <h1 className="text-lg font-bold text-white leading-tight">
+              <h1 className="text-base font-bold text-white leading-tight">
                 {profile.full_name || 'Eco Member'}
               </h1>
             </div>
           </div>
 
           <div className="flex items-center gap-3">
-            {/* Language Switcher */}
             <button
               onClick={() => setLang(lang === 'en' ? 'kn' : 'en')}
               className="flex items-center gap-1.5 px-3 py-1.5 bg-zinc-900 border border-zinc-800 rounded-lg text-xs font-medium text-zinc-300 hover:text-white"
@@ -274,7 +262,6 @@ export default function GreenRewardsDashboard() {
               {lang === 'en' ? 'ಕನ್ನಡ' : 'English'}
             </button>
 
-            {/* Logout */}
             <button
               onClick={handleSignOut}
               className="p-2 bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 rounded-lg text-zinc-400 hover:text-white transition"
