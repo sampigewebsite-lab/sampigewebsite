@@ -27,6 +27,7 @@ export async function GET() {
     await adminDb.from('gr_profiles').update({ role: 'admin' }).eq('id', user.id)
   }
 
+  // Fetch ALL data simultaneously
   const [stgRes, catRes, locRes, reqRes, redRes] = await Promise.all([
     adminDb.from('gr_settings').select('*'),
     adminDb.from('gr_waste_categories').select('*').order('display_order'),
@@ -43,6 +44,11 @@ export async function GET() {
     `).order('created_at', { ascending: false })
   ])
 
+  // Log errors to the server console if the DB rejects the query
+  if (reqRes.error) console.error("Database Error (Pickups):", reqRes.error)
+  if (redRes.error) console.error("Database Error (Redemptions):", redRes.error)
+
+  // Send the data to the Admin Panel frontend
   return NextResponse.json({
     settings: stgRes.data || [],
     categories: catRes.data || [],
@@ -65,11 +71,6 @@ export async function POST(request: Request) {
   }
 
   const adminDb = await createAdminClient()
-
-  // Auto-promote in DB if needed
-  if (user.email === 'admin@sampige.org' && profile?.role !== 'admin') {
-    await adminDb.from('gr_profiles').update({ role: 'admin' }).eq('id', user.id)
-  }
 
   try {
     const body = await request.json()
