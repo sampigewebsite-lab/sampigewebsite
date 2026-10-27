@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/client'
 import { ArrowLeft, Save, Upload, X } from 'lucide-react'
 import toast from 'react-hot-toast'
 import Sidebar from '@/components/admin/Sidebar'
+import { compressImage } from '@/lib/compressImage'
 
 export default function CreateProject() {
   const [loading, setLoading] = useState(false)
@@ -81,53 +82,61 @@ export default function CreateProject() {
     }))
   }
 
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
+const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const file = e.target.files?.[0]
+  if (!file) return
 
-    if (!file.type.startsWith('image/')) {
-      toast.error('Please select an image file')
-      return
-    }
-
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error('Image size should be less than 5MB')
-      return
-    }
-
-    setUploading(true)
-
-    try {
-      const fileExt = file.name.split('.').pop()
-      const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`
-      const filePath = `projects/${fileName}`
-
-      const { error: uploadError } = await supabase.storage
-        .from('project-images')
-        .upload(filePath, file)
-
-      if (uploadError) {
-        if (uploadError.message.includes('bucket not found')) {
-          toast.error('Storage bucket not found. Please create "project-images" bucket in Supabase.')
-        } else {
-          toast.error(uploadError.message || 'Failed to upload image')
-        }
-        return
-      }
-
-      const { data: { publicUrl } } = supabase.storage
-        .from('project-images')
-        .getPublicUrl(filePath)
-
-      setCoverImage(publicUrl)
-      setFormData(prev => ({ ...prev, cover_image: publicUrl }))
-      toast.success('Image uploaded successfully!')
-    } catch (error: any) {
-      toast.error(error.message || 'Failed to upload image')
-    } finally {
-      setUploading(false)
-    }
+  if (!file.type.startsWith('image/')) {
+    toast.error('Please select an image file')
+    return
   }
+
+  if (file.size > 15 * 1024 * 1024) {
+    toast.error('Image is too large (max 15MB before compression)')
+    return
+  }
+
+  setUploading(true)
+
+  try {
+    const { file: compressed, summary } = await compressImage(file, {
+      maxDimension: 1600,
+      quality: 0.8,
+    })
+
+    const fileExt = compressed.name.split('.').pop() || 'webp'
+    const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`
+    const filePath = `projects/${fileName}`
+
+    const { error: uploadError } = await supabase.storage
+      .from('project-images')
+      .upload(filePath, compressed, {
+        contentType: compressed.type,
+        upsert: false,
+      })
+
+    if (uploadError) {
+      if (uploadError.message.includes('bucket not found')) {
+        toast.error('Storage bucket not found. Please create "project-images" bucket in Supabase.')
+      } else {
+        toast.error(uploadError.message || 'Failed to upload image')
+      }
+      return
+    }
+
+    const { data: { publicUrl } } = supabase.storage
+      .from('project-images')
+      .getPublicUrl(filePath)
+
+    setCoverImage(publicUrl)
+    setFormData(prev => ({ ...prev, cover_image: publicUrl }))
+    toast.success(`Image uploaded! ${summary}`)
+  } catch (error: any) {
+    toast.error(error.message || 'Failed to upload image')
+  } finally {
+    setUploading(false)
+  }
+}
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()

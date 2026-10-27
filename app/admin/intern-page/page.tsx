@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import toast from 'react-hot-toast'
 import { Save, Upload } from 'lucide-react'
 import Sidebar from '@/components/admin/Sidebar'
+import { compressImage } from '@/lib/compressImage'
 
 type InternPageSettings = {
   badge: string
@@ -105,25 +106,43 @@ export default function InternPageSettingsAdmin() {
     }
   }
 
-  async function uploadImage(file: File) {
+  async function uploadImage(rawFile: File) {
+    if (!rawFile.type.startsWith('image/')) {
+      toast.error('Please select an image file')
+      return
+    }
+    if (rawFile.size > 5 * 1024 * 1024) {
+      toast.error('Image must be under 5MB')
+      return
+    }
+
     setUploading(true)
     try {
-      const ext = file.name.split('.').pop()
+      // 1. Compress in the browser before upload
+      const { file, summary } = await compressImage(rawFile)
+      console.log('[InternPage]', summary)
+
+      // 2. Use compressed extension (.webp or .jpg)
+      const ext = file.name.split('.').pop() || 'jpg'
       const fileName = `intern-page/${Date.now()}.${ext}`
-      const { error: uploadError } = await supabase.storage.from('media').upload(fileName, file)
+
+      const { error: uploadError } = await supabase.storage
+        .from('media')
+        .upload(fileName, file)
       if (uploadError) throw uploadError
+
       const {
         data: { publicUrl },
       } = supabase.storage.from('media').getPublicUrl(fileName)
+
       setSettings((s) => ({ ...s, background_image: publicUrl }))
-      toast.success('Image uploaded')
+      toast.success(`Image uploaded! ${summary}`)
     } catch (err: any) {
       toast.error(err.message || 'Upload failed')
     } finally {
       setUploading(false)
     }
   }
-
   if (loading) {
     return (
       <div className="flex min-h-screen bg-black w-full">

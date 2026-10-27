@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/client'
 import { Save, Settings as SettingsIcon, Upload, X, Loader2, Image as ImageIcon } from 'lucide-react'
 import toast from 'react-hot-toast'
 import Sidebar from '@/components/admin/Sidebar'
+import { compressImage } from '@/lib/compressImage'
 
 export default function SettingsPage() {
   const [loading, setLoading] = useState(false)
@@ -139,25 +140,32 @@ export default function SettingsPage() {
   }
 
   const uploadToMedia = async (
-    file: File,
+    rawFile: File,
     folder: string,
     onDone: (url: string) => void,
     key: string
   ) => {
-    if (!file.type.startsWith('image/')) {
+    if (!rawFile.type.startsWith('image/')) {
       toast.error('Please select an image file')
       return
     }
-    if (file.size > 5 * 1024 * 1024) {
+    if (rawFile.size > 5 * 1024 * 1024) {
       toast.error('Image must be under 5MB')
       return
     }
 
     setUploading(key)
     try {
+      // 1. Compress image client-side before upload
+      const { file, summary } = await compressImage(rawFile)
+      console.log(`[Settings] Compressed ${key}:`, summary)
+
+      // 2. Use the compressed file's extension (.webp or .jpg)
       const ext = file.name.split('.').pop()
       const path = `${folder}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
+      
       const { error: uploadError } = await supabase.storage.from('media').upload(path, file)
+      
       if (uploadError) {
         if (uploadError.message.includes('bucket not found')) {
           toast.error('Create a public Storage bucket named "media" in Supabase')
@@ -168,7 +176,7 @@ export default function SettingsPage() {
       }
       const { data: { publicUrl } } = supabase.storage.from('media').getPublicUrl(path)
       onDone(publicUrl)
-      toast.success('Uploaded successfully')
+      toast.success(`Uploaded! ${summary}`)
     } catch (err: any) {
       toast.error(err.message || 'Upload failed')
     } finally {

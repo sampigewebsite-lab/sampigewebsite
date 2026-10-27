@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/client'
 import { ArrowLeft, Save, Upload, X, Plus, GripVertical, Trash2, ChevronUp, ChevronDown } from 'lucide-react'
 import toast from 'react-hot-toast'
 import Sidebar from '@/components/admin/Sidebar'
+import { compressImage } from '@/lib/compressImage'
 
 interface ProjectSection {
   id?: string
@@ -113,10 +114,11 @@ export default function EditProject() {
     if (file.size > 5 * 1024 * 1024) { toast.error('Image size should be less than 5MB'); return }
     setUploading(true)
     try {
-      const fileExt = file.name.split('.').pop()
+      const compressedFile = await compressImage(file)
+      const fileExt = compressedFile.name.split('.').pop()
       const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`
       const filePath = `projects/${fileName}`
-      const { error: uploadError } = await supabase.storage.from('project-images').upload(filePath, file)
+      const { error: uploadError } = await supabase.storage.from('project-images').upload(filePath, compressedFile)
       if (uploadError) throw uploadError
       const { data: { publicUrl } } = supabase.storage.from('project-images').getPublicUrl(filePath)
       setCoverImage(publicUrl)
@@ -160,10 +162,11 @@ export default function EditProject() {
     if (file.size > 5 * 1024 * 1024) { toast.error('Image size should be less than 5MB'); return }
     setUploadingSection(index)
     try {
-      const fileExt = file.name.split('.').pop()
+      const compressedFile = await compressImage(file)
+      const fileExt = compressedFile.name.split('.').pop()
       const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`
       const filePath = `projects/sections/${fileName}`
-      const { error } = await supabase.storage.from('project-images').upload(filePath, file)
+      const { error } = await supabase.storage.from('project-images').upload(filePath, compressedFile)
       if (error) throw error
       const { data: { publicUrl } } = supabase.storage.from('project-images').getPublicUrl(filePath)
       updateSection(index, 'image_url', publicUrl)

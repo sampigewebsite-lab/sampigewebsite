@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/client'
 import { ArrowLeft, Save, Upload, X, Loader2, Image as ImageIcon } from 'lucide-react'
 import toast from 'react-hot-toast'
 import Sidebar from '@/components/admin/Sidebar'
+import { compressImage } from '@/lib/compressImage'
 
 export default function EditPageHero() {
   const [loading, setLoading] = useState(false)
@@ -84,22 +85,28 @@ export default function EditPageHero() {
   }
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
+    const rawFile = e.target.files?.[0]
+    if (!rawFile) return
 
-    if (!file.type.startsWith('image/')) {
+    if (!rawFile.type.startsWith('image/')) {
       toast.error('Please select an image')
       return
     }
-    if (file.size > 5 * 1024 * 1024) {
+    if (rawFile.size > 5 * 1024 * 1024) {
       toast.error('Image must be under 5MB')
       return
     }
 
     setUploading(true)
     try {
-      const ext = file.name.split('.').pop()
+      // 1. Compress in the browser before upload
+      const { file, summary } = await compressImage(rawFile)
+      console.log('[PageHeroes]', summary)
+
+      // 2. Use compressed extension (.webp or .jpg)
+      const ext = file.name.split('.').pop() || 'jpg'
       const path = `page-heroes/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
+
       const { error } = await supabase.storage.from('media').upload(path, file)
       if (error) {
         if (error.message.includes('bucket not found')) {
@@ -109,13 +116,18 @@ export default function EditPageHero() {
         }
         return
       }
-      const { data: { publicUrl } } = supabase.storage.from('media').getPublicUrl(path)
+
+      const {
+        data: { publicUrl },
+      } = supabase.storage.from('media').getPublicUrl(path)
+
       setFormData((p) => ({ ...p, background_image: publicUrl }))
-      toast.success('Image uploaded!')
+      toast.success(`Image uploaded! ${summary}`)
     } catch (err: any) {
       toast.error(err.message || 'Upload failed')
     } finally {
       setUploading(false)
+      e.target.value = ''
     }
   }
 

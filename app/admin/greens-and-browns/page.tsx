@@ -10,6 +10,7 @@ import {
   CheckCircle2, Share2, Download,
   Link as LinkIcon, Layers, Sparkles, X, Upload
 } from 'lucide-react'
+import { compressImage } from '@/lib/compressImage'
 
 export default function GreensAndBrownsAdminPage() {
   const [activeTab, setActiveTab] = useState<'general' | 'steps' | 'impact' | 'monthly' | 'gallery' | 'participation' | 'seo_qr'>('general')
@@ -80,49 +81,60 @@ export default function GreensAndBrownsAdminPage() {
   }
 
   // Handle direct image uploads securely
+  // Handle direct image uploads securely with compression
   async function handleMediaUpload(e: React.ChangeEvent<HTMLInputElement>, fieldName: string, table: string = 'gb_project_settings', recordId?: string) {
-    const file = e.target.files?.[0]
-    if (!file) return
+    const rawFile = e.target.files?.[0]
+    if (!rawFile) return
 
     setUploadingField(fieldName)
-    const fileExt = file.name.split('.').pop()
-    const fileName = `gb_${fieldName}_${Date.now()}.${fileExt}`
+    
+    try {
+      // 1. Compress image
+      const { file, summary } = await compressImage(rawFile)
 
-    const { error: uploadError } = await supabase.storage
-      .from('media')
-      .upload(fileName, file, { upsert: true, contentType: file.type })
+      const fileExt = file.name.split('.').pop()
+      const fileName = `gb_${fieldName}_${Date.now()}.${fileExt}`
 
-    if (uploadError) {
-      toast.error('Image upload failed')
+      // 2. Upload compressed file
+      const { error: uploadError } = await supabase.storage
+        .from('media')
+        .upload(fileName, file, { upsert: true, contentType: file.type })
+
+      if (uploadError) {
+        toast.error('Image upload failed')
+        setUploadingField(null)
+        return
+      }
+
+      const { data: pub } = supabase.storage.from('media').getPublicUrl(fileName)
+      const publicMediaUrl = pub.publicUrl
+
+      if (table === 'gb_project_settings') {
+        const targetId = settings?.id
+        if (targetId) {
+          await supabase.from('gb_project_settings').update({ [fieldName]: publicMediaUrl }).eq('id', targetId)
+        } else {
+          const { data: created } = await supabase.from('gb_project_settings').insert([{ [fieldName]: publicMediaUrl }]).select().single()
+          if (created) setSettings(created)
+        }
+        setSettings((prev: any) => ({ ...prev, [fieldName]: publicMediaUrl }))
+      } else if (table === 'gb_process_steps' && recordId) {
+        setSteps(prev => prev.map(s => s.id === recordId ? { ...s, image_url: publicMediaUrl } : s))
+        if (editingStep && editingStep.id === recordId) {
+          setEditingStep((prev: any) => ({ ...prev, image_url: publicMediaUrl }))
+        }
+        await supabase.from('gb_process_steps').update({ image_url: publicMediaUrl }).eq('id', recordId)
+      } else if (table === 'gb_gallery_new') {
+        setNewGallery(prev => ({ ...prev, image_url: publicMediaUrl }))
+      }
+
+      toast.success(`Saved! ${summary}`)
+    } catch (err: any) {
+      toast.error('Failed to compress or upload image')
+    } finally {
       setUploadingField(null)
-      return
+      e.target.value = ''
     }
-
-    const { data: pub } = supabase.storage.from('media').getPublicUrl(fileName)
-    const publicMediaUrl = pub.publicUrl
-
-    if (table === 'gb_project_settings') {
-      const targetId = settings?.id
-      if (targetId) {
-        await supabase.from('gb_project_settings').update({ [fieldName]: publicMediaUrl }).eq('id', targetId)
-      } else {
-        const { data: created } = await supabase.from('gb_project_settings').insert([{ [fieldName]: publicMediaUrl }]).select().single()
-        if (created) setSettings(created)
-      }
-      setSettings((prev: any) => ({ ...prev, [fieldName]: publicMediaUrl }))
-    } else if (table === 'gb_process_steps' && recordId) {
-      setSteps(prev => prev.map(s => s.id === recordId ? { ...s, image_url: publicMediaUrl } : s))
-      if (editingStep && editingStep.id === recordId) {
-        setEditingStep((prev: any) => ({ ...prev, image_url: publicMediaUrl }))
-      }
-      await supabase.from('gb_process_steps').update({ image_url: publicMediaUrl }).eq('id', recordId)
-    } else if (table === 'gb_gallery_new') {
-      setNewGallery(prev => ({ ...prev, image_url: publicMediaUrl }))
-    }
-
-    toast.success('Image saved live!')
-    setUploadingField(null)
-    e.target.value = ''
   }
 
   // Save Text Fields

@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/client'
 import { ArrowLeft, Save, Upload, X, Plus } from 'lucide-react'
 import toast from 'react-hot-toast'
 import Sidebar from '@/components/admin/Sidebar'
+import { compressImage } from '@/lib/compressImage'
 
 export default function EditGalleryAlbum() {
   const [loading, setLoading] = useState(false)
@@ -123,13 +124,14 @@ export default function EditGalleryAlbum() {
     setUploading(true)
 
     try {
-      const fileExt = file.name.split('.').pop()
+      const compressedFile = await compressImage(file)
+      const fileExt = compressedFile.name.split('.').pop()
       const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`
       const filePath = `gallery/${fileName}`
 
       const { error: uploadError } = await supabase.storage
         .from('gallery')
-        .upload(filePath, file)
+        .upload(filePath, compressedFile)
 
       if (uploadError) throw uploadError
 
@@ -155,17 +157,18 @@ export default function EditGalleryAlbum() {
 
     try {
       const newImages: string[] = []
-      for (const file of files) {
+      for (const file of Array.from(files)) {
         if (!file.type.startsWith('image/')) continue
         if (file.size > 5 * 1024 * 1024) continue
 
-        const fileExt = file.name.split('.').pop()
+        const compressedFile = await compressImage(file)
+        const fileExt = compressedFile.name.split('.').pop()
         const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`
         const filePath = `gallery/${fileName}`
 
         const { error: uploadError } = await supabase.storage
           .from('gallery')
-          .upload(filePath, file)
+          .upload(filePath, compressedFile)
 
         if (uploadError) throw uploadError
 
@@ -175,8 +178,7 @@ export default function EditGalleryAlbum() {
 
         newImages.push(publicUrl)
       }
-      
-      // Insert new images into database
+
       const id = params.id
       if (id && newImages.length > 0) {
         const imageData = newImages.map((url, index) => ({
@@ -193,7 +195,7 @@ export default function EditGalleryAlbum() {
       }
 
       setImages(prev => [...prev, ...newImages])
-      toast.success(`${files.length} images uploaded successfully!`)
+      toast.success(`${newImages.length} images uploaded successfully!`)
     } catch (error: any) {
       toast.error(error.message || 'Failed to upload images')
     } finally {

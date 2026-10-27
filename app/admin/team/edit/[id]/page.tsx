@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/client'
 import { ArrowLeft, Save, Upload, X } from 'lucide-react'
 import toast from 'react-hot-toast'
 import Sidebar from '@/components/admin/Sidebar'
+import { compressImage } from '@/lib/compressImage'
 
 export default function EditTeamMember() {
   const [loading, setLoading] = useState(false)
@@ -95,15 +96,23 @@ export default function EditTeamMember() {
     setUploading(true)
 
     try {
-      const fileExt = file.name.split('.').pop()
+      const compressedFile = await compressImage(file, { maxDimension: 800, quality: 0.85 })
+      const fileExt = compressedFile.name.split('.').pop()
       const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`
       const filePath = `team/${fileName}`
 
       const { error: uploadError } = await supabase.storage
         .from('team-photos')
-        .upload(filePath, file)
+        .upload(filePath, compressedFile)
 
-      if (uploadError) throw uploadError
+      if (uploadError) {
+        if (uploadError.message.includes('bucket not found')) {
+          toast.error('Storage bucket not found. Please create "team-photos" bucket in Supabase.')
+        } else {
+          toast.error(uploadError.message || 'Failed to upload image')
+        }
+        return
+      }
 
       const { data: { publicUrl } } = supabase.storage
         .from('team-photos')

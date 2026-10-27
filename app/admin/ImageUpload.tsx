@@ -2,6 +2,7 @@
 
 import { useState, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { compressImage } from '@/lib/compressImage'
 import { Upload, X, Image as ImageIcon, Loader2 } from 'lucide-react'
 import toast from 'react-hot-toast'
 
@@ -12,29 +13,29 @@ interface ImageUploadProps {
   folder?: string
 }
 
-export default function ImageUpload({ 
-  onImageUploaded, 
-  existingImage, 
+export default function ImageUpload({
+  onImageUploaded,
+  existingImage,
   bucket = 'project-images',
-  folder = 'projects'
+  folder = 'projects',
 }: ImageUploadProps) {
   const [uploading, setUploading] = useState(false)
   const [preview, setPreview] = useState<string | null>(existingImage || null)
   const fileInputRef = useRef<HTMLInputElement>(null)
-  const supabase =  createClient()
+  const supabase = createClient()
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
+    const rawFile = e.target.files?.[0]
+    if (!rawFile) return
 
     // Validate file type
-    if (!file.type.startsWith('image/')) {
+    if (!rawFile.type.startsWith('image/')) {
       toast.error('Please select an image file')
       return
     }
 
-    // Validate file size (max 5MB)
-    if (file.size > 5 * 1024 * 1024) {
+    // Validate file size (max 5MB) — safety net before compression
+    if (rawFile.size > 5 * 1024 * 1024) {
       toast.error('Image size should be less than 5MB')
       return
     }
@@ -42,26 +43,30 @@ export default function ImageUpload({
     setUploading(true)
 
     try {
-      // Create a unique filename
-      const fileExt = file.name.split('.').pop()
+      // 1. Compress in the browser (keeps us on Supabase Free tier)
+      const { file, summary } = await compressImage(rawFile)
+      console.log('[ImageUpload]', summary)
+
+      // 2. Create a unique filename (use compressed extension: webp/jpg)
+      const fileExt = file.name.split('.').pop() || 'jpg'
       const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`
       const filePath = `${folder}/${fileName}`
 
-      // Upload to Supabase Storage
+      // 3. Upload the compressed file to Supabase Storage
       const { error: uploadError } = await supabase.storage
         .from(bucket)
         .upload(filePath, file)
 
       if (uploadError) throw uploadError
 
-      // Get the public URL
-      const { data: { publicUrl } } = supabase.storage
-        .from(bucket)
-        .getPublicUrl(filePath)
+      // 4. Get the public URL
+      const {
+        data: { publicUrl },
+      } = supabase.storage.from(bucket).getPublicUrl(filePath)
 
       setPreview(publicUrl)
       onImageUploaded(publicUrl)
-      toast.success('Image uploaded successfully!')
+      toast.success(`Image uploaded! ${summary}`)
     } catch (error: any) {
       toast.error(error.message || 'Failed to upload image')
     } finally {
@@ -103,7 +108,7 @@ export default function ImageUpload({
             <ImageIcon className="h-8 w-8 text-gray-500" />
           </div>
         )}
-        
+
         <div>
           <button
             type="button"
@@ -114,7 +119,7 @@ export default function ImageUpload({
             {uploading ? (
               <>
                 <Loader2 className="h-4 w-4 animate-spin" />
-                Uploading...
+                Compressing & Uploading...
               </>
             ) : (
               <>
@@ -124,7 +129,7 @@ export default function ImageUpload({
             )}
           </button>
           <p className="text-xs text-gray-500 mt-2">
-            PNG, JPG, WEBP • Max 5MB
+            PNG, JPG, WEBP • Auto-compressed • Max 5MB
           </p>
         </div>
       </div>

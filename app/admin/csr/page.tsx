@@ -11,6 +11,7 @@ import {
   TrendingUp, GraduationCap, Laptop, Briefcase, Inbox, HandHeart,
   Eye, MessageCircle, FileText, ArrowUpRight, Landmark
 } from 'lucide-react'
+import { compressImage } from '@/lib/compressImage'
 
 const supabase = createClient()
 
@@ -150,15 +151,24 @@ export default function AdminCSRPage() {
   }, [fetchAll])
 
   const uploadImage = async (file: File, folder: string): Promise<string> => {
-    const ext = file.name.split('.').pop()
-    const path = `csr/${folder}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
-    const { error } = await supabase.storage.from('media').upload(path, file)
-    if (error) {
-      toast.error('Upload failed: ' + error.message)
+    try {
+      // Compress the file before uploading
+      const compressedFile = await compressImage(file)
+      
+      const ext = compressedFile.name.split('.').pop()
+      const path = `csr/${folder}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
+      
+      const { error } = await supabase.storage.from('media').upload(path, compressedFile)
+      if (error) {
+        toast.error('Upload failed: ' + error.message)
+        return ''
+      }
+      const { data } = supabase.storage.from('media').getPublicUrl(path)
+      return data.publicUrl
+    } catch (err: any) {
+      toast.error('Compression or upload failed: ' + err.message)
       return ''
     }
-    const { data } = supabase.storage.from('media').getPublicUrl(path)
-    return data.publicUrl
   }
 
   // Partners CRUD (FIXED: Included `name` column mapping for Supabase constraint)

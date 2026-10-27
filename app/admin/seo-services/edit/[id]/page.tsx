@@ -5,6 +5,7 @@ import { useRouter, useParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { ArrowLeft, Save, Upload, X, Plus, Trash2, Loader2, Sparkles, Image as ImageIcon } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { compressImage } from '@/lib/compressImage'
 import Sidebar from '@/components/admin/Sidebar'
 
 const ICON_OPTIONS = [
@@ -120,30 +121,40 @@ export default function EditSeoService() {
     }
   }, [id, isNew])
 
-  const handleImageUpload = async (file: File, keyName: string, gridIdx?: number) => {
-    if (!file.type.startsWith('image/')) return toast.error('Please upload an image file')
-    setUploading(keyName + (gridIdx !== undefined ? `_${gridIdx}` : ''))
-    try {
-      const ext = file.name.split('.').pop()
-      const path = `seo-services/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
-      const { error } = await supabase.storage.from('media').upload(path, file)
-      if (error) throw error
-      const { data: { publicUrl } } = supabase.storage.from('media').getPublicUrl(path)
+const handleImageUpload = async (file: File, keyName: string, gridIdx?: number) => {
+  if (!file.type.startsWith('image/')) return toast.error('Please upload an image file')
+  setUploading(keyName + (gridIdx !== undefined ? `_${gridIdx}` : ''))
+  try {
+    const { file: compressed, summary } = await compressImage(file, {
+      maxDimension: 1600,
+      quality: 0.8,
+    })
 
-      if (gridIdx !== undefined) {
-        const nextGrid = [...form.grid_items]
-        nextGrid[gridIdx].image = publicUrl
-        setForm((prev) => ({ ...prev, grid_items: nextGrid }))
-      } else {
-        setForm((prev) => ({ ...prev, [keyName]: publicUrl }))
-      }
-      toast.success('Image uploaded!')
-    } catch (err: any) {
-      toast.error(err.message || 'Upload failed')
-    } finally {
-      setUploading(null)
+    const ext = compressed.name.split('.').pop() || 'webp'
+    const path = `seo-services/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
+
+    const { error } = await supabase.storage.from('media').upload(path, compressed, {
+      contentType: compressed.type,
+      upsert: false,
+    })
+    if (error) throw error
+
+    const { data: { publicUrl } } = supabase.storage.from('media').getPublicUrl(path)
+
+    if (gridIdx !== undefined) {
+      const nextGrid = [...form.grid_items]
+      nextGrid[gridIdx].image = publicUrl
+      setForm((prev) => ({ ...prev, grid_items: nextGrid }))
+    } else {
+      setForm((prev) => ({ ...prev, [keyName]: publicUrl }))
     }
+    toast.success(`Image uploaded! ${summary}`)
+  } catch (err: any) {
+    toast.error(err.message || 'Upload failed')
+  } finally {
+    setUploading(null)
   }
+}
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault()

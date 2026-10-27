@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/client'
 import { ArrowLeft, Save, Upload, X } from 'lucide-react'
 import toast from 'react-hot-toast'
 import Sidebar from '@/components/admin/Sidebar'
+import { compressImage } from '@/lib/compressImage'
 
 export default function CreateBlog() {
   const [loading, setLoading] = useState(false)
@@ -78,13 +79,16 @@ export default function CreateBlog() {
     setUploading(true)
 
     try {
-      const fileExt = file.name.split('.').pop()
+      // Compress the image before uploading
+      const compressedFile = await compressImage(file)
+
+      const fileExt = compressedFile.name.split('.').pop()
       const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`
       const filePath = `news/${fileName}`
 
       const { error: uploadError } = await supabase.storage
         .from('news')
-        .upload(filePath, file)
+        .upload(filePath, compressedFile)
 
       if (uploadError) {
         if (uploadError.message.includes('bucket not found')) {

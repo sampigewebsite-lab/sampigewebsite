@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/client'
 import { ArrowLeft, Save, Upload, X } from 'lucide-react'
 import toast from 'react-hot-toast'
 import Sidebar from '@/components/admin/Sidebar'
+import { compressImage } from '@/lib/compressImage'
 
 export default function EditEvent() {
   const [loading, setLoading] = useState(false)
@@ -119,15 +120,25 @@ export default function EditEvent() {
     setUploading(true)
 
     try {
-      const fileExt = file.name.split('.').pop()
+      // Compress the image before uploading
+      const compressedFile = await compressImage(file)
+
+      const fileExt = compressedFile.name.split('.').pop()
       const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`
       const filePath = `events/${fileName}`
 
       const { error: uploadError } = await supabase.storage
         .from('events')
-        .upload(filePath, file)
+        .upload(filePath, compressedFile)
 
-      if (uploadError) throw uploadError
+      if (uploadError) {
+        if (uploadError.message.includes('bucket not found')) {
+          toast.error('Storage bucket not found. Please create "events" bucket in Supabase.')
+        } else {
+          toast.error(uploadError.message || 'Failed to upload image')
+        }
+        return
+      }
 
       const { data: { publicUrl } } = supabase.storage
         .from('events')

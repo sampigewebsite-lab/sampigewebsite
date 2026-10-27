@@ -9,6 +9,8 @@ import {
   Trash2, Image as ImageIcon, Edit2, Calendar, BarChart3, CreditCard,
   Phone, MessageSquare, AlertCircle, Copy, Check, Filter
 } from 'lucide-react'
+import { compressImage } from '@/lib/compressImage'
+
 
 export default function PoojaAdminPage() {
   const [activeTab, setActiveTab] = useState<'enquiries' | 'content' | 'points' | 'proofs'>('enquiries')
@@ -21,8 +23,10 @@ export default function PoojaAdminPage() {
   const [uploadingField, setUploadingField] = useState<string | null>(null)
   const [editingEnquiry, setEditingEnquiry] = useState<any>(null)
 
+
   // Filter State
   const [filterType, setFilterType] = useState<'all' | 'due' | 'overdue' | 'unpaid' | 'paid'>('all')
+
 
   // Impact stats variables for the form
   const [impact1Value, setImpact1Value] = useState('')
@@ -34,19 +38,24 @@ export default function PoojaAdminPage() {
   const [impact4Value, setImpact4Value] = useState('')
   const [impact4Label, setImpact4Label] = useState('')
 
+
   // New Collection Point variables
   const [newPointName, setNewPointName] = useState('')
   const [newPointArea, setNewPointArea] = useState('')
   const [newPointAddress, setNewPointAddress] = useState('')
 
+
   const supabase = createClient()
+
 
   useEffect(() => {
     fetchData()
   }, [])
 
+
   async function fetchData() {
     setLoading(true)
+
 
     const [{ data: enqData }, { data: contentData }, { data: pointsData }, { data: proofsData }] = await Promise.all([
       supabase.from('pooja_enquiries').select('*').order('created_at', { ascending: false }),
@@ -55,10 +64,12 @@ export default function PoojaAdminPage() {
       supabase.from('donation_payment_proofs').select('*').order('created_at', { ascending: false })
     ])
 
+
     setEnquiries(enqData || [])
     setContent(contentData || {})
     setPoints(pointsData || [])
     setProofs(proofsData || [])
+
 
     const stats = contentData?.impact_stats
     if (Array.isArray(stats) && stats.length > 0) {
@@ -75,68 +86,102 @@ export default function PoojaAdminPage() {
     setLoading(false)
   }
 
+
   // Handle single image upload
+  // Handle single image upload with client-side compression
   async function handleImageUpload(e: React.ChangeEvent<HTMLInputElement>, fieldName: string) {
-    const file = e.target.files?.[0]
-    if (!file) return
-    if (!file.type.startsWith('image/')) {
+    const rawFile = e.target.files?.[0]
+    if (!rawFile) return
+    if (!rawFile.type.startsWith('image/')) {
       toast.error('Please choose an image file')
       return
     }
 
+
     setUploadingField(fieldName)
-    const fileExt = file.name.split('.').pop()
-    const fileName = `pooja_${fieldName}_${Date.now()}.${fileExt}`
 
-    const { error: uploadError } = await supabase.storage
-      .from('media')
-      .upload(fileName, file, { upsert: true, contentType: file.type })
-      
-    if (uploadError) {
-      toast.error('Upload failed')
+
+    try {
+      // Compress in browser before upload
+      const { file, summary } = await compressImage(rawFile)
+      const fileExt = file.name.split('.').pop() || 'jpg'
+      const fileName = `pooja_${fieldName}_${Date.now()}.${fileExt}`
+
+
+      const { error: uploadError } = await supabase.storage
+        .from('media')
+        .upload(fileName, file, { upsert: true, contentType: file.type })
+
+
+      if (uploadError) {
+        toast.error('Upload failed: ' + uploadError.message)
+        setUploadingField(null)
+        return
+      }
+
+
+      const { data: pub } = supabase.storage.from('media').getPublicUrl(fileName)
+
+
+      setContent((prev: any) => ({ ...prev, [fieldName]: pub.publicUrl }))
+      await supabase.from('pooja_to_prakruthi_content').update({ [fieldName]: pub.publicUrl }).eq('id', 1)
+
+
+      toast.success(`Image saved! ${summary}`)
+    } catch (err: any) {
+      toast.error(err.message || 'Image processing failed')
+    } finally {
       setUploadingField(null)
-      return
+      e.target.value = ''
     }
-
-    const { data: pub } = supabase.storage.from('media').getPublicUrl(fileName)
-    
-    setContent((prev: any) => ({ ...prev, [fieldName]: pub.publicUrl }))
-    await supabase.from('pooja_to_prakruthi_content').update({ [fieldName]: pub.publicUrl }).eq('id', 1)
-
-    toast.success('Image saved!')
-    setUploadingField(null)
-    e.target.value = ''
   }
 
-  // Handle gallery upload
+
+ // Handle gallery upload with client-side compression
   async function handleGalleryUpload(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0]
-    if (!file) return
+    const rawFile = e.target.files?.[0]
+    if (!rawFile) return
+
 
     setUploadingField('gallery')
-    const fileExt = file.name.split('.').pop()
-    const fileName = `pooja_gallery_${Date.now()}.${fileExt}`
 
-    const { error: uploadError } = await supabase.storage
-      .from('media')
-      .upload(fileName, file, { upsert: true, contentType: file.type })
-      
-    if (uploadError) {
-      toast.error('Upload failed')
+
+    try {
+      // Compress in browser before upload
+      const { file, summary } = await compressImage(rawFile)
+      const fileExt = file.name.split('.').pop() || 'jpg'
+      const fileName = `pooja_gallery_${Date.now()}.${fileExt}`
+
+
+      const { error: uploadError } = await supabase.storage
+        .from('media')
+        .upload(fileName, file, { upsert: true, contentType: file.type })
+
+
+      if (uploadError) {
+        toast.error('Upload failed: ' + uploadError.message)
+        setUploadingField(null)
+        return
+      }
+
+
+      const { data: pub } = supabase.storage.from('media').getPublicUrl(fileName)
+      const updatedGallery = [...(content?.real_work_images || []), pub.publicUrl]
+
+
+      setContent((prev: any) => ({ ...prev, real_work_images: updatedGallery }))
+      await supabase.from('pooja_to_prakruthi_content').update({ real_work_images: updatedGallery }).eq('id', 1)
+
+
+      toast.success(`Gallery photo added! ${summary}`)
+    } catch (err: any) {
+      toast.error(err.message || 'Gallery upload failed')
+    } finally {
       setUploadingField(null)
-      return
+      e.target.value = ''
     }
-
-    const { data: pub } = supabase.storage.from('media').getPublicUrl(fileName)
-    const updatedGallery = [...(content?.real_work_images || []), pub.publicUrl]
-    
-    setContent((prev: any) => ({ ...prev, real_work_images: updatedGallery }))
-    await supabase.from('pooja_to_prakruthi_content').update({ real_work_images: updatedGallery }).eq('id', 1)
-
-    toast.success('Gallery photo added!')
-    setUploadingField(null)
-    e.target.value = ''
   }
+
 
   async function removeGalleryImage(index: number) {
     const updatedGallery = (content?.real_work_images || []).filter((_: any, i: number) => i !== index)
@@ -145,11 +190,13 @@ export default function PoojaAdminPage() {
     toast.success('Photo removed')
   }
 
+
   // Handle Member Edits & Auto Next Due Date Calculation (Feature B)
   async function handleSaveEnquiryDetails(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     if (!editingEnquiry) return
     setSaving(true)
+
 
     const formData = new FormData(e.currentTarget)
     const pStatus = formData.get('payment_status') as string
@@ -158,11 +205,13 @@ export default function PoojaAdminPage() {
     let calculatedDueDate = (formData.get('next_due_date') as string) || null
     let calculatedLastPayment = editingEnquiry.last_payment_date
 
+
     if (pStatus === 'Paid' && editingEnquiry.payment_status !== 'Paid') {
       const today = new Date()
       calculatedLastPayment = today.toISOString().split('T')[0]
       calculatedDueDate = new Date(today.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
     }
+
 
     const updates = {
       payment_status: pStatus,
@@ -173,6 +222,7 @@ export default function PoojaAdminPage() {
       next_due_date: calculatedDueDate,
       admin_notes: formData.get('admin_notes') as string,
     }
+
 
     const { error } = await supabase.from('pooja_enquiries').update(updates).eq('id', editingEnquiry.id)
     
@@ -186,6 +236,7 @@ export default function PoojaAdminPage() {
     setSaving(false)
   }
 
+
   // Handle Content / Text Save
   async function handleSaveContent(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -198,6 +249,7 @@ export default function PoojaAdminPage() {
       { value: impact3Value || '—', label: impact3Label || 'Collections Completed' },
       { value: impact4Value || '—', label: impact4Label || 'kg Compost Produced' },
     ]
+
 
     const updates = {
       hero_title_line1: formData.get('hero_title_line1'),
@@ -215,6 +267,7 @@ export default function PoojaAdminPage() {
       impact_stats,
     }
 
+
     const { error } = await supabase.from('pooja_to_prakruthi_content').update(updates).eq('id', 1)
     
     if (error) {
@@ -224,6 +277,7 @@ export default function PoojaAdminPage() {
     }
     setSaving(false)
   }
+
 
   // Handle Points
   async function handleAddPoint(e: React.FormEvent) {
@@ -245,16 +299,19 @@ export default function PoojaAdminPage() {
     fetchData()
   }
 
+
   async function togglePointStatus(id: string, current: boolean) {
     await supabase.from('pooja_collection_points').update({ is_active: !current }).eq('id', id)
     fetchData()
   }
+
 
   async function deletePoint(id: string) {
     if (!confirm('Delete this?')) return
     await supabase.from('pooja_collection_points').delete().eq('id', id)
     fetchData()
   }
+
 
   // Auto sets last_payment_date & shifts next_due_date forward by 30 days dynamically on verification
   async function markProofStatus(id: string, status: string, phone: string) {
@@ -264,6 +321,7 @@ export default function PoojaAdminPage() {
       const today = new Date()
       const calculatedLastPayment = today.toISOString().split('T')[0]
       const calculatedDueDate = new Date(today.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+
 
       await supabase.from('pooja_enquiries').update({ 
         payment_status: 'Paid', 
@@ -279,6 +337,7 @@ export default function PoojaAdminPage() {
     fetchData()
   }
 
+
   async function deleteProof(id: string, screenshotUrl?: string) {
     if (!confirm('Delete proof?')) return
     
@@ -292,6 +351,25 @@ export default function PoojaAdminPage() {
     fetchData()
   }
 
+
+  // Permanently delete a member from pooja_enquiries
+  async function deleteEnquiry(id: string, name: string) {
+    if (!confirm(`Permanently delete member "${name}"?\n\nThis cannot be undone.`)) return
+
+    const { error } = await supabase.from('pooja_enquiries').delete().eq('id', id)
+
+    if (error) {
+      toast.error('Delete failed: ' + error.message)
+      return
+    }
+
+    toast.success(`Deleted ${name}`)
+    // Close the edit modal if this member was open
+    if (editingEnquiry?.id === id) setEditingEnquiry(null)
+    fetchData()
+  }
+
+
   // Direct WhatsApp Reminder Generator (Feature B & C)
   function getWhatsAppReminderLink(name: string, phone: string) {
     const cleanPhone = phone.replace(/\D/g, '')
@@ -301,6 +379,7 @@ export default function PoojaAdminPage() {
     
     return `https://wa.me/${formattedPhone}?text=${encodeURIComponent(message)}`
   }
+
 
   // Filter Logic (Feature B)
   const filteredEnquiries = enquiries.filter((enq) => {
@@ -312,12 +391,14 @@ export default function PoojaAdminPage() {
     // Is Due This Month if next_due_date is in current month
     const isDueThisMonth = enq.next_due_date && enq.next_due_date.slice(0, 7) === todayStr.slice(0, 7) && enq.payment_status !== 'Paid'
 
+
     if (filterType === 'overdue') return isOverdue
     if (filterType === 'due') return isDueThisMonth
     if (filterType === 'unpaid') return enq.payment_status === 'Unpaid' || enq.payment_status === 'Pending'
     if (filterType === 'paid') return enq.payment_status === 'Paid'
     return true
   })
+
 
   // Bulk Clipboard Copy utility for Reminder messages
   function copyBulkReminderNumbers() {
@@ -326,14 +407,17 @@ export default function PoojaAdminPage() {
       return enq.next_due_date && enq.next_due_date < todayStr && enq.payment_status !== 'Paid'
     }).map(enq => enq.phone)
 
+
     if (overdueList.length === 0) {
       toast.error('No overdue members found.')
       return
     }
 
+
     navigator.clipboard.writeText(overdueList.join(', '))
     toast.success(`Copied ${overdueList.length} phone numbers!`)
   }
+
 
   if (loading) {
     return (
@@ -343,11 +427,13 @@ export default function PoojaAdminPage() {
     )
   }
 
+
   return (
     <div className="min-h-screen bg-black flex">
       <Sidebar />
       <main className="flex-1 overflow-auto p-6 md:p-10 text-gray-200">
         <Toaster position="top-right" />
+
 
         <div className="mb-8 border-b border-gray-800 pb-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div>
@@ -356,6 +442,7 @@ export default function PoojaAdminPage() {
               Manage members, automated next due dates, WhatsApp reminders, and live images.
             </p>
           </div>
+
 
           {/* Quick Stats Helper Panel */}
           <div className="flex gap-4">
@@ -367,6 +454,7 @@ export default function PoojaAdminPage() {
             </button>
           </div>
         </div>
+
 
         {/* TABS */}
         <div className="flex flex-wrap gap-3 mb-8">
@@ -399,6 +487,7 @@ export default function PoojaAdminPage() {
           </button>
         </div>
 
+
         {/* ═══════════════════════════════════════════
             TAB 1: ENQUIRIES & MEMBERS
             ═══════════════════════════════════════════ */}
@@ -425,6 +514,7 @@ export default function PoojaAdminPage() {
               ))}
             </div>
 
+
             <div className="bg-[#141414] rounded-2xl border border-gray-800 overflow-hidden">
               {filteredEnquiries.length === 0 ? (
                 <div className="p-12 text-center text-gray-500">No members match this filter.</div>
@@ -444,6 +534,7 @@ export default function PoojaAdminPage() {
                       {filteredEnquiries.map((enq) => {
                         const todayStr = new Date().toISOString().split('T')[0]
                         const isOverdue = enq.next_due_date && enq.next_due_date < todayStr && enq.payment_status !== 'Paid'
+
 
                         return (
                           <tr key={enq.id} className="hover:bg-black/40">
@@ -488,6 +579,14 @@ export default function PoojaAdminPage() {
                               >
                                 <MessageSquare className="w-3.5 h-3.5" /> Remind
                               </a>
+
+                              {/* Permanent Delete Action */}
+                              <button
+                                onClick={() => deleteEnquiry(enq.id, enq.full_name || enq.contact_person || 'this member')}
+                                className="px-3 py-2 bg-red-900/40 text-red-400 rounded-lg text-xs font-bold hover:bg-red-900 hover:text-white flex items-center gap-1"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" /> Delete
+                              </button>
                             </td>
                           </tr>
                         )
@@ -499,6 +598,7 @@ export default function PoojaAdminPage() {
             </div>
           </div>
         )}
+
 
         {/* Member Edit Modal */}
         {editingEnquiry && (
@@ -545,6 +645,7 @@ export default function PoojaAdminPage() {
           </div>
         )}
 
+
         {/* ═══════════════════════════════════════════
             TAB 2: PAYMENT PROOFS
             ═══════════════════════════════════════════ */}
@@ -570,6 +671,7 @@ export default function PoojaAdminPage() {
                       )}
                     </div>
 
+
                     <div className="flex-1 space-y-1.5">
                       <div className="flex justify-between items-start">
                         <div>
@@ -587,6 +689,7 @@ export default function PoojaAdminPage() {
                       <p className="text-xs text-gray-500 italic mt-2">{p.notes}</p>
                     </div>
 
+
                     <div className="flex flex-col gap-2 shrink-0 justify-center border-l border-gray-800 pl-6">
                       {p.status !== 'verified' && (
                         <button onClick={() => markProofStatus(p.id, 'verified', p.phone)} className="px-4 py-2 bg-green-600 text-white text-xs font-bold rounded-xl hover:bg-green-500">
@@ -601,12 +704,14 @@ export default function PoojaAdminPage() {
                       </button>
                     </div>
 
+
                   </div>
                 ))}
               </div>
             )}
           </div>
         )}
+
 
         {/* ═══════════════════════════════════════════
             TAB 3: CONTENT & IMAGES
@@ -640,6 +745,7 @@ export default function PoojaAdminPage() {
               </div>
             </div>
 
+
             <div className="bg-[#141414] p-8 rounded-3xl border border-gray-800">
               <h2 className="text-xl font-bold text-white mb-6">Upload Section Photos</h2>
               
@@ -653,6 +759,7 @@ export default function PoojaAdminPage() {
                 <ImageUploadCard label="7. Journey Ends" currentUrl={content?.problem_scene_4_image} uploading={uploadingField === 'problem_scene_4_image'} onFileChange={(e) => handleImageUpload(e, 'problem_scene_4_image')} />
                 <ImageUploadCard label="8. Not Accepted Photo" currentUrl={content?.not_accepted_image} uploading={uploadingField === 'not_accepted_image'} onFileChange={(e) => handleImageUpload(e, 'not_accepted_image')} />
               </div>
+
 
               <div className="mt-8 border-t border-gray-800 pt-6">
                 <h3 className="text-lg font-bold text-white mb-4 flex items-center justify-between">
@@ -674,6 +781,7 @@ export default function PoojaAdminPage() {
                 </div>
               </div>
             </div>
+
 
             <form onSubmit={handleSaveContent} className="bg-[#141414] p-8 rounded-3xl border border-gray-800">
               <h2 className="text-xl font-bold text-white mb-6">Edit Text & Pricing</h2>
@@ -722,6 +830,7 @@ export default function PoojaAdminPage() {
           </div>
         )}
 
+
         {/* ═══════════════════════════════════════════
             TAB 4: POINTS
             ═══════════════════════════════════════════ */}
@@ -756,6 +865,7 @@ export default function PoojaAdminPage() {
     </div>
   )
 }
+
 
 function ImageUploadCard({ label, sublabel, currentUrl, uploading, onFileChange }: { label: string; sublabel?: string; currentUrl?: string; uploading: boolean; onFileChange: any }) {
   return (

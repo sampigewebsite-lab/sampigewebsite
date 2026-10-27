@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/client'
 import { ArrowLeft, Save, Upload, X, Plus, Image as ImageIcon } from 'lucide-react'
 import toast from 'react-hot-toast'
 import Sidebar from '@/components/admin/Sidebar'
+import { compressImage } from '@/lib/compressImage'
 
 export default function CreateGalleryAlbum() {
   const [loading, setLoading] = useState(false)
@@ -59,89 +60,102 @@ export default function CreateGalleryAlbum() {
     }))
   }
 
-  const handleCoverImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
+const handleCoverImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const file = e.target.files?.[0]
+  if (!file) return
 
-    if (!file.type.startsWith('image/')) {
-      toast.error('Please select an image file')
+  if (!file.type.startsWith('image/')) {
+    toast.error('Please select an image file')
+    return
+  }
+
+  setUploading(true)
+
+  try {
+    const { file: compressed, summary } = await compressImage(file, {
+      maxDimension: 1600,
+      quality: 0.8,
+    })
+
+    const fileExt = compressed.name.split('.').pop() || 'webp'
+    const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`
+    const filePath = `gallery/${fileName}`
+
+    const { error: uploadError } = await supabase.storage
+      .from('gallery')
+      .upload(filePath, compressed, {
+        contentType: compressed.type,
+        upsert: false,
+      })
+
+    if (uploadError) {
+      if (uploadError.message.includes('bucket not found')) {
+        toast.error('Storage bucket not found. Please create "gallery" bucket in Supabase.')
+      } else {
+        toast.error(uploadError.message || 'Failed to upload image')
+      }
       return
     }
 
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error('Image size should be less than 5MB')
-      return
-    }
+    const { data: { publicUrl } } = supabase.storage
+      .from('gallery')
+      .getPublicUrl(filePath)
 
-    setUploading(true)
+    setCoverImage(publicUrl)
+    setFormData(prev => ({ ...prev, cover_image: publicUrl }))
+    toast.success(`Cover uploaded! ${summary}`)
+  } catch (error: any) {
+    toast.error(error.message || 'Failed to upload image')
+  } finally {
+    setUploading(false)
+  }
+}
 
-    try {
-      const fileExt = file.name.split('.').pop()
+const handleGalleryImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const files = e.target.files
+  if (!files || files.length === 0) return
+
+  setUploading(true)
+
+  try {
+    let uploaded = 0
+    for (const file of Array.from(files)) {
+      if (!file.type.startsWith('image/')) continue
+
+      const { file: compressed, summary } = await compressImage(file, {
+        maxDimension: 1600,
+        quality: 0.8,
+      })
+
+      const fileExt = compressed.name.split('.').pop() || 'webp'
       const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`
       const filePath = `gallery/${fileName}`
 
       const { error: uploadError } = await supabase.storage
         .from('gallery')
-        .upload(filePath, file)
+        .upload(filePath, compressed, {
+          contentType: compressed.type,
+          upsert: false,
+        })
 
-      if (uploadError) {
-        if (uploadError.message.includes('bucket not found')) {
-          toast.error('Storage bucket not found. Please create "gallery" bucket in Supabase.')
-        } else {
-          toast.error(uploadError.message || 'Failed to upload image')
-        }
-        return
-      }
+      if (uploadError) throw uploadError
 
       const { data: { publicUrl } } = supabase.storage
         .from('gallery')
         .getPublicUrl(filePath)
 
-      setCoverImage(publicUrl)
-      setFormData(prev => ({ ...prev, cover_image: publicUrl }))
-      toast.success('Cover image uploaded successfully!')
-    } catch (error: any) {
-      toast.error(error.message || 'Failed to upload image')
-    } finally {
-      setUploading(false)
+      setImages(prev => [...prev, publicUrl])
+      uploaded++
+      console.log(`Gallery image: ${summary}`)
     }
+    toast.success(`${uploaded} image(s) uploaded (compressed for free tier)`)
+  } catch (error: any) {
+    toast.error(error.message || 'Failed to upload images')
+  } finally {
+    setUploading(false)
+    if (e.target) e.target.value = ''
   }
-
-  const handleGalleryImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files
-    if (!files || files.length === 0) return
-
-    setUploading(true)
-
-    try {
-      for (const file of files) {
-        if (!file.type.startsWith('image/')) continue
-        if (file.size > 5 * 1024 * 1024) continue
-
-        const fileExt = file.name.split('.').pop()
-        const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`
-        const filePath = `gallery/${fileName}`
-
-        const { error: uploadError } = await supabase.storage
-          .from('gallery')
-          .upload(filePath, file)
-
-        if (uploadError) throw uploadError
-
-        const { data: { publicUrl } } = supabase.storage
-          .from('gallery')
-          .getPublicUrl(filePath)
-
-        setImages(prev => [...prev, publicUrl])
-      }
-      toast.success(`${files.length} images uploaded successfully!`)
-    } catch (error: any) {
-      toast.error(error.message || 'Failed to upload images')
-    } finally {
-      setUploading(false)
-      if (e.target) e.target.value = ''
-    }
-  }
+}
 
   const removeImage = (index: number) => {
     setImages(prev => prev.filter((_, i) => i !== index))

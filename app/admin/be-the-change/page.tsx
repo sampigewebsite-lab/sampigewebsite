@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import toast from 'react-hot-toast'
 import { Save, Plus, Trash2, Upload, Eye, EyeOff } from 'lucide-react'
 import Sidebar from '@/components/admin/Sidebar'
+import { compressImage } from '@/lib/compressImage'
 
 type Card = {
   id?: string
@@ -186,30 +187,41 @@ export default function BeTheChangeAdminPage() {
     }
   }
 
-  async function uploadImage(file: File, index: number) {
-    if (!file) return
-    setUploading(String(index))
-    try {
-      const ext = file.name.split('.').pop()
-      const fileName = `be-the-change/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
+async function uploadImage(file: File, index: number) {
+  if (!file) return
+  setUploading(String(index))
+  try {
+    // Compress before upload (Free-tier bandwidth saver)
+    const { file: compressed, summary } = await compressImage(file, {
+      maxDimension: 1200, // cards don't need huge images
+      quality: 0.8,
+    })
 
-      const { error: uploadError } = await supabase.storage.from('media').upload(fileName, file)
-      if (uploadError) throw uploadError
+    const ext = compressed.name.split('.').pop() || 'webp'
+    const fileName = `be-the-change/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
 
-      const {
-        data: { publicUrl },
-      } = supabase.storage.from('media').getPublicUrl(fileName)
+    const { error: uploadError } = await supabase.storage
+      .from('media')
+      .upload(fileName, compressed, {
+        contentType: compressed.type,
+        upsert: false,
+      })
+    if (uploadError) throw uploadError
 
-      const updated = [...cards]
-      updated[index] = { ...updated[index], image_url: publicUrl }
-      setCards(updated)
-      toast.success('Image uploaded!')
-    } catch (err: any) {
-      toast.error(err.message || 'Upload failed')
-    } finally {
-      setUploading(null)
-    }
+    const {
+      data: { publicUrl },
+    } = supabase.storage.from('media').getPublicUrl(fileName)
+
+    const updated = [...cards]
+    updated[index] = { ...updated[index], image_url: publicUrl }
+    setCards(updated)
+    toast.success(`Image uploaded! ${summary}`)
+  } catch (err: any) {
+    toast.error(err.message || 'Upload failed')
+  } finally {
+    setUploading(null)
   }
+}
 
   function updateCard(index: number, field: keyof Card, value: any) {
     const updated = [...cards]

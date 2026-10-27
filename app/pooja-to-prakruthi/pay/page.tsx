@@ -8,6 +8,7 @@ import {
   Loader2, Search, Leaf, QrCode, Upload, ArrowRight, CheckCircle2,
   Building2, CreditCard, Hash, Landmark, Copy
 } from 'lucide-react'
+import { compressImage } from '@/lib/compressImage'
 
 function PoojaPaymentContent() {
   const searchParams = useSearchParams()
@@ -100,19 +101,30 @@ function PoojaPaymentContent() {
 
     let screenshot_url: string | null = null
     if (file) {
-      const ext = file.name.split('.').pop()
-      const path = `pooja_payment_${Date.now()}.${ext}`
-      const { error: upErr } = await supabase.storage
-        .from('media')
-        .upload(path, file, { upsert: true, contentType: file.type })
+      try {
+        // Compress screenshot client-side (cuts mobile screenshots from ~5-10MB down to ~150KB)
+        const { file: compressedFile, summary } = await compressImage(file, { maxDimension: 1200, quality: 0.75 })
+        console.log('[Pooja Payment Proof Compressed]', summary)
 
-      if (upErr) {
-        toast.error('Screenshot upload failed: ' + upErr.message)
+        const ext = compressedFile.name.split('.').pop() || 'jpg'
+        const path = `pooja_payment_${Date.now()}.${ext}`
+
+        const { error: upErr } = await supabase.storage
+          .from('media')
+          .upload(path, compressedFile, { upsert: true, contentType: compressedFile.type })
+
+        if (upErr) {
+          toast.error('Screenshot upload failed: ' + upErr.message)
+          setProofLoading(false)
+          return
+        }
+        const { data: pub } = supabase.storage.from('media').getPublicUrl(path)
+        screenshot_url = pub.publicUrl
+      } catch (compErr: any) {
+        toast.error('Could not process screenshot image. Try another file.')
         setProofLoading(false)
         return
       }
-      const { data: pub } = supabase.storage.from('media').getPublicUrl(path)
-      screenshot_url = pub.publicUrl
     }
 
     const { error } = await supabase.from('donation_payment_proofs').insert([
