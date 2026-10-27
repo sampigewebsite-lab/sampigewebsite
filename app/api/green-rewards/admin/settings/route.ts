@@ -27,34 +27,41 @@ export async function GET() {
     await adminDb.from('gr_profiles').update({ role: 'admin' }).eq('id', user.id)
   }
 
-  // Fetch ALL data simultaneously
-  const [stgRes, catRes, locRes, reqRes, redRes] = await Promise.all([
+  // Fetch each table individually to prevent PostgREST join failures
+  const [stgRes, catRes, locRes, reqRes, redRes, profRes, addrRes, rewRes] = await Promise.all([
     adminDb.from('gr_settings').select('*'),
     adminDb.from('gr_waste_categories').select('*').order('display_order'),
     adminDb.from('gr_collection_locations').select('*').order('created_at', { ascending: false }),
-    adminDb.from('gr_collection_requests').select(`
-      *,
-      user:gr_profiles(full_name, phone, email),
-      address:gr_addresses(*)
-    `).order('created_at', { ascending: false }),
-    adminDb.from('gr_redemptions').select(`
-      *,
-      user:gr_profiles(full_name, phone, email),
-      reward:gr_rewards(*)
-    `).order('created_at', { ascending: false })
+    adminDb.from('gr_collection_requests').select('*').order('created_at', { ascending: false }),
+    adminDb.from('gr_redemptions').select('*').order('created_at', { ascending: false }),
+    adminDb.from('gr_profiles').select('id, full_name, phone, email'),
+    adminDb.from('gr_addresses').select('*'),
+    adminDb.from('gr_rewards').select('*')
   ])
 
-  // Log errors to the server console if the DB rejects the query
-  if (reqRes.error) console.error("Database Error (Pickups):", reqRes.error)
-  if (redRes.error) console.error("Database Error (Redemptions):", redRes.error)
+  // Create lookups for reliable merging
+  const profilesMap = new Map((profRes.data || []).map((p: any) => [p.id, p]))
+  const addrMap = new Map((addrRes.data || []).map((a: any) => [a.id, a]))
+  const rewMap = new Map((rewRes.data || []).map((r: any) => [r.id, r]))
 
-  // Send the data to the Admin Panel frontend
+  const pickups = (reqRes.data || []).map((req: any) => ({
+    ...req,
+    user: profilesMap.get(req.user_id) || { full_name: 'Member', email: '', phone: '' },
+    address: addrMap.get(req.address_id) || null
+  }))
+
+  const redemptions = (redRes.data || []).map((red: any) => ({
+    ...red,
+    user: profilesMap.get(red.user_id) || { full_name: 'Member', email: '', phone: '' },
+    reward: rewMap.get(red.reward_id) || null
+  }))
+
   return NextResponse.json({
     settings: stgRes.data || [],
     categories: catRes.data || [],
     locations: locRes.data || [],
-    pickups: reqRes.data || [],
-    redemptions: redRes.data || []
+    pickups,
+    redemptions
   })
 }
 
@@ -71,6 +78,11 @@ export async function POST(request: Request) {
   }
 
   const adminDb = await createAdminClient()
+
+  // Auto-promote in DB if needed
+  if (user.email === 'admin@sampige.org' && profile?.role !== 'admin') {
+    await adminDb.from('gr_profiles').update({ role: 'admin' }).eq('id', user.id)
+  }
 
   try {
     const body = await request.json()
