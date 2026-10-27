@@ -54,7 +54,8 @@ export default function GreenRewardsAdminPage() {
   async function fetchAdminData() {
     setLoading(true)
     try {
-      // Fetch settings, locations, categories, pickups, redemptions via Server API
+      // Fetch EVERYTHING (settings, locations, categories, pickups, redemptions) via secure Server API
+      // This bypasses client-side RLS and prevents overwriting data with empty arrays.
       const res = await fetch('/api/green-rewards/admin/settings')
       if (res.ok) {
         const data = await res.json()
