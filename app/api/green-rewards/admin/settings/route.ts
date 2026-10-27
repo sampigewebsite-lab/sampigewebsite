@@ -27,7 +27,7 @@ export async function GET() {
     await adminDb.from('gr_profiles').update({ role: 'admin' }).eq('id', user.id)
   }
 
-  // Fetch each table individually to prevent PostgREST join failures
+  // Fetch each table individually
   const [stgRes, catRes, locRes, reqRes, redRes, profRes, addrRes, rewRes] = await Promise.all([
     adminDb.from('gr_settings').select('*'),
     adminDb.from('gr_waste_categories').select('*').order('display_order'),
@@ -39,7 +39,7 @@ export async function GET() {
     adminDb.from('gr_rewards').select('*')
   ])
 
-  // Create lookups for reliable merging
+  // Create lookups
   const profilesMap = new Map((profRes.data || []).map((p: any) => [p.id, p]))
   const addrMap = new Map((addrRes.data || []).map((a: any) => [a.id, a]))
   const rewMap = new Map((rewRes.data || []).map((r: any) => [r.id, r]))
@@ -79,7 +79,6 @@ export async function POST(request: Request) {
 
   const adminDb = await createAdminClient()
 
-  // Auto-promote in DB if needed
   if (user.email === 'admin@sampige.org' && profile?.role !== 'admin') {
     await adminDb.from('gr_profiles').update({ role: 'admin' }).eq('id', user.id)
   }
