@@ -84,10 +84,18 @@ export default function GreenRewardsDashboard() {
 
     const activeLocations = locRes.data || []
     const activeCategories = catRes.data || []
+    const stgData = stgRes.data || []
 
     setLocations(activeLocations)
     setCategories(activeCategories)
-    setSettings(stgRes.data || [])
+    setSettings(stgData)
+
+    // Set dynamic default time slot based on settings
+    const allowedSlotsStr = stgData.find((s: any) => s.key === 'allowed_time_slots')?.value
+    if (allowedSlotsStr) {
+      const slots = allowedSlotsStr.split(',').map((s: string) => s.trim())
+      if (slots.length > 0) setTimeSlot(slots[0])
+    }
 
     if (activeLocations.length > 0) {
       setSelectedLocation(activeLocations[0].id)
@@ -224,7 +232,13 @@ export default function GreenRewardsDashboard() {
     router.push('/green-rewards/login')
   }
 
+  // Derived settings for dynamic rendering
   const isHomePickupEnabled = settings.find((s) => s.key === 'enable_home_pickup')?.value === 'true'
+  const pointsToRupeeRate = parseFloat(settings.find((s) => s.key === 'points_to_rupee_rate')?.value || '0.10')
+  const allowedSlotsSetting = settings.find((s) => s.key === 'allowed_time_slots')?.value
+  const parsedTimeSlots = allowedSlotsSetting
+    ? allowedSlotsSetting.split(',').map((s) => s.trim())
+    : ['09:00 AM - 12:00 PM', '12:00 PM - 03:00 PM', '03:00 PM - 07:00 PM']
 
   if (loading) {
     return (
@@ -291,7 +305,7 @@ export default function GreenRewardsDashboard() {
                 {balance.current_balance || 0} <span className="text-xl font-normal text-zinc-400">pts</span>
               </div>
               <div className="text-xs text-zinc-400 mt-2">
-                ≈ ₹{((balance.current_balance || 0) * 0.10).toFixed(2)} INR {lang === 'en' ? 'Value' : 'ಮೌಲ್ಯ'}
+                ≈ ₹{((balance.current_balance || 0) * pointsToRupeeRate).toFixed(2)} INR {lang === 'en' ? 'Value' : 'ಮೌಲ್ಯ'}
               </div>
             </div>
 
@@ -406,7 +420,7 @@ export default function GreenRewardsDashboard() {
                 />
               </div>
 
-              {/* Time Window */}
+              {/* Dynamic Time Window from Settings */}
               <div>
                 <label className="text-xs text-zinc-300 block mb-2 font-medium flex items-center gap-1.5">
                   <Clock className="w-3.5 h-3.5 text-[#FFB300]" />
@@ -417,9 +431,11 @@ export default function GreenRewardsDashboard() {
                   onChange={(e) => setTimeSlot(e.target.value)}
                   className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-sm text-white focus:border-[#FFB300] outline-none"
                 >
-                  <option value="09:00 AM - 12:00 PM">09:00 AM - 12:00 PM (Morning)</option>
-                  <option value="12:00 PM - 03:00 PM">12:00 PM - 03:00 PM (Afternoon)</option>
-                  <option value="03:00 PM - 06:00 PM">03:00 PM - 06:00 PM (Evening)</option>
+                  {parsedTimeSlots.map((slot) => (
+                    <option key={slot} value={slot}>
+                      {slot}
+                    </option>
+                  ))}
                 </select>
               </div>
             </div>

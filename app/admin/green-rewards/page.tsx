@@ -54,38 +54,19 @@ export default function GreenRewardsAdminPage() {
   async function fetchAdminData() {
     setLoading(true)
     try {
-      // Fetch settings, locations, categories via Server API
+      // Fetch settings, locations, categories, pickups, redemptions via Server API
       const res = await fetch('/api/green-rewards/admin/settings')
       if (res.ok) {
         const data = await res.json()
         setLocations(data.locations || [])
         setCategories(data.categories || [])
         setSettings(data.settings || [])
+        setPickups(data.pickups || [])
+        setRedemptions(data.redemptions || [])
       } else {
         const err = await res.json()
         toast.error('Admin Check Failed: ' + err.error)
       }
-
-      // Fetch Requests & Redemptions
-      const { data: pickupsData } = await supabase
-        .from('gr_collection_requests')
-        .select(`
-          *,
-          user:gr_profiles(full_name, phone, email),
-          address:gr_addresses(*)
-        `)
-        .order('created_at', { ascending: false })
-      setPickups(pickupsData || [])
-
-      const { data: redemptionsData } = await supabase
-        .from('gr_redemptions')
-        .select(`
-          *,
-          user:gr_profiles(full_name, phone, email),
-          reward:gr_rewards(*)
-        `)
-        .order('created_at', { ascending: false })
-      setRedemptions(redemptionsData || [])
     } catch (err: any) {
       toast.error('Failed to load admin data: ' + err.message)
     } finally {

@@ -27,16 +27,28 @@ export async function GET() {
     await adminDb.from('gr_profiles').update({ role: 'admin' }).eq('id', user.id)
   }
 
-  const [stgRes, catRes, locRes] = await Promise.all([
+  const [stgRes, catRes, locRes, reqRes, redRes] = await Promise.all([
     adminDb.from('gr_settings').select('*'),
     adminDb.from('gr_waste_categories').select('*').order('display_order'),
-    adminDb.from('gr_collection_locations').select('*').order('created_at', { ascending: false })
+    adminDb.from('gr_collection_locations').select('*').order('created_at', { ascending: false }),
+    adminDb.from('gr_collection_requests').select(`
+      *,
+      user:gr_profiles(full_name, phone, email),
+      address:gr_addresses(*)
+    `).order('created_at', { ascending: false }),
+    adminDb.from('gr_redemptions').select(`
+      *,
+      user:gr_profiles(full_name, phone, email),
+      reward:gr_rewards(*)
+    `).order('created_at', { ascending: false })
   ])
 
   return NextResponse.json({
     settings: stgRes.data || [],
     categories: catRes.data || [],
-    locations: locRes.data || []
+    locations: locRes.data || [],
+    pickups: reqRes.data || [],
+    redemptions: redRes.data || []
   })
 }
 
