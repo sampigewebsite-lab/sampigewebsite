@@ -6,16 +6,12 @@ import {
   Recycle, 
   MapPin, 
   Settings, 
-  IndianRupee, 
   Plus, 
   Trash2, 
-  CheckCircle2, 
-  XCircle, 
-  AlertCircle,
   Loader2,
   Scale,
   Gift,
-  Search
+  XCircle
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 
@@ -54,14 +50,16 @@ export default function GreenRewardsAdminPage() {
   async function fetchAdminData() {
     setLoading(true)
     try {
-      // 1. Fetch settings, locations, categories
-      const res = await fetch('/api/green-rewards/admin/settings')
-      const data = await res.json()
-      if (res.ok) {
-        setLocations(data.locations || [])
-        setCategories(data.categories || [])
-        setSettings(data.settings || [])
-      }
+      // 1. Fetch settings, locations, categories directly via Supabase client
+      const [locRes, catRes, stgRes] = await Promise.all([
+        supabase.from('gr_collection_locations').select('*').order('created_at', { ascending: false }),
+        supabase.from('gr_waste_categories').select('*').order('display_order'),
+        supabase.from('gr_settings').select('*')
+      ])
+
+      setLocations(locRes.data || [])
+      setCategories(catRes.data || [])
+      setSettings(stgRes.data || [])
 
       // 2. Fetch Pending & Recent Pickup Requests
       const { data: pickupsData } = await supabase
@@ -99,69 +97,53 @@ export default function GreenRewardsAdminPage() {
       return
     }
 
-    const res = await fetch('/api/green-rewards/admin/settings', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        type: 'add_location',
-        payload: {
+    const { data, error } = await supabase
+      .from('gr_collection_locations')
+      .insert([
+        {
           name_en: newLocNameEn,
           name_kn: newLocNameKn || newLocNameEn,
           pincode: newLocPincode,
           is_active: true
         }
-      })
-    })
+      ])
 
-    if (res.ok) {
+    if (!error) {
       toast.success(`Location ${newLocNameEn} added successfully!`)
       setNewLocNameEn('')
       setNewLocNameKn('')
       setNewLocPincode('')
       fetchAdminData()
     } else {
-      const err = await res.json()
-      toast.error('Error adding location: ' + err.error)
+      toast.error('Error adding location: ' + error.message)
     }
   }
 
   async function handleDeleteLocation(id: string, name: string) {
     if (!confirm(`Are you sure you want to delete pickup location "${name}"?`)) return
 
-    const res = await fetch('/api/green-rewards/admin/settings', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        type: 'delete_location',
-        payload: { id }
-      })
-    })
+    const { error } = await supabase.from('gr_collection_locations').delete().eq('id', id)
 
-    if (res.ok) {
+    if (!error) {
       toast.success(`Location ${name} deleted`)
       fetchAdminData()
     } else {
-      const err = await res.json()
-      toast.error('Delete failed: ' + err.error)
+      toast.error('Delete failed: ' + error.message)
     }
   }
 
   // --- RATE ACTIONS ---
   async function handleUpdateRate(id: string, newPoints: number) {
-    const res = await fetch('/api/green-rewards/admin/settings', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        type: 'update_rate',
-        payload: { id, points: newPoints }
-      })
-    })
+    const { error } = await supabase
+      .from('gr_waste_categories')
+      .update({ points_per_kg: newPoints })
+      .eq('id', id)
 
-    if (res.ok) {
+    if (!error) {
       toast.success('Points multiplier updated!')
       fetchAdminData()
     } else {
-      toast.error('Failed to update rate')
+      toast.error('Failed to update rate: ' + error.message)
     }
   }
 
@@ -248,7 +230,7 @@ export default function GreenRewardsAdminPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-black text-white flex items-center justify-center">
+      <div className="min-h-screen bg-black text-white flex items-center justify-center pt-24">
         <Loader2 className="w-8 h-8 text-[#FFB300] animate-spin" />
       </div>
     )
@@ -525,24 +507,28 @@ export default function GreenRewardsAdminPage() {
 
             {/* Existing Locations Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {locations.map((loc) => (
-                <div key={loc.id} className="bg-zinc-900 border border-zinc-800 p-5 rounded-2xl flex items-center justify-between">
-                  <div>
-                    <div className="font-bold text-white text-base">{loc.name_en} ({loc.name_kn})</div>
-                    <div className="text-xs text-[#FFB300] font-mono mt-0.5">Pincode: {loc.pincode}</div>
-                    <span className="inline-block mt-2 px-2 py-0.5 bg-emerald-500/10 text-emerald-400 text-[10px] font-semibold rounded">
-                      Active Area
-                    </span>
+              {locations.length === 0 ? (
+                <div className="p-6 text-zinc-500 text-sm">No locations found. Add one above!</div>
+              ) : (
+                locations.map((loc) => (
+                  <div key={loc.id} className="bg-zinc-900 border border-zinc-800 p-5 rounded-2xl flex items-center justify-between">
+                    <div>
+                      <div className="font-bold text-white text-base">{loc.name_en} ({loc.name_kn})</div>
+                      <div className="text-xs text-[#FFB300] font-mono mt-0.5">Pincode: {loc.pincode}</div>
+                      <span className="inline-block mt-2 px-2 py-0.5 bg-emerald-500/10 text-emerald-400 text-[10px] font-semibold rounded">
+                        Active Area
+                      </span>
+                    </div>
+                    <button
+                      onClick={() => handleDeleteLocation(loc.id, loc.name_en)}
+                      className="p-2 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 rounded-xl transition"
+                      title="Delete Location"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
                   </div>
-                  <button
-                    onClick={() => handleDeleteLocation(loc.id, loc.name_en)}
-                    className="p-2 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 rounded-xl transition"
-                    title="Delete Location"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
-              ))}
+                ))
+              )}
             </div>
           </div>
         )}

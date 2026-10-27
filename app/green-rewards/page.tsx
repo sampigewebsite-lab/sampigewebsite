@@ -70,29 +70,37 @@ export default function GreenRewardsDashboard() {
 
     setUser(authUser)
 
-    // Fetch Profile
+    // 1. Fetch Profile
     const { data: prof } = await supabase.from('gr_profiles').select('*').eq('id', authUser.id).single()
     setProfile(prof || {})
     if (prof?.language_preference) setLang(prof.language_preference)
 
-    // Fetch Saved Addresses
+    // 2. Fetch Saved Addresses
     const { data: addrs } = await supabase.from('gr_addresses').select('*').eq('user_id', authUser.id)
     setUserAddresses(addrs || [])
 
-    // Fetch Settings, Categories & Active Locations
-    const settingsRes = await fetch('/api/green-rewards/admin/settings')
-    if (settingsRes.ok) {
-      const sData = await settingsRes.json()
-      setLocations(sData.locations || [])
-      setCategories(sData.categories || [])
-      if (sData.locations && sData.locations.length > 0) {
-        setSelectedLocation(sData.locations[0].id)
-        setAreaName(sData.locations[0].name_en)
-        setPincode(sData.locations[0].pincode)
-      }
+    // 3. Fetch Locations & Waste Categories directly via Supabase client
+    const [locRes, catRes] = await Promise.all([
+      supabase.from('gr_collection_locations').select('*').eq('is_active', true),
+      supabase.from('gr_waste_categories').select('*').eq('is_active', true).order('display_order')
+    ])
+
+    const activeLocations = locRes.data || []
+    const activeCategories = catRes.data || []
+
+    setLocations(activeLocations)
+    setCategories(activeCategories)
+
+    if (activeLocations.length > 0) {
+      setSelectedLocation(activeLocations[0].id)
+      setAreaName(activeLocations[0].name_en)
+      setPincode(activeLocations[0].pincode)
     }
 
+    // 4. Fetch Redemptions & Balance
     fetchRedemptionsData()
+
+    // 5. Fetch Requests
     fetchPickupRequests()
 
     setLoading(false)
@@ -236,7 +244,7 @@ export default function GreenRewardsDashboard() {
 
   return (
     <div className="min-h-screen bg-black text-white pt-20 md:pt-24 pb-16">
-      {/* Top Header - Positioned safely below main site header */}
+      {/* Top Header */}
       <div className="bg-zinc-950/90 backdrop-blur-md border-b border-zinc-800 sticky top-[72px] md:top-[80px] z-30">
         <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -368,11 +376,15 @@ export default function GreenRewardsDashboard() {
                   }}
                   className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-sm text-white focus:border-[#FFB300] outline-none"
                 >
-                  {locations.map((loc) => (
-                    <option key={loc.id} value={loc.id}>
-                      {loc.name_en} ({loc.name_kn}) - {loc.pincode}
-                    </option>
-                  ))}
+                  {locations.length === 0 ? (
+                    <option value="">Malleshwaram (560003)</option>
+                  ) : (
+                    locations.map((loc) => (
+                      <option key={loc.id} value={loc.id}>
+                        {loc.name_en} ({loc.name_kn}) - {loc.pincode}
+                      </option>
+                    ))
+                  )}
                 </select>
               </div>
 
