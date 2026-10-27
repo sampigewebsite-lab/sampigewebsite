@@ -54,12 +54,16 @@ export default function GreenRewardsAdminPage() {
   async function fetchAdminData() {
     setLoading(true)
     try {
+      // Fetch settings, locations, categories via Server API
       const res = await fetch('/api/green-rewards/admin/settings')
       if (res.ok) {
         const data = await res.json()
         setLocations(data.locations || [])
         setCategories(data.categories || [])
         setSettings(data.settings || [])
+      } else {
+        const err = await res.json()
+        toast.error('Admin Check Failed: ' + err.error)
       }
 
       // Fetch Requests & Redemptions
@@ -89,7 +93,7 @@ export default function GreenRewardsAdminPage() {
     }
   }
 
-  // --- SETTING ACTIONS ---
+  // --- SETTING ACTIONS (VIA SERVER API) ---
   async function handleUpdateSetting(key: string, currentValue: string) {
     const newValue = prompt(`Edit setting "${key}":`, currentValue)
     if (newValue === null || newValue.trim() === '') return
@@ -129,11 +133,12 @@ export default function GreenRewardsAdminPage() {
       toast.success(nextVal === 'true' ? 'Home Doorstep Pickup Enabled!' : 'Set to Office Drop-Off Only!')
       fetchAdminData()
     } else {
-      toast.error('Failed to toggle service mode')
+      const err = await res.json()
+      toast.error('Failed to toggle service mode: ' + err.error)
     }
   }
 
-  // --- LOCATION ACTIONS ---
+  // --- LOCATION ACTIONS (VIA SERVER API) ---
   async function handleAddLocation(e: React.FormEvent) {
     e.preventDefault()
     if (!newLocNameEn || !newLocPincode) {
@@ -190,7 +195,7 @@ export default function GreenRewardsAdminPage() {
     }
   }
 
-  // --- RATE ACTIONS VIA SERVER API ---
+  // --- RATE ACTIONS (VIA SERVER API) ---
   async function handleUpdateRate(id: string, currentPts: number) {
     const newPtsStr = prompt(`Enter new points per kg:`, currentPts.toString())
     if (!newPtsStr || isNaN(Number(newPtsStr))) return
@@ -519,7 +524,7 @@ export default function GreenRewardsAdminPage() {
           </div>
         )}
 
-        {/* TAB 3: DROP-OFF HUBS (MALLESHWARAM) */}
+        {/* TAB 3: DROP-OFF HUBS (MALLESHWARAM & BEYOND) */}
         {activeTab === 'locations' && (
           <div className="space-y-6">
             <h2 className="text-xl font-semibold flex items-center gap-2 text-[#FFB300]">
@@ -535,7 +540,7 @@ export default function GreenRewardsAdminPage() {
                   <label className="text-xs text-zinc-400 block mb-1">Center / Area Name (English)</label>
                   <input
                     type="text"
-                    placeholder="e.g. Malleshwaram Office Hub"
+                    placeholder="e.g. R.T.Nagar Collection Center"
                     value={newLocNameEn}
                     onChange={(e) => setNewLocNameEn(e.target.value)}
                     className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2 text-sm text-white focus:border-[#FFB300] outline-none"
@@ -546,7 +551,7 @@ export default function GreenRewardsAdminPage() {
                   <label className="text-xs text-zinc-400 block mb-1">Area Name (Kannada)</label>
                   <input
                     type="text"
-                    placeholder="e.g. ಮಲ್ಲೇಶ್ವರಂ ಕಚೇರಿ"
+                    placeholder="e.g. ಆರ್.ಟಿ.ನಗರ"
                     value={newLocNameKn}
                     onChange={(e) => setNewLocNameKn(e.target.value)}
                     className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2 text-sm text-white focus:border-[#FFB300] outline-none"
@@ -556,7 +561,7 @@ export default function GreenRewardsAdminPage() {
                   <label className="text-xs text-zinc-400 block mb-1">Pincode</label>
                   <input
                     type="text"
-                    placeholder="e.g. 560003"
+                    placeholder="e.g. 560032"
                     value={newLocPincode}
                     onChange={(e) => setNewLocPincode(e.target.value)}
                     className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2 text-sm text-white focus:border-[#FFB300] outline-none"
@@ -568,7 +573,7 @@ export default function GreenRewardsAdminPage() {
                 <label className="text-xs text-zinc-400 block mb-1">Office / Hub Address & Operating Hours</label>
                 <input
                   type="text"
-                  placeholder="e.g. Sampige Foundation Office, 4th Main Road, Malleshwaram (9 AM - 5 PM)"
+                  placeholder="e.g. #3, 1st Main Road, Matadahalli, R.T.Nagar, Bengaluru 560032"
                   value={newLocNotes}
                   onChange={(e) => setNewLocNotes(e.target.value)}
                   className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2 text-sm text-white focus:border-[#FFB300] outline-none"
@@ -585,7 +590,7 @@ export default function GreenRewardsAdminPage() {
             {/* Existing Locations Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {locations.length === 0 ? (
-                <div className="p-6 text-zinc-500 text-sm">No drop-off hubs found. Add Malleshwaram above!</div>
+                <div className="p-6 text-zinc-500 text-sm">No drop-off hubs found. Add Malleshwaram or R.T.Nagar above!</div>
               ) : (
                 locations.map((loc) => (
                   <div key={loc.id} className="bg-zinc-900 border border-zinc-800 p-5 rounded-2xl flex items-center justify-between">

@@ -7,14 +7,22 @@ export async function GET() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
+  // Check profile or recognize master admin email
   const { data: profile } = await supabase
     .from('gr_profiles')
     .select('role')
     .eq('id', user.id)
     .single()
 
-  if (profile?.role !== 'admin') {
+  const isAdmin = profile?.role === 'admin' || user.email === 'admin@sampige.org'
+
+  if (!isAdmin) {
     return NextResponse.json({ error: 'Forbidden. Admin access required.' }, { status: 403 })
+  }
+
+  // Auto-promote admin@sampige.org in database if not set
+  if (user.email === 'admin@sampige.org' && profile?.role !== 'admin') {
+    await supabase.from('gr_profiles').update({ role: 'admin' }).eq('id', user.id)
   }
 
   const [stgRes, catRes, locRes] = await Promise.all([
@@ -36,7 +44,16 @@ export async function POST(request: Request) {
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const { data: profile } = await supabase.from('gr_profiles').select('role').eq('id', user.id).single()
-  if (profile?.role !== 'admin') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  const isAdmin = profile?.role === 'admin' || user.email === 'admin@sampige.org'
+
+  if (!isAdmin) {
+    return NextResponse.json({ error: 'Forbidden. Admin access required.' }, { status: 403 })
+  }
+
+  // Auto-promote in DB if needed
+  if (user.email === 'admin@sampige.org' && profile?.role !== 'admin') {
+    await supabase.from('gr_profiles').update({ role: 'admin' }).eq('id', user.id)
+  }
 
   try {
     const body = await request.json()
