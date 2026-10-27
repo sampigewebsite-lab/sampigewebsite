@@ -15,7 +15,8 @@ import {
   Loader2, 
   LogOut,
   CheckCircle2,
-  Globe
+  Globe,
+  Building2
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 
@@ -27,6 +28,7 @@ export default function GreenRewardsDashboard() {
   const [user, setUser] = useState<any>(null)
   const [profile, setProfile] = useState<any>(null)
   const [balance, setBalance] = useState<any>({ current_balance: 0, total_earned: 0, total_spent: 0 })
+  const [settings, setSettings] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
 
   const [activeTab, setActiveTab] = useState<'book' | 'rewards' | 'history' | 'rates'>('book')
@@ -37,13 +39,11 @@ export default function GreenRewardsDashboard() {
   const [rewards, setRewards] = useState<any[]>([])
   const [userRequests, setUserRequests] = useState<any[]>([])
   const [userRedemptions, setUserRedemptions] = useState<any[]>([])
-  const [userAddresses, setUserAddresses] = useState<any[]>([])
 
-  // Booking Form State
+  // Drop-off / Pickup Form State
   const [selectedLocation, setSelectedLocation] = useState('')
+  const [selectedHubObj, setSelectedHubObj] = useState<any>(null)
   const [streetAddress, setStreetAddress] = useState('')
-  const [areaName, setAreaName] = useState('Malleshwaram')
-  const [pincode, setPincode] = useState('560003')
   const [pickupDate, setPickupDate] = useState('')
   const [timeSlot, setTimeSlot] = useState('09:00 AM - 12:00 PM')
   const [userNotes, setUserNotes] = useState('')
@@ -75,14 +75,11 @@ export default function GreenRewardsDashboard() {
     setProfile(prof || {})
     if (prof?.language_preference) setLang(prof.language_preference)
 
-    // 2. Fetch Saved Addresses
-    const { data: addrs } = await supabase.from('gr_addresses').select('*').eq('user_id', authUser.id)
-    setUserAddresses(addrs || [])
-
-    // 3. Fetch Locations & Waste Categories directly via Supabase client
-    const [locRes, catRes] = await Promise.all([
-      supabase.from('gr_collection_locations').select('*').eq('is_active', true),
-      supabase.from('gr_waste_categories').select('*').eq('is_active', true).order('display_order')
+    // 2. Fetch Locations, Waste Categories, and Settings directly
+    const [locRes, catRes, stgRes] = await Promise.all([
+      supabase.from('gr_collection_locations').select('*').eq('is_active', true).order('created_at'),
+      supabase.from('gr_waste_categories').select('*').eq('is_active', true).order('display_order'),
+      supabase.from('gr_settings').select('*')
     ])
 
     const activeLocations = locRes.data || []
@@ -90,17 +87,15 @@ export default function GreenRewardsDashboard() {
 
     setLocations(activeLocations)
     setCategories(activeCategories)
+    setSettings(stgRes.data || [])
 
     if (activeLocations.length > 0) {
       setSelectedLocation(activeLocations[0].id)
-      setAreaName(activeLocations[0].name_en)
-      setPincode(activeLocations[0].pincode)
+      setSelectedHubObj(activeLocations[0])
+      setStreetAddress(activeLocations[0].notes || activeLocations[0].name_en)
     }
 
-    // 4. Fetch Redemptions & Balance
     fetchRedemptionsData()
-
-    // 5. Fetch Requests
     fetchPickupRequests()
 
     setLoading(false)
@@ -126,41 +121,37 @@ export default function GreenRewardsDashboard() {
 
   async function handleBookPickup(e: React.FormEvent) {
     e.preventDefault()
-    if (!streetAddress || !pickupDate) {
-      toast.error(lang === 'en' ? 'Please fill street address and pickup date' : 'ವಿಳಾಸ ಮತ್ತು ದಿನಾಂಕವನ್ನು ನಮೂದಿಸಿ')
+    if (!pickupDate) {
+      toast.error(lang === 'en' ? 'Please select a drop-off date' : 'ದಿನಾಂಕವನ್ನು ನಮೂದಿಸಿ')
       return
     }
 
     setIsBooking(true)
 
     try {
-      let addressId = userAddresses.find((a) => a.street_address === streetAddress)?.id
+      // Create/Reuse address for Drop-Off Hub
+      const { data: newAddr, error: addrErr } = await supabase
+        .from('gr_addresses')
+        .insert([
+          {
+            user_id: user.id,
+            address_title: 'Sampige Collection Hub',
+            street_address: selectedHubObj?.notes || selectedHubObj?.name_en || 'Malleshwaram Drop-Off Center',
+            area_name: selectedHubObj?.name_en || 'Malleshwaram',
+            pincode: selectedHubObj?.pincode || '560003',
+            city: 'Bengaluru'
+          }
+        ])
+        .select()
+        .single()
 
-      if (!addressId) {
-        const { data: newAddr, error: addrErr } = await supabase
-          .from('gr_addresses')
-          .insert([
-            {
-              user_id: user.id,
-              address_title: 'Home',
-              street_address: streetAddress,
-              area_name: areaName,
-              pincode: pincode,
-              city: 'Bengaluru'
-            }
-          ])
-          .select()
-          .single()
-
-        if (addrErr) throw addrErr
-        addressId = newAddr.id
-      }
+      if (addrErr) throw addrErr
 
       const res = await fetch('/api/green-rewards/pickup-request', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          address_id: addressId,
+          address_id: newAddr.id,
           location_id: selectedLocation || null,
           preferred_date: pickupDate,
           time_slot: timeSlot,
@@ -172,10 +163,9 @@ export default function GreenRewardsDashboard() {
         const data = await res.json()
         toast.success(
           lang === 'en' 
-            ? `Pickup scheduled! Tracking ID: ${data.request.request_number}` 
-            : `ಪಿಕಪ್ ಕಾಯ್ದಿರಿಸಲಾಗಿದೆ! ID: ${data.request.request_number}`
+            ? `Drop-off appointment booked! ID: ${data.request.request_number}` 
+            : `ಅಪಾಯಿಂಟ್‌ಮೆಂಟ್ ಕಾಯ್ದಿರಿಸಲಾಗಿದೆ! ID: ${data.request.request_number}`
         )
-        setStreetAddress('')
         setUserNotes('')
         setActiveTab('history')
         fetchPickupRequests()
@@ -233,6 +223,8 @@ export default function GreenRewardsDashboard() {
     toast.success('Signed out')
     router.push('/green-rewards/login')
   }
+
+  const isHomePickupEnabled = settings.find((s) => s.key === 'enable_home_pickup')?.value === 'true'
 
   if (loading) {
     return (
@@ -319,7 +311,7 @@ export default function GreenRewardsDashboard() {
         {/* Tab Selection */}
         <div className="flex overflow-x-auto gap-2 border-b border-zinc-800 pb-3">
           {[
-            { id: 'book', label: lang === 'en' ? 'Book Waste Pickup' : 'ತ್ಯಾಜ್ಯ ಪಿಕಪ್ ಕಾಯ್ದಿರಿಸಿ', icon: Recycle },
+            { id: 'book', label: lang === 'en' ? 'Schedule Waste Drop-Off' : 'ತ್ಯಾಜ್ಯ ಡ್ರಾಪ್-ಆಫ್ ಕಾಯ್ದಿರಿಸಿ', icon: Recycle },
             { id: 'rewards', label: lang === 'en' ? 'Redeem Rewards' : 'ಬಹುಮಾನಗಳನ್ನು ಪಡೆದುಕೊಳ್ಳಿ', icon: Gift },
             { id: 'history', label: lang === 'en' ? 'Collection History' : 'ಇತಿಹಾಸ', icon: History },
             { id: 'rates', label: lang === 'en' ? 'Accepted Waste Rates' : 'ತ್ಯಾಜ್ಯ ದರಗಳು', icon: Scale }
@@ -343,26 +335,30 @@ export default function GreenRewardsDashboard() {
           })}
         </div>
 
-        {/* TAB 1: BOOK PICKUP */}
+        {/* TAB 1: SCHEDULE DROP-OFF */}
         {activeTab === 'book' && (
           <form onSubmit={handleBookPickup} className="bg-zinc-900 border border-zinc-800 p-6 md:p-8 rounded-3xl space-y-6">
             <div>
+              <div className="inline-flex items-center gap-2 px-3 py-1 bg-[#FFB300]/10 border border-[#FFB300]/20 rounded-full text-[#FFB300] text-xs font-semibold mb-2">
+                <Building2 className="w-3.5 h-3.5" />
+                {lang === 'en' ? 'Self Drop-Off Mode Active' : 'ಆಫೀಸ್ ಡ್ರಾಪ್-ಆಫ್ ಮೋಡ್'}
+              </div>
               <h2 className="text-xl font-bold text-white">
-                {lang === 'en' ? 'Schedule Doorstep Waste Pickup' : 'ಮನೆಯ ಬಾಗಿಲಲ್ಲಿ ತ್ಯಾಜ್ಯ ಸಂಗ್ರಹಣೆ'}
+                {lang === 'en' ? 'Schedule Waste Drop-Off Appointment' : 'ಸಂಪಿಗೆ ಕಚೇರಿಯಲ್ಲಿ ತ್ಯಾಜ್ಯ ನೀಡಿ'}
               </h2>
               <p className="text-xs text-zinc-400 mt-1">
                 {lang === 'en' 
-                  ? 'We collect dry recyclables, sacred pooja flowers & brass scrap directly from your doorstep.'
-                  : 'ನಾವು ನಿಮ್ಮ ಮನೆಯಿಂದ ಒಣ ಮರುಬಳಕೆ ವಸ್ತುಗಳು ಮತ್ತು ಪೂಜಾ ತ್ಯಾಜ್ಯವನ್ನು ಸಂಗ್ರಹಿಸುತ್ತೇವೆ.'}
+                  ? 'Please bring your segregated dry waste, divine brass scrap & sacred flowers to our Malleshwaram Center.'
+                  : 'ನಿಮ್ಮ ತ್ಯಾಜ್ಯವನ್ನು ನಮ್ಮ ಮಲ್ಲೇಶ್ವರಂ ಕೇಂದ್ರಕ್ಕೆ ತಂದು ಕೊಡಿ.'}
               </p>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Pickup Area */}
+              {/* Select Drop-off Center */}
               <div>
                 <label className="text-xs text-zinc-300 block mb-2 font-medium flex items-center gap-1.5">
                   <MapPin className="w-3.5 h-3.5 text-[#FFB300]" />
-                  {lang === 'en' ? 'Select Service Zone / Pincode' : 'ಸೇವಾ ಪ್ರದೇಶವನ್ನು ಆಯ್ಕೆಮಾಡಿ'}
+                  {lang === 'en' ? 'Select Sampige Collection Center' : 'ಸಂಗ್ರಹಣಾ ಕೇಂದ್ರ ಆಯ್ಕೆಮಾಡಿ'}
                 </label>
                 <select
                   value={selectedLocation}
@@ -370,44 +366,35 @@ export default function GreenRewardsDashboard() {
                     setSelectedLocation(e.target.value)
                     const loc = locations.find((l) => l.id === e.target.value)
                     if (loc) {
-                      setAreaName(loc.name_en)
-                      setPincode(loc.pincode)
+                      setSelectedHubObj(loc)
+                      setStreetAddress(loc.notes || loc.name_en)
                     }
                   }}
                   className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-sm text-white focus:border-[#FFB300] outline-none"
                 >
-                  {locations.length === 0 ? (
-                    <option value="">Malleshwaram (560003)</option>
-                  ) : (
-                    locations.map((loc) => (
-                      <option key={loc.id} value={loc.id}>
-                        {loc.name_en} ({loc.name_kn}) - {loc.pincode}
-                      </option>
-                    ))
-                  )}
+                  {locations.map((loc) => (
+                    <option key={loc.id} value={loc.id}>
+                      {loc.name_en} ({loc.name_kn}) - Drop-Off Point
+                    </option>
+                  ))}
                 </select>
               </div>
 
-              {/* Address */}
+              {/* Drop-Off Hub Address Details */}
               <div>
                 <label className="text-xs text-zinc-300 block mb-2 font-medium">
-                  {lang === 'en' ? 'Street Address / House Number' : 'ಮನೆಯ ವಿಳಾಸ'}
+                  {lang === 'en' ? 'Center Address & Operating Hours' : 'ಕೇಂದ್ರದ ವಿಳಾಸ'}
                 </label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. #45, 8th Main, 3rd Cross, Malleshwaram"
-                  value={streetAddress}
-                  onChange={(e) => setStreetAddress(e.target.value)}
-                  className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-sm text-white focus:border-[#FFB300] outline-none"
-                />
+                <div className="w-full bg-zinc-950/80 border border-zinc-800/80 rounded-xl px-4 py-3 text-xs text-[#FFB300] font-mono leading-relaxed">
+                  {selectedHubObj?.notes || 'Sampige Foundation Office, Malleshwaram, Bengaluru (9:00 AM - 5:00 PM)'}
+                </div>
               </div>
 
-              {/* Pickup Date */}
+              {/* Preferred Drop-off Date */}
               <div>
                 <label className="text-xs text-zinc-300 block mb-2 font-medium flex items-center gap-1.5">
                   <Calendar className="w-3.5 h-3.5 text-[#FFB300]" />
-                  {lang === 'en' ? 'Preferred Pickup Date' : 'ಆದ್ಯತೆಯ ದಿನಾಂಕ'}
+                  {lang === 'en' ? 'Preferred Drop-Off Date' : 'ಆದ್ಯತೆಯ ದಿನಾಂಕ'}
                 </label>
                 <input
                   type="date"
@@ -419,11 +406,11 @@ export default function GreenRewardsDashboard() {
                 />
               </div>
 
-              {/* Time Slot */}
+              {/* Time Window */}
               <div>
                 <label className="text-xs text-zinc-300 block mb-2 font-medium flex items-center gap-1.5">
                   <Clock className="w-3.5 h-3.5 text-[#FFB300]" />
-                  {lang === 'en' ? 'Time Slot' : 'ಸಮಯದ ಅವಧಿ'}
+                  {lang === 'en' ? 'Arrival Window' : 'ಸಮಯದ ಅವಧಿ'}
                 </label>
                 <select
                   value={timeSlot}
@@ -439,11 +426,11 @@ export default function GreenRewardsDashboard() {
 
             <div>
               <label className="text-xs text-zinc-300 block mb-2 font-medium">
-                {lang === 'en' ? 'Additional Notes / Waste Details' : 'ಹೆಚ್ಚುವರಿ ಟಿಪ್ಪಣಿಗಳು'}
+                {lang === 'en' ? 'Estimated Waste Details' : 'ತ್ಯಾಜ್ಯದ ವಿವರಗಳು'}
               </label>
               <textarea
                 rows={2}
-                placeholder="e.g. 2 bags of sacred flowers and 1 box of cardboard"
+                placeholder="e.g. Bringing 2 kg flowers and 1 box dry paper"
                 value={userNotes}
                 onChange={(e) => setUserNotes(e.target.value)}
                 className="w-full bg-zinc-950 border border-zinc-800 rounded-xl p-3 text-sm text-white focus:border-[#FFB300] outline-none"
@@ -458,7 +445,7 @@ export default function GreenRewardsDashboard() {
               {isBooking ? <Loader2 className="w-5 h-5 animate-spin" /> : (
                 <>
                   <CheckCircle2 className="w-5 h-5" />
-                  {lang === 'en' ? 'Confirm Doorstep Pickup Booking' : 'ಬುಕಿಂಗ್ ಖಚಿತಪಡಿಸಿ'}
+                  {lang === 'en' ? 'Confirm Drop-Off Appointment' : 'ಅಪಾಯಿಂಟ್‌ಮೆಂಟ್ ಖಚಿತಪಡಿಸಿ'}
                 </>
               )}
             </button>
@@ -522,16 +509,16 @@ export default function GreenRewardsDashboard() {
         {activeTab === 'history' && (
           <div className="space-y-6">
             <h2 className="text-xl font-bold text-white">
-              {lang === 'en' ? 'Your Collection & Payout History' : 'ನಿಮ್ಮ ಇತಿಹಾಸ'}
+              {lang === 'en' ? 'Your Drop-Off & Payout History' : 'ನಿಮ್ಮ ಇತಿಹಾಸ'}
             </h2>
 
             <div className="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden">
               <div className="p-4 border-b border-zinc-800 text-sm font-bold text-[#FFB300]">
-                {lang === 'en' ? 'Recent Collection Requests' : 'ಇತ್ತೀಚಿನ ಪಿಕಪ್‌ಗಳು'}
+                {lang === 'en' ? 'Recent Appointments' : 'ಇತ್ತೀಚಿನ ಪಿಕಪ್‌ಗಳು'}
               </div>
               <div className="divide-y divide-zinc-800">
                 {userRequests.length === 0 ? (
-                  <div className="p-6 text-center text-xs text-zinc-500">No collection requests found.</div>
+                  <div className="p-6 text-center text-xs text-zinc-500">No drop-off records found.</div>
                 ) : (
                   userRequests.map((req) => (
                     <div key={req.id} className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">

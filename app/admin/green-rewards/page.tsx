@@ -11,7 +11,10 @@ import {
   Loader2,
   Scale,
   Gift,
-  XCircle
+  XCircle,
+  ToggleLeft,
+  ToggleRight,
+  Edit2
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 
@@ -31,6 +34,7 @@ export default function GreenRewardsAdminPage() {
   const [newLocNameEn, setNewLocNameEn] = useState('')
   const [newLocNameKn, setNewLocNameKn] = useState('')
   const [newLocPincode, setNewLocPincode] = useState('')
+  const [newLocNotes, setNewLocNotes] = useState('')
 
   // Verification Modal State
   const [selectedPickup, setSelectedPickup] = useState<any>(null)
@@ -50,18 +54,15 @@ export default function GreenRewardsAdminPage() {
   async function fetchAdminData() {
     setLoading(true)
     try {
-      // 1. Fetch settings, locations, categories directly via Supabase client
-      const [locRes, catRes, stgRes] = await Promise.all([
-        supabase.from('gr_collection_locations').select('*').order('created_at', { ascending: false }),
-        supabase.from('gr_waste_categories').select('*').order('display_order'),
-        supabase.from('gr_settings').select('*')
-      ])
+      const res = await fetch('/api/green-rewards/admin/settings')
+      if (res.ok) {
+        const data = await res.json()
+        setLocations(data.locations || [])
+        setCategories(data.categories || [])
+        setSettings(data.settings || [])
+      }
 
-      setLocations(locRes.data || [])
-      setCategories(catRes.data || [])
-      setSettings(stgRes.data || [])
-
-      // 2. Fetch Pending & Recent Pickup Requests
+      // Fetch Requests & Redemptions
       const { data: pickupsData } = await supabase
         .from('gr_collection_requests')
         .select(`
@@ -72,7 +73,6 @@ export default function GreenRewardsAdminPage() {
         .order('created_at', { ascending: false })
       setPickups(pickupsData || [])
 
-      // 3. Fetch Redemptions
       const { data: redemptionsData } = await supabase
         .from('gr_redemptions')
         .select(`
@@ -89,6 +89,50 @@ export default function GreenRewardsAdminPage() {
     }
   }
 
+  // --- SETTING ACTIONS ---
+  async function handleUpdateSetting(key: string, currentValue: string) {
+    const newValue = prompt(`Edit setting "${key}":`, currentValue)
+    if (newValue === null || newValue.trim() === '') return
+
+    const res = await fetch('/api/green-rewards/admin/settings', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        type: 'update_setting',
+        payload: { key, value: newValue.trim() }
+      })
+    })
+
+    if (res.ok) {
+      toast.success(`Setting ${key} updated!`)
+      fetchAdminData()
+    } else {
+      const err = await res.json()
+      toast.error('Failed to update setting: ' + err.error)
+    }
+  }
+
+  async function handleToggleHomePickup() {
+    const currentObj = settings.find((s) => s.key === 'enable_home_pickup')
+    const nextVal = currentObj?.value === 'true' ? 'false' : 'true'
+
+    const res = await fetch('/api/green-rewards/admin/settings', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        type: 'update_setting',
+        payload: { key: 'enable_home_pickup', value: nextVal }
+      })
+    })
+
+    if (res.ok) {
+      toast.success(nextVal === 'true' ? 'Home Doorstep Pickup Enabled!' : 'Set to Office Drop-Off Only!')
+      fetchAdminData()
+    } else {
+      toast.error('Failed to toggle service mode')
+    }
+  }
+
   // --- LOCATION ACTIONS ---
   async function handleAddLocation(e: React.FormEvent) {
     e.preventDefault()
@@ -97,53 +141,75 @@ export default function GreenRewardsAdminPage() {
       return
     }
 
-    const { data, error } = await supabase
-      .from('gr_collection_locations')
-      .insert([
-        {
+    const res = await fetch('/api/green-rewards/admin/settings', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        type: 'add_location',
+        payload: {
           name_en: newLocNameEn,
           name_kn: newLocNameKn || newLocNameEn,
           pincode: newLocPincode,
+          notes: newLocNotes || 'Sampige Collection Hub',
           is_active: true
         }
-      ])
+      })
+    })
 
-    if (!error) {
-      toast.success(`Location ${newLocNameEn} added successfully!`)
+    if (res.ok) {
+      toast.success(`Drop-Off Hub ${newLocNameEn} added successfully!`)
       setNewLocNameEn('')
       setNewLocNameKn('')
       setNewLocPincode('')
+      setNewLocNotes('')
       fetchAdminData()
     } else {
-      toast.error('Error adding location: ' + error.message)
+      const err = await res.json()
+      toast.error('Error adding location: ' + err.error)
     }
   }
 
   async function handleDeleteLocation(id: string, name: string) {
     if (!confirm(`Are you sure you want to delete pickup location "${name}"?`)) return
 
-    const { error } = await supabase.from('gr_collection_locations').delete().eq('id', id)
+    const res = await fetch('/api/green-rewards/admin/settings', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        type: 'delete_location',
+        payload: { id }
+      })
+    })
 
-    if (!error) {
+    if (res.ok) {
       toast.success(`Location ${name} deleted`)
       fetchAdminData()
     } else {
-      toast.error('Delete failed: ' + error.message)
+      const err = await res.json()
+      toast.error('Delete failed: ' + err.error)
     }
   }
 
-  // --- RATE ACTIONS ---
-  async function handleUpdateRate(id: string, newPoints: number) {
-    const { error } = await supabase
-      .from('gr_waste_categories')
-      .update({ points_per_kg: newPoints })
-      .eq('id', id)
+  // --- RATE ACTIONS VIA SERVER API ---
+  async function handleUpdateRate(id: string, currentPts: number) {
+    const newPtsStr = prompt(`Enter new points per kg:`, currentPts.toString())
+    if (!newPtsStr || isNaN(Number(newPtsStr))) return
 
-    if (!error) {
-      toast.success('Points multiplier updated!')
+    const res = await fetch('/api/green-rewards/admin/settings', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        type: 'update_rate',
+        payload: { id, points: Number(newPtsStr) }
+      })
+    })
+
+    if (res.ok) {
+      toast.success('Points rate updated successfully!')
       fetchAdminData()
     } else {
-      toast.error('Failed to update rate: ' + error.message)
+      const err = await res.json()
+      toast.error('Failed to update rate: ' + err.error)
     }
   }
 
@@ -228,6 +294,8 @@ export default function GreenRewardsAdminPage() {
     }
   }
 
+  const isHomePickupEnabled = settings.find((s) => s.key === 'enable_home_pickup')?.value === 'true'
+
   if (loading) {
     return (
       <div className="min-h-screen bg-black text-white flex items-center justify-center pt-24">
@@ -249,7 +317,6 @@ export default function GreenRewardsAdminPage() {
             <h1 className="text-2xl md:text-3xl font-bold text-white">Waste Management & Rewards Control</h1>
           </div>
 
-          {/* Quick Metrics */}
           <div className="flex items-center gap-4 bg-zinc-900 border border-zinc-800 p-3 rounded-xl">
             <div className="text-center px-3 border-r border-zinc-800">
               <span className="text-xs text-zinc-400 block">Pending Pickups</span>
@@ -269,9 +336,9 @@ export default function GreenRewardsAdminPage() {
         {/* Tab Navigation */}
         <div className="flex overflow-x-auto gap-2 mt-6">
           {[
-            { id: 'pickups', label: 'Pickup Requests', icon: Recycle },
+            { id: 'pickups', label: 'Drop-Off & Pickups', icon: Recycle },
             { id: 'redemptions', label: 'Redemptions', icon: Gift },
-            { id: 'locations', label: 'Service Areas (Malleshwaram)', icon: MapPin },
+            { id: 'locations', label: 'Drop-Off Hubs (Malleshwaram)', icon: MapPin },
             { id: 'rates', label: 'Waste Category Rates', icon: Scale },
             { id: 'settings', label: 'System Settings', icon: Settings }
           ].map((tab) => {
@@ -296,12 +363,12 @@ export default function GreenRewardsAdminPage() {
       </div>
 
       <div className="max-w-7xl mx-auto">
-        {/* TAB 1: PICKUP REQUESTS */}
+        {/* TAB 1: PICKUPS & DROP-OFFS */}
         {activeTab === 'pickups' && (
           <div className="space-y-6">
             <h2 className="text-xl font-semibold flex items-center gap-2 text-[#FFB300]">
               <Recycle className="w-5 h-5" />
-              Manage Pickup Bookings & Weighing
+              Manage Drop-Off Appointments & Weighing
             </h2>
 
             <div className="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden">
@@ -311,7 +378,7 @@ export default function GreenRewardsAdminPage() {
                     <tr>
                       <th className="p-4">Request #</th>
                       <th className="p-4">User</th>
-                      <th className="p-4">Address / Pincode</th>
+                      <th className="p-4">Center / Address</th>
                       <th className="p-4">Date & Slot</th>
                       <th className="p-4">Status</th>
                       <th className="p-4 text-right">Action</th>
@@ -321,7 +388,7 @@ export default function GreenRewardsAdminPage() {
                     {pickups.length === 0 ? (
                       <tr>
                         <td colSpan={6} className="p-8 text-center text-zinc-500">
-                          No collection requests found.
+                          No drop-off or pickup records found.
                         </td>
                       </tr>
                     ) : (
@@ -333,7 +400,7 @@ export default function GreenRewardsAdminPage() {
                             <div className="text-xs text-zinc-400">{p.user?.phone || p.user?.email}</div>
                           </td>
                           <td className="p-4">
-                            <div>{p.address?.street_address || 'Address provided'}</div>
+                            <div>{p.address?.street_address || 'Office Drop-off'}</div>
                             <div className="text-xs text-[#FFB300] font-medium">{p.address?.area_name} - {p.address?.pincode}</div>
                           </td>
                           <td className="p-4">
@@ -452,23 +519,23 @@ export default function GreenRewardsAdminPage() {
           </div>
         )}
 
-        {/* TAB 3: LOCATIONS (MALLESHWARAM ADD/DELETE) */}
+        {/* TAB 3: DROP-OFF HUBS (MALLESHWARAM) */}
         {activeTab === 'locations' && (
           <div className="space-y-6">
             <h2 className="text-xl font-semibold flex items-center gap-2 text-[#FFB300]">
               <MapPin className="w-5 h-5" />
-              Pickup Locations & Coverage Zones
+              Sampige Drop-Off Hubs & Collection Centers
             </h2>
 
             {/* Add Location Form */}
             <form onSubmit={handleAddLocation} className="bg-zinc-900 border border-zinc-800 p-6 rounded-2xl space-y-4">
-              <h3 className="font-medium text-white text-sm">Add New Pickup Location</h3>
+              <h3 className="font-medium text-white text-sm">Add New Collection Drop-Off Center</h3>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
-                  <label className="text-xs text-zinc-400 block mb-1">Area Name (English)</label>
+                  <label className="text-xs text-zinc-400 block mb-1">Center / Area Name (English)</label>
                   <input
                     type="text"
-                    placeholder="e.g. Malleshwaram"
+                    placeholder="e.g. Malleshwaram Office Hub"
                     value={newLocNameEn}
                     onChange={(e) => setNewLocNameEn(e.target.value)}
                     className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2 text-sm text-white focus:border-[#FFB300] outline-none"
@@ -479,7 +546,7 @@ export default function GreenRewardsAdminPage() {
                   <label className="text-xs text-zinc-400 block mb-1">Area Name (Kannada)</label>
                   <input
                     type="text"
-                    placeholder="e.g. ಮಲ್ಲೇಶ್ವರಂ"
+                    placeholder="e.g. ಮಲ್ಲೇಶ್ವರಂ ಕಚೇರಿ"
                     value={newLocNameKn}
                     onChange={(e) => setNewLocNameKn(e.target.value)}
                     className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2 text-sm text-white focus:border-[#FFB300] outline-none"
@@ -497,32 +564,40 @@ export default function GreenRewardsAdminPage() {
                   />
                 </div>
               </div>
+              <div>
+                <label className="text-xs text-zinc-400 block mb-1">Office / Hub Address & Operating Hours</label>
+                <input
+                  type="text"
+                  placeholder="e.g. Sampige Foundation Office, 4th Main Road, Malleshwaram (9 AM - 5 PM)"
+                  value={newLocNotes}
+                  onChange={(e) => setNewLocNotes(e.target.value)}
+                  className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2 text-sm text-white focus:border-[#FFB300] outline-none"
+                />
+              </div>
               <button
                 type="submit"
                 className="px-5 py-2.5 bg-[#FFB300] hover:bg-amber-400 text-black font-semibold rounded-xl text-sm flex items-center gap-2"
               >
-                <Plus className="w-4 h-4" /> Add Service Location
+                <Plus className="w-4 h-4" /> Add Drop-Off Hub
               </button>
             </form>
 
             {/* Existing Locations Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {locations.length === 0 ? (
-                <div className="p-6 text-zinc-500 text-sm">No locations found. Add one above!</div>
+                <div className="p-6 text-zinc-500 text-sm">No drop-off hubs found. Add Malleshwaram above!</div>
               ) : (
                 locations.map((loc) => (
                   <div key={loc.id} className="bg-zinc-900 border border-zinc-800 p-5 rounded-2xl flex items-center justify-between">
                     <div>
                       <div className="font-bold text-white text-base">{loc.name_en} ({loc.name_kn})</div>
                       <div className="text-xs text-[#FFB300] font-mono mt-0.5">Pincode: {loc.pincode}</div>
-                      <span className="inline-block mt-2 px-2 py-0.5 bg-emerald-500/10 text-emerald-400 text-[10px] font-semibold rounded">
-                        Active Area
-                      </span>
+                      <p className="text-xs text-zinc-400 mt-2">{loc.notes || 'Official Sampige Drop-Off Center'}</p>
                     </div>
                     <button
                       onClick={() => handleDeleteLocation(loc.id, loc.name_en)}
-                      className="p-2 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 rounded-xl transition"
-                      title="Delete Location"
+                      className="p-2 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 rounded-xl transition ml-4"
+                      title="Delete Drop-Off Hub"
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
@@ -555,15 +630,10 @@ export default function GreenRewardsAdminPage() {
                       <span className="text-xl font-bold text-[#FFB300]">{cat.points_per_kg} pts / kg</span>
                     </div>
                     <button
-                      onClick={() => {
-                        const newPts = prompt(`Enter new points per kg for ${cat.name_en}:`, cat.points_per_kg)
-                        if (newPts && !isNaN(Number(newPts))) {
-                          handleUpdateRate(cat.id, Number(newPts))
-                        }
-                      }}
-                      className="px-3 py-1.5 bg-zinc-800 hover:bg-zinc-700 text-white rounded-lg text-xs font-medium"
+                      onClick={() => handleUpdateRate(cat.id, cat.points_per_kg)}
+                      className="px-3 py-1.5 bg-[#FFB300] hover:bg-amber-400 text-black font-semibold rounded-lg text-xs flex items-center gap-1"
                     >
-                      Edit Rate
+                      <Edit2 className="w-3.5 h-3.5" /> Edit Rate
                     </button>
                   </div>
                 </div>
@@ -572,7 +642,7 @@ export default function GreenRewardsAdminPage() {
           </div>
         )}
 
-        {/* TAB 5: SYSTEM SETTINGS */}
+        {/* TAB 5: EDITABLE SYSTEM SETTINGS */}
         {activeTab === 'settings' && (
           <div className="space-y-6">
             <h2 className="text-xl font-semibold flex items-center gap-2 text-[#FFB300]">
@@ -580,16 +650,51 @@ export default function GreenRewardsAdminPage() {
               Global System Parameters
             </h2>
 
-            <div className="bg-zinc-900 border border-zinc-800 p-6 rounded-2xl space-y-4 max-w-2xl">
+            {/* Doorstep Pickup Toggle */}
+            <div className="bg-zinc-900 border border-[#FFB300]/30 p-6 rounded-2xl flex items-center justify-between">
+              <div>
+                <h3 className="font-bold text-white text-base">Doorstep Home Pickup Service</h3>
+                <p className="text-xs text-zinc-400 mt-1">
+                  Current Status:{' '}
+                  <span className={isHomePickupEnabled ? 'text-emerald-400 font-bold' : 'text-amber-400 font-bold'}>
+                    {isHomePickupEnabled ? 'ENABLED (Doorstep Pickup Active)' : 'DISABLED (Office Drop-Off Only Active)'}
+                  </span>
+                </p>
+              </div>
+              <button
+                onClick={handleToggleHomePickup}
+                className="flex items-center gap-2 px-4 py-2 bg-zinc-950 border border-zinc-800 rounded-xl hover:border-[#FFB300] transition"
+              >
+                {isHomePickupEnabled ? (
+                  <ToggleRight className="w-8 h-8 text-emerald-400" />
+                ) : (
+                  <ToggleLeft className="w-8 h-8 text-zinc-500" />
+                )}
+                <span className="text-xs font-semibold text-white">
+                  {isHomePickupEnabled ? 'Turn OFF' : 'Turn ON'}
+                </span>
+              </button>
+            </div>
+
+            {/* Settings Parameters List */}
+            <div className="bg-zinc-900 border border-zinc-800 p-6 rounded-2xl space-y-4 max-w-3xl">
               {settings.map((stg) => (
-                <div key={stg.key} className="flex items-center justify-between border-b border-zinc-800/60 pb-3">
-                  <div>
+                <div key={stg.key} className="flex items-center justify-between border-b border-zinc-800/60 pb-4">
+                  <div className="max-w-md">
                     <span className="font-semibold text-white text-sm block font-mono">{stg.key}</span>
                     <span className="text-xs text-zinc-400">{stg.description}</span>
                   </div>
-                  <span className="px-3 py-1 bg-zinc-950 border border-zinc-800 text-[#FFB300] font-mono rounded-lg text-sm">
-                    {stg.value}
-                  </span>
+                  <div className="flex items-center gap-3">
+                    <span className="px-3 py-1 bg-zinc-950 border border-zinc-800 text-[#FFB300] font-mono rounded-lg text-sm">
+                      {stg.value}
+                    </span>
+                    <button
+                      onClick={() => handleUpdateSetting(stg.key, stg.value)}
+                      className="px-3 py-1.5 bg-zinc-800 hover:bg-zinc-700 text-white rounded-lg text-xs font-medium flex items-center gap-1"
+                    >
+                      <Edit2 className="w-3 h-3" /> Edit
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
@@ -597,7 +702,7 @@ export default function GreenRewardsAdminPage() {
         )}
       </div>
 
-      {/* MODAL 1: WEIGHING & VERIFICATION MODAL */}
+      {/* MODAL 1: WEIGHING MODAL */}
       {selectedPickup && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">
           <div className="bg-zinc-900 border border-zinc-800 w-full max-w-lg rounded-2xl p-6 space-y-6">
