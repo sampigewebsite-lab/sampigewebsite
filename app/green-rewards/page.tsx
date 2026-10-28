@@ -18,7 +18,8 @@ import {
   Globe,
   Building2,
   Home,
-  Truck
+  Truck,
+  Sparkles
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 
@@ -199,24 +200,24 @@ export default function GreenRewardsDashboard() {
     if (status === 'completed' || status === 'verified' || status === 'paid' || status === 'fulfilled') {
       return {
         label: 'COMPLETED',
-        className: 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+        className: 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30'
       }
     }
     if (status === 'confirmed' || status === 'scheduled') {
       return {
         label: status === 'scheduled' ? 'SCHEDULED' : 'CONFIRMED',
-        className: 'bg-sky-500/10 text-sky-400 border border-sky-500/20'
+        className: 'bg-sky-500/10 text-sky-400 border border-sky-500/30'
       }
     }
     if (status === 'cancelled' || status === 'rejected') {
       return {
         label: status.toUpperCase(),
-        className: 'bg-red-500/10 text-red-400 border border-red-500/20'
+        className: 'bg-red-500/10 text-red-400 border border-red-500/30'
       }
     }
     return {
       label: 'PENDING',
-      className: 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
+      className: 'bg-amber-500/10 text-amber-400 border border-amber-500/30'
     }
   }
 
@@ -323,7 +324,6 @@ export default function GreenRewardsDashboard() {
     }
   }
 
-  // Helpers to detect reward type/title/value robustly (works with both schemas)
   function getRewardTitle(rw: any): string {
     return rw?.title_en || rw?.title || rw?.name_en || rw?.name || 'Reward'
   }
@@ -407,7 +407,7 @@ export default function GreenRewardsDashboard() {
   if (loading) {
     return (
       <div className="min-h-screen bg-black text-white flex items-center justify-center pt-24">
-        <Loader2 className="w-8 h-8 text-[#FFB300] animate-spin" />
+        <Loader2 className="w-8 h-8 text-emerald-500 animate-spin" />
       </div>
     )
   }
@@ -415,16 +415,16 @@ export default function GreenRewardsDashboard() {
   const showDoorstep = isHomePickupEnabled && pickupMode === 'doorstep'
 
   return (
-    <div className="min-h-screen bg-black text-white pt-20 md:pt-24 pb-16">
-      {/* Top Header */}
-      <div className="bg-zinc-950/90 backdrop-blur-md border-b border-zinc-800 sticky top-[72px] md:top-[80px] z-30">
+    <div className="min-h-screen bg-black text-white pt-20 md:pt-24 pb-16 selection:bg-emerald-500 selection:text-black">
+      {/* Top Glass Header */}
+      <div className="bg-zinc-950/80 backdrop-blur-xl border-b border-zinc-800/80 sticky top-[72px] md:top-[80px] z-30 shadow-lg">
         <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 bg-[#FFB300]/10 border border-[#FFB300]/30 rounded-xl flex items-center justify-center text-[#FFB300]">
+          <div className="flex items-center gap-3 group">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-400 flex items-center justify-center text-black font-bold shadow-[0_0_15px_rgba(16,185,129,0.3)] group-hover:scale-105 transition-transform">
               <Recycle className="w-5 h-5" />
             </div>
             <div>
-              <span className="text-[10px] text-[#FFB300] font-semibold uppercase tracking-wider block">
+              <span className="text-[10px] text-emerald-400 font-semibold uppercase tracking-wider block">
                 Sampige Green Rewards
               </span>
               <h1 className="text-base font-bold text-white leading-tight">
@@ -436,15 +436,15 @@ export default function GreenRewardsDashboard() {
           <div className="flex items-center gap-3">
             <button
               onClick={() => setLang(lang === 'en' ? 'kn' : 'en')}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-zinc-900 border border-zinc-800 rounded-lg text-xs font-medium text-zinc-300 hover:text-white"
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-zinc-900 border border-zinc-700 hover:border-emerald-500/50 rounded-lg text-xs font-medium text-zinc-300 hover:text-white transition-colors"
             >
-              <Globe className="w-3.5 h-3.5 text-[#FFB300]" />
+              <Globe className="w-3.5 h-3.5 text-emerald-400" />
               {lang === 'en' ? 'ಕನ್ನಡ' : 'English'}
             </button>
 
             <button
               onClick={handleSignOut}
-              className="p-2 bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 rounded-lg text-zinc-400 hover:text-white transition"
+              className="p-2 bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 hover:border-red-500/50 rounded-lg text-zinc-400 hover:text-red-400 transition-colors"
               title="Sign Out"
             >
               <LogOut className="w-4 h-4" />
@@ -453,44 +453,45 @@ export default function GreenRewardsDashboard() {
         </div>
       </div>
 
-      <div className="max-w-6xl mx-auto px-4 pt-6 space-y-6">
-        {/* Points Balance Card */}
-        <div className="bg-gradient-to-r from-zinc-900 via-zinc-900 to-zinc-950 border border-zinc-800 rounded-3xl p-6 md:p-8 relative overflow-hidden">
-          <div className="absolute top-0 right-0 translate-x-12 -translate-y-12 w-64 h-64 bg-[#FFB300]/5 rounded-full blur-3xl pointer-events-none" />
+      <div className="max-w-6xl mx-auto px-4 pt-6 space-y-8">
+        
+        {/* Points Balance Glass Card */}
+        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-zinc-900 via-zinc-950 to-emerald-950/40 border border-zinc-800 p-6 md:p-8 shadow-2xl backdrop-blur-md">
+          <div className="absolute top-0 right-0 w-80 h-80 bg-emerald-500/10 rounded-full filter blur-3xl -mr-20 -mt-20 pointer-events-none" />
 
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
             <div>
-              <div className="inline-flex items-center gap-2 px-3 py-1 bg-[#FFB300]/10 border border-[#FFB300]/20 rounded-full text-[#FFB300] text-xs font-semibold mb-3">
-                <Award className="w-3.5 h-3.5" />
+              <div className="inline-flex items-center gap-2 px-3 py-1 bg-emerald-500/10 border border-emerald-500/30 rounded-full text-emerald-400 text-xs font-bold mb-3 tracking-wide">
+                <Sparkles className="w-3.5 h-3.5" />
                 {lang === 'en' ? 'Eco Tier' : 'ಪರಿಸರ ಶ್ರೇಣಿ'}: {profile?.green_tier || 'Bronze'}
               </div>
-              <span className="text-xs text-zinc-400 block uppercase tracking-wider">
+              <span className="text-xs text-zinc-400 block uppercase tracking-wider font-semibold">
                 {lang === 'en' ? 'Available Balance' : 'ಲಭ್ಯವಿರುವ ಪಾಯಿಂಟ್‌ಗಳು'}
               </span>
-              <div className="text-4xl md:text-5xl font-extrabold text-[#FFB300] font-mono mt-1">
-                {balance.current_balance || 0}{' '}
-                <span className="text-xl font-normal text-zinc-400">pts</span>
+              <div className="text-4xl md:text-5xl font-black text-white font-mono mt-1 flex items-baseline gap-2">
+                {balance.current_balance || 0}
+                <span className="text-xl font-bold text-emerald-500">Pts</span>
               </div>
-              <div className="text-xs text-zinc-400 mt-2">
+              <div className="text-sm text-zinc-400 mt-2 font-medium flex items-center gap-1.5">
                 ≈ ₹{((balance.current_balance || 0) * pointsToRupeeRate).toFixed(2)} INR{' '}
                 {lang === 'en' ? 'Value' : 'ಮೌಲ್ಯ'}
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4 bg-zinc-950/60 p-4 rounded-2xl border border-zinc-800/80">
+            <div className="grid grid-cols-2 gap-4 bg-zinc-950/80 p-4 rounded-2xl border border-zinc-800/80 backdrop-blur-sm">
               <div className="text-center px-4 py-1 border-r border-zinc-800">
-                <span className="text-[10px] text-zinc-500 uppercase block">
+                <span className="text-[10px] text-zinc-500 uppercase font-semibold block">
                   {lang === 'en' ? 'Total Earned' : 'ಒಟ್ಟು ಗಳಿಸಿದ್ದು'}
                 </span>
-                <span className="text-lg font-bold text-emerald-400 font-mono">
+                <span className="text-xl font-bold text-emerald-400 font-mono">
                   +{balance.total_earned || 0}
                 </span>
               </div>
               <div className="text-center px-4 py-1">
-                <span className="text-[10px] text-zinc-500 uppercase block">
+                <span className="text-[10px] text-zinc-500 uppercase font-semibold block">
                   {lang === 'en' ? 'Total Redeemed' : 'ಒಟ್ಟು ಬಳಸಿದ್ದು'}
                 </span>
-                <span className="text-lg font-bold text-amber-500 font-mono">
+                <span className="text-xl font-bold text-amber-500 font-mono">
                   -{balance.total_spent || 0}
                 </span>
               </div>
@@ -499,11 +500,11 @@ export default function GreenRewardsDashboard() {
         </div>
 
         {/* Tab Selection */}
-        <div className="flex overflow-x-auto gap-2 border-b border-zinc-800 pb-3">
+        <div className="flex overflow-x-auto gap-3 border-b border-zinc-800 pb-4 no-scrollbar">
           {[
             {
               id: 'book',
-              label: lang === 'en' ? 'Schedule Waste Drop-Off' : 'ತ್ಯಾಜ್ಯ ಡ್ರಾಪ್-ಆಫ್ ಕಾಯ್ದಿರಿಸಿ',
+              label: lang === 'en' ? 'Schedule Pickup' : 'ತ್ಯಾಜ್ಯ ಡ್ರಾಪ್-ಆಫ್ ಕಾಯ್ದಿರಿಸಿ',
               icon: Recycle
             },
             {
@@ -513,12 +514,12 @@ export default function GreenRewardsDashboard() {
             },
             {
               id: 'history',
-              label: lang === 'en' ? 'Collection History' : 'ಇತಿಹಾಸ',
+              label: lang === 'en' ? 'Activity Ledger' : 'ಇತಿಹಾಸ',
               icon: History
             },
             {
               id: 'rates',
-              label: lang === 'en' ? 'Accepted Waste Rates' : 'ತ್ಯಾಜ್ಯ ದರಗಳು',
+              label: lang === 'en' ? 'Scrap Rates' : 'ತ್ಯಾಜ್ಯ ದರಗಳು',
               icon: Scale
             }
           ].map((tab) => {
@@ -528,10 +529,10 @@ export default function GreenRewardsDashboard() {
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id as any)}
-                className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-medium text-sm transition-all whitespace-nowrap ${
+                className={`flex items-center gap-2 px-5 py-3 rounded-xl font-semibold text-sm transition-all whitespace-nowrap ${
                   active
-                    ? 'bg-[#FFB300] text-black font-bold shadow-lg shadow-[#FFB300]/20'
-                    : 'bg-zinc-900 text-zinc-400 hover:text-white hover:bg-zinc-800 border border-zinc-800'
+                    ? 'bg-emerald-500 text-black shadow-[0_0_20px_rgba(16,185,129,0.3)]'
+                    : 'bg-zinc-900/60 text-zinc-400 hover:text-white hover:bg-zinc-800 border border-zinc-800 hover:border-emerald-500/30'
                 }`}
               >
                 <Icon className="w-4 h-4" />
@@ -545,20 +546,20 @@ export default function GreenRewardsDashboard() {
         {activeTab === 'book' && (
           <form
             onSubmit={handleBookPickup}
-            className="bg-zinc-900 border border-zinc-800 p-6 md:p-8 rounded-3xl space-y-6"
+            className="bg-zinc-900/80 backdrop-blur-md border border-zinc-800 p-6 md:p-8 rounded-3xl space-y-6"
           >
             {isHomePickupEnabled ? (
-              <div className="flex bg-zinc-950 border border-zinc-800 p-1 rounded-xl max-w-lg">
+              <div className="flex bg-zinc-950 border border-zinc-800 p-1.5 rounded-xl max-w-lg">
                 <button
                   type="button"
                   onClick={() => setPickupMode('doorstep')}
                   className={`flex-1 py-2.5 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-2 ${
                     pickupMode === 'doorstep'
-                      ? 'bg-[#FFB300] text-black shadow-lg'
+                      ? 'bg-emerald-500 text-black shadow-md'
                       : 'text-zinc-400 hover:text-white'
                   }`}
                 >
-                  <Truck className="w-3.5 h-3.5" />
+                  <Truck className="w-4 h-4" />
                   {lang === 'en' ? 'Doorstep Home Pickup' : 'ಮನೆ ಪಿಕಪ್'}
                 </button>
                 <button
@@ -566,23 +567,23 @@ export default function GreenRewardsDashboard() {
                   onClick={() => setPickupMode('dropoff')}
                   className={`flex-1 py-2.5 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-2 ${
                     pickupMode === 'dropoff'
-                      ? 'bg-[#FFB300] text-black shadow-lg'
+                      ? 'bg-emerald-500 text-black shadow-md'
                       : 'text-zinc-400 hover:text-white'
                   }`}
                 >
-                  <Building2 className="w-3.5 h-3.5" />
-                  {lang === 'en' ? 'Self Drop-Off at Center' : 'ಕೇಂದ್ರಕ್ಕೆ ಡ್ರಾಪ್-ಆಫ್'}
+                  <Building2 className="w-4 h-4" />
+                  {lang === 'en' ? 'Self Drop-Off Hub' : 'ಕೇಂದ್ರಕ್ಕೆ ಡ್ರಾಪ್-ಆಫ್'}
                 </button>
               </div>
             ) : (
-              <div className="inline-flex items-center gap-2 px-3 py-1 bg-[#FFB300]/10 border border-[#FFB300]/20 rounded-full text-[#FFB300] text-xs font-semibold">
+              <div className="inline-flex items-center gap-2 px-3 py-1 bg-emerald-500/10 border border-emerald-500/30 rounded-full text-emerald-400 text-xs font-semibold">
                 <Building2 className="w-3.5 h-3.5" />
                 {lang === 'en' ? 'Self Drop-Off Mode Active' : 'ಆಫೀಸ್ ಡ್ರಾಪ್-ಆಫ್ ಮೋಡ್'}
               </div>
             )}
 
             <div>
-              <h2 className="text-xl font-bold text-white">
+              <h2 className="text-xl font-bold text-white flex items-center gap-2">
                 {showDoorstep
                   ? lang === 'en'
                     ? 'Schedule Doorstep Home Pickup'
@@ -594,10 +595,10 @@ export default function GreenRewardsDashboard() {
               <p className="text-xs text-zinc-400 mt-1">
                 {showDoorstep
                   ? lang === 'en'
-                    ? 'Our team will visit your address to collect segregated dry waste, brass scrap & sacred flowers.'
+                    ? 'Our eco-team will visit your address to collect segregated dry waste, brass scrap & sacred flowers.'
                     : 'ನಮ್ಮ ತಂಡ ನಿಮ್ಮ ವಿಳಾಸಕ್ಕೆ ಬಂದು ತ್ಯಾಜ್ಯವನ್ನು ಸಂಗ್ರಹಿಸುತ್ತದೆ.'
                   : lang === 'en'
-                    ? 'Please bring your segregated dry waste, divine brass scrap & sacred flowers to our Malleshwaram Center.'
+                    ? 'Please bring your segregated dry waste, divine brass scrap & sacred flowers to an authorized Sampige center.'
                     : 'ನಿಮ್ಮ ತ್ಯಾಜ್ಯವನ್ನು ನಮ್ಮ ಮಲ್ಲೇಶ್ವರಂ ಕೇಂದ್ರಕ್ಕೆ ತಂದು ಕೊಡಿ.'}
               </p>
             </div>
@@ -607,7 +608,7 @@ export default function GreenRewardsDashboard() {
                 <>
                   <div className="md:col-span-2">
                     <label className="text-xs text-zinc-300 block mb-2 font-medium flex items-center gap-1.5">
-                      <Home className="w-3.5 h-3.5 text-[#FFB300]" />
+                      <Home className="w-3.5 h-3.5 text-emerald-400" />
                       {lang === 'en' ? 'Full Home / Collection Address' : 'ಸಂಪೂರ್ಣ ಮನೆ ವಿಳಾಸ'}
                     </label>
                     <textarea
@@ -620,12 +621,12 @@ export default function GreenRewardsDashboard() {
                           ? 'Door / Flat No., Building Name, Street, Area...'
                           : 'ಮನೆ/ಫ್ಲಾಟ್ ನಂ., ಕಟ್ಟಡ, ರಸ್ತೆ, ಪ್ರದೇಶ...'
                       }
-                      className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-sm text-white focus:border-[#FFB300] outline-none"
+                      className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-sm text-white focus:border-emerald-500 outline-none transition-colors"
                     />
                   </div>
                   <div className="md:col-span-2">
                     <label className="text-xs text-zinc-300 block mb-2 font-medium flex items-center gap-1.5">
-                      <MapPin className="w-3.5 h-3.5 text-[#FFB300]" />
+                      <MapPin className="w-3.5 h-3.5 text-emerald-400" />
                       {lang === 'en' ? 'Landmark (optional)' : 'ಹೆಗ್ಗುರುತು (ಐಚ್ಛಿಕ)'}
                     </label>
                     <input
@@ -637,7 +638,7 @@ export default function GreenRewardsDashboard() {
                           ? 'Near temple / bus stop / apartment gate...'
                           : 'ದೇವಾಲಯ / ಬಸ್ ನಿಲ್ದಾಣ ಹತ್ತಿರ...'
                       }
-                      className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-sm text-white focus:border-[#FFB300] outline-none"
+                      className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-sm text-white focus:border-emerald-500 outline-none transition-colors"
                     />
                   </div>
                 </>
@@ -645,7 +646,7 @@ export default function GreenRewardsDashboard() {
                 <>
                   <div>
                     <label className="text-xs text-zinc-300 block mb-2 font-medium flex items-center gap-1.5">
-                      <MapPin className="w-3.5 h-3.5 text-[#FFB300]" />
+                      <MapPin className="w-3.5 h-3.5 text-emerald-400" />
                       {lang === 'en' ? 'Select Sampige Collection Center' : 'ಸಂಗ್ರಹಣಾ ಕೇಂದ್ರ ಆಯ್ಕೆಮಾಡಿ'}
                     </label>
                     <select
@@ -655,7 +656,7 @@ export default function GreenRewardsDashboard() {
                         const loc = locations.find((l) => l.id === e.target.value)
                         if (loc) setSelectedHubObj(loc)
                       }}
-                      className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-sm text-white focus:border-[#FFB300] outline-none"
+                      className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-sm text-white focus:border-emerald-500 outline-none transition-colors"
                     >
                       {locations.map((loc) => (
                         <option key={loc.id} value={loc.id}>
@@ -670,7 +671,7 @@ export default function GreenRewardsDashboard() {
                     <label className="text-xs text-zinc-300 block mb-2 font-medium">
                       {lang === 'en' ? 'Center Address & Operating Hours' : 'ಕೇಂದ್ರದ ವಿಳಾಸ'}
                     </label>
-                    <div className="w-full bg-zinc-950/80 border border-zinc-800/80 rounded-xl px-4 py-3 text-xs text-[#FFB300] font-mono leading-relaxed min-h-[48px]">
+                    <div className="w-full bg-zinc-950/80 border border-zinc-800/80 rounded-xl px-4 py-3 text-xs text-emerald-400 font-mono leading-relaxed min-h-[46px] flex items-center">
                       {selectedHubObj?.address_en ||
                         selectedHubObj?.address ||
                         selectedHubObj?.notes ||
@@ -684,7 +685,7 @@ export default function GreenRewardsDashboard() {
 
               <div>
                 <label className="text-xs text-zinc-300 block mb-2 font-medium flex items-center gap-1.5">
-                  <Calendar className="w-3.5 h-3.5 text-[#FFB300]" />
+                  <Calendar className="w-3.5 h-3.5 text-emerald-400" />
                   {showDoorstep
                     ? lang === 'en' ? 'Preferred Pickup Date' : 'ಪಿಕಪ್ ದಿನಾಂಕ'
                     : lang === 'en' ? 'Preferred Drop-Off Date' : 'ಆದ್ಯತೆಯ ದಿನಾಂಕ'}
@@ -695,13 +696,13 @@ export default function GreenRewardsDashboard() {
                   min={new Date().toISOString().split('T')[0]}
                   value={pickupDate}
                   onChange={(e) => setPickupDate(e.target.value)}
-                  className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-sm text-white focus:border-[#FFB300] outline-none"
+                  className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-sm text-white focus:border-emerald-500 outline-none transition-colors [color-scheme:dark]"
                 />
               </div>
 
               <div>
                 <label className="text-xs text-zinc-300 block mb-2 font-medium flex items-center gap-1.5">
-                  <Clock className="w-3.5 h-3.5 text-[#FFB300]" />
+                  <Clock className="w-3.5 h-3.5 text-emerald-400" />
                   {showDoorstep
                     ? lang === 'en' ? 'Pickup Time Window' : 'ಪಿಕಪ್ ಸಮಯ'
                     : lang === 'en' ? 'Arrival Window' : 'ಸಮಯದ ಅವಧಿ'}
@@ -709,7 +710,7 @@ export default function GreenRewardsDashboard() {
                 <select
                   value={timeSlot}
                   onChange={(e) => setTimeSlot(e.target.value)}
-                  className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-sm text-white focus:border-[#FFB300] outline-none"
+                  className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-sm text-white focus:border-emerald-500 outline-none transition-colors"
                 >
                   {parsedTimeSlots.map((slot) => (
                     <option key={slot} value={slot}>
@@ -722,21 +723,21 @@ export default function GreenRewardsDashboard() {
 
             <div>
               <label className="text-xs text-zinc-300 block mb-2 font-medium">
-                {lang === 'en' ? 'Estimated Waste Details' : 'ತ್ಯಾಜ್ಯದ ವಿವರಗಳು'}
+                {lang === 'en' ? 'Estimated Waste Details (Optional)' : 'ತ್ಯಾಜ್ಯದ ವಿವರಗಳು'}
               </label>
               <textarea
                 rows={2}
                 placeholder="e.g. Bringing 2 kg flowers and 1 box dry paper"
                 value={userNotes}
                 onChange={(e) => setUserNotes(e.target.value)}
-                className="w-full bg-zinc-950 border border-zinc-800 rounded-xl p-3 text-sm text-white focus:border-[#FFB300] outline-none"
+                className="w-full bg-zinc-950 border border-zinc-800 rounded-xl p-4 text-sm text-white focus:border-emerald-500 outline-none transition-colors"
               />
             </div>
 
             <button
               type="submit"
               disabled={isBooking}
-              className="w-full py-3.5 bg-[#FFB300] hover:bg-amber-400 text-black font-bold rounded-xl text-sm flex items-center justify-center gap-2 shadow-lg shadow-[#FFB300]/20 transition-all"
+              className="w-full py-4 bg-emerald-500 hover:bg-emerald-400 text-black font-extrabold rounded-xl text-sm flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(16,185,129,0.3)] transition-all hover:scale-[1.01]"
             >
               {isBooking ? (
                 <Loader2 className="w-5 h-5 animate-spin" />
@@ -744,7 +745,7 @@ export default function GreenRewardsDashboard() {
                 <>
                   <CheckCircle2 className="w-5 h-5" />
                   {showDoorstep
-                    ? lang === 'en' ? 'Confirm Home Pickup' : 'ಮನೆ ಪಿಕಪ್ ಖಚಿತಪಡಿಸಿ'
+                    ? lang === 'en' ? 'Confirm Home Pickup Request' : 'ಮನೆ ಪಿಕಪ್ ಖಚಿತಪಡಿಸಿ'
                     : lang === 'en' ? 'Confirm Drop-Off Appointment' : 'ಅಪಾಯಿಂಟ್‌ಮೆಂಟ್ ಖಚಿತಪಡಿಸಿ'}
                 </>
               )}
@@ -756,7 +757,8 @@ export default function GreenRewardsDashboard() {
         {activeTab === 'rewards' && (
           <div className="space-y-6">
             <div>
-              <h2 className="text-xl font-bold text-white">
+              <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                <Gift className="w-5 h-5 text-emerald-400" />
                 {lang === 'en' ? 'Rewards Catalog' : 'ಬಹುಮಾನಗಳ ಪಟ್ಟಿ'}
               </h2>
               <p className="text-xs text-zinc-400 mt-1">
@@ -772,23 +774,23 @@ export default function GreenRewardsDashboard() {
                 return (
                   <div
                     key={rw.id}
-                    className="bg-zinc-900 border border-zinc-800 p-6 rounded-2xl flex flex-col justify-between space-y-4"
+                    className="bg-zinc-900/80 backdrop-blur-md border border-zinc-800 p-6 rounded-2xl flex flex-col justify-between space-y-4 hover:border-emerald-500/30 transition-all group"
                   >
                     <div>
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="px-2.5 py-1 bg-[#FFB300]/10 border border-[#FFB300]/30 text-[#FFB300] font-mono text-xs font-bold rounded-lg">
+                      <div className="flex items-center justify-between mb-3">
+                        <span className="px-3 py-1 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 font-mono text-xs font-bold rounded-lg group-hover:bg-emerald-500/20 transition-colors">
                           {rw.points_required} pts
                         </span>
                         {faceValue > 0 && (
-                          <span className="text-xs text-emerald-400 font-semibold">
+                          <span className="text-xs text-amber-400 font-bold bg-amber-500/10 px-2.5 py-1 rounded-lg border border-amber-500/20">
                             ₹{faceValue} Value
                           </span>
                         )}
                       </div>
-                      <h3 className="font-bold text-white text-base">
+                      <h3 className="font-bold text-white text-base leading-snug">
                         {lang === 'en' ? getRewardTitle(rw) : getRewardTitleKn(rw)}
                       </h3>
-                      <p className="text-xs text-zinc-400 mt-2">
+                      <p className="text-xs text-zinc-400 mt-2 line-clamp-2">
                         {lang === 'en'
                           ? rw.description_en || rw.description || ''
                           : rw.description_kn || rw.description_en || rw.description || ''}
@@ -798,9 +800,9 @@ export default function GreenRewardsDashboard() {
                     <button
                       onClick={() => setSelectedReward(rw)}
                       disabled={(balance.current_balance || 0) < rw.points_required}
-                      className={`w-full py-2.5 rounded-xl text-xs font-bold transition ${
+                      className={`w-full py-3 rounded-xl text-xs font-bold transition-all ${
                         (balance.current_balance || 0) >= rw.points_required
-                          ? 'bg-[#FFB300] text-black hover:bg-amber-400'
+                          ? 'bg-emerald-500 text-black hover:bg-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.2)]'
                           : 'bg-zinc-800 text-zinc-500 cursor-not-allowed'
                       }`}
                     >
@@ -818,18 +820,19 @@ export default function GreenRewardsDashboard() {
         {/* TAB 3: HISTORY */}
         {activeTab === 'history' && (
           <div className="space-y-6">
-            <h2 className="text-xl font-bold text-white">
+            <h2 className="text-xl font-bold text-white flex items-center gap-2">
+              <History className="w-5 h-5 text-emerald-400" />
               {lang === 'en' ? 'Your Drop-Off & Payout History' : 'ನಿಮ್ಮ ಇತಿಹಾಸ'}
             </h2>
 
-            <div className="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden">
-              <div className="p-4 border-b border-zinc-800 text-sm font-bold text-[#FFB300]">
-                {lang === 'en' ? 'Recent Appointments' : 'ಇತ್ತೀಚಿನ ಪಿಕಪ್‌ಗಳು'}
+            <div className="bg-zinc-900/80 backdrop-blur-md border border-zinc-800 rounded-2xl overflow-hidden shadow-xl">
+              <div className="p-4 bg-zinc-950/50 border-b border-zinc-800 text-xs font-bold text-zinc-400 uppercase tracking-wider">
+                {lang === 'en' ? 'Recent Appointments & Collections' : 'ಇತ್ತೀಚಿನ ಪಿಕಪ್‌ಗಳು'}
               </div>
-              <div className="divide-y divide-zinc-800">
+              <div className="divide-y divide-zinc-800/60">
                 {userRequests.length === 0 ? (
-                  <div className="p-6 text-center text-xs text-zinc-500">
-                    {lang === 'en' ? 'No drop-off records found.' : 'ಯಾವುದೇ ದಾಖಲೆಗಳಿಲ್ಲ.'}
+                  <div className="p-8 text-center text-xs text-zinc-500">
+                    {lang === 'en' ? 'No recycling records found.' : 'ಯಾವುದೇ ದಾಖಲೆಗಳಿಲ್ಲ.'}
                   </div>
                 ) : (
                   userRequests.map((req) => {
@@ -841,18 +844,18 @@ export default function GreenRewardsDashboard() {
                     return (
                       <div
                         key={req.id}
-                        className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+                        className="p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-zinc-800/30 transition-colors"
                       >
                         <div className="min-w-0">
                           <div className="flex flex-wrap items-center gap-2">
-                            <span className="font-mono text-xs font-bold text-white">
+                            <span className="font-mono text-xs font-bold text-white bg-zinc-800 px-2 py-0.5 rounded">
                               {req.request_number || req.id?.slice?.(0, 8)}
                             </span>
                             <span
-                              className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border ${
+                              className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold border uppercase tracking-wider ${
                                 home
-                                  ? 'bg-[#FFB300]/10 text-[#FFB300] border-[#FFB300]/25'
-                                  : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                                  ? 'bg-amber-500/10 text-amber-400 border-amber-500/30'
+                                  : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
                               }`}
                             >
                               {home ? <Truck className="w-3 h-3" /> : <Building2 className="w-3 h-3" />}
@@ -860,8 +863,9 @@ export default function GreenRewardsDashboard() {
                             </span>
                           </div>
 
-                          <div className="text-xs text-zinc-400 mt-1.5">
-                            {lang === 'en' ? 'Date' : 'ದಿನಾಂಕ'}: {req.preferred_date}
+                          <div className="text-xs text-zinc-400 mt-2 font-medium">
+                            <Calendar className="inline w-3 h-3 mr-1 text-emerald-400" />
+                            {req.preferred_date}
                             {req.time_slot ? ` · ${req.time_slot}` : ''}
                           </div>
 
@@ -874,11 +878,11 @@ export default function GreenRewardsDashboard() {
                         </div>
 
                         <div className="flex items-center gap-3 shrink-0">
-                          <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold tracking-wide ${statusMeta.className}`}>
+                          <span className={`px-3 py-1 rounded-full text-[10px] font-bold tracking-wide border ${statusMeta.className}`}>
                             {statusMeta.label}
                           </span>
                           {Number(req.total_points_awarded) > 0 && (
-                            <span className="text-xs font-bold text-[#FFB300] font-mono">
+                            <span className="text-sm font-bold text-emerald-400 font-mono flex items-center gap-1">
                               +{req.total_points_awarded} pts
                             </span>
                           )}
@@ -892,11 +896,11 @@ export default function GreenRewardsDashboard() {
 
             {/* Redemptions history */}
             {userRedemptions.length > 0 && (
-              <div className="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden">
-                <div className="p-4 border-b border-zinc-800 text-sm font-bold text-[#FFB300]">
-                  {lang === 'en' ? 'Reward Redemptions' : 'ಬಹುಮಾನ ರಿಡೆಂಪ್ಷನ್‌ಗಳು'}
+              <div className="bg-zinc-900/80 backdrop-blur-md border border-zinc-800 rounded-2xl overflow-hidden shadow-xl">
+                <div className="p-4 bg-zinc-950/50 border-b border-zinc-800 text-xs font-bold text-zinc-400 uppercase tracking-wider">
+                  {lang === 'en' ? 'Reward Redemptions Ledger' : 'ಬಹುಮಾನ ರಿಡೆಂಪ್ಷನ್‌ಗಳು'}
                 </div>
-                <div className="divide-y divide-zinc-800">
+                <div className="divide-y divide-zinc-800/60">
                   {userRedemptions.map((rd: any) => {
                     const st = getStatusMeta(rd.status)
                     const title =
@@ -912,16 +916,16 @@ export default function GreenRewardsDashboard() {
                     return (
                       <div
                         key={rd.id}
-                        className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+                        className="p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-zinc-800/30 transition-colors"
                       >
                         <div>
-                          <div className="text-sm font-semibold text-white">{title}</div>
-                          <div className="text-xs text-zinc-500 mt-1">
-                            {(rd.points_spent ?? rd.points_used ?? 0)} pts
-                            {Number(value) > 0 ? ` · ₹${value}` : ''}
+                          <div className="text-sm font-bold text-white">{title}</div>
+                          <div className="text-xs text-zinc-500 mt-1 font-mono">
+                            <span className="text-amber-400">-{rd.points_spent ?? rd.points_used ?? 0} pts</span>
+                            {Number(value) > 0 ? <span className="text-emerald-400"> · ₹{value}</span> : ''}
                           </div>
                         </div>
-                        <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold ${st.className}`}>
+                        <span className={`px-3 py-1 rounded-full text-[10px] font-bold border tracking-wider ${st.className}`}>
                           {st.label}
                         </span>
                       </div>
@@ -936,15 +940,16 @@ export default function GreenRewardsDashboard() {
         {/* TAB 4: ACCEPTED RATES */}
         {activeTab === 'rates' && (
           <div className="space-y-6">
-            <h2 className="text-xl font-bold text-[#FFB300]">
-              {lang === 'en' ? 'Points Earned Per Kilogram' : 'ಪ್ರತಿ ಕೆಜಿಗೆ ಪಾಯಿಂಟ್‌ಗಳು'}
+            <h2 className="text-xl font-bold text-white flex items-center gap-2">
+              <Scale className="w-5 h-5 text-emerald-400" />
+              {lang === 'en' ? 'Points Earned Per Unit' : 'ಪ್ರತಿ ಕೆಜಿಗೆ ಪಾಯಿಂಟ್‌ಗಳು'}
             </h2>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {categories.map((cat) => (
                 <div
                   key={cat.id}
-                  className="bg-zinc-900 border border-zinc-800 p-6 rounded-2xl space-y-3"
+                  className="bg-zinc-900/80 backdrop-blur-md border border-zinc-800 p-6 rounded-2xl space-y-3 hover:border-emerald-500/30 transition-colors"
                 >
                   <h3 className="font-bold text-white text-base">
                     {lang === 'en' ? cat.name_en || cat.name : cat.name_kn || cat.name_en || cat.name}
@@ -954,8 +959,8 @@ export default function GreenRewardsDashboard() {
                       ? cat.description_en || cat.description
                       : cat.description_kn || cat.description_en || cat.description}
                   </p>
-                  <div className="pt-2 text-xl font-extrabold text-[#FFB300] font-mono">
-                    {cat.points_per_kg} pts / kg
+                  <div className="pt-2 text-2xl font-black text-emerald-400 font-mono">
+                    {cat.points_per_kg} <span className="text-sm font-semibold text-zinc-500">pts / {cat.unit || 'kg'}</span>
                   </div>
                 </div>
               ))}
@@ -966,25 +971,30 @@ export default function GreenRewardsDashboard() {
 
       {/* REDEMPTION MODAL */}
       {selectedReward && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <div className="bg-zinc-900 border border-zinc-800 w-full max-w-md rounded-2xl p-6 space-y-6">
-            <h3 className="font-bold text-white text-lg">
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 z-50 animate-in fade-in zoom-in-95">
+          <div className="bg-zinc-900 border border-zinc-800 w-full max-w-md rounded-3xl p-6 md:p-8 space-y-6 shadow-2xl relative">
+            
+            <h3 className="font-bold text-white text-lg flex items-center gap-2">
+              <Gift className="w-5 h-5 text-emerald-400" />
               {lang === 'en' ? 'Confirm Reward Redemption' : 'ರಿಡೀಮ್ ಮಾಡಲು ದೃಢೀಕರಿಸಿ'}
             </h3>
 
-            <div className="bg-zinc-950 p-4 rounded-xl border border-zinc-800 space-y-2">
-              <div className="text-sm font-bold text-[#FFB300]">
+            <div className="bg-zinc-950 p-5 rounded-2xl border border-emerald-500/20 space-y-2 relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-500/10 blur-xl rounded-full" />
+              <div className="text-base font-bold text-emerald-400 relative z-10">
                 {lang === 'en' ? getRewardTitle(selectedReward) : getRewardTitleKn(selectedReward)}
               </div>
-              <div className="text-xs text-zinc-400 font-mono">
-                Points Required: {selectedReward.points_required} pts
-                {getRewardValue(selectedReward) > 0 ? ` · ₹${getRewardValue(selectedReward)} Value` : ''}
+              <div className="text-xs text-zinc-400 font-mono relative z-10 flex items-center justify-between mt-2">
+                <span>Deduction: <strong className="text-white">{selectedReward.points_required} pts</strong></span>
+                {getRewardValue(selectedReward) > 0 ? (
+                  <span className="text-amber-400 font-bold bg-amber-500/10 px-2 py-0.5 rounded">₹{getRewardValue(selectedReward)} Value</span>
+                ) : null}
               </div>
             </div>
 
             {rewardNeedsUpi(selectedReward) && (
               <div>
-                <label className="text-xs text-zinc-300 block mb-1">
+                <label className="text-xs text-zinc-300 block mb-2 font-medium">
                   Enter your UPI ID (Google Pay / PhonePe / Paytm)
                 </label>
                 <input
@@ -992,14 +1002,14 @@ export default function GreenRewardsDashboard() {
                   placeholder="e.g. 9886000000@paytm or name@okaxis"
                   value={upiId}
                   onChange={(e) => setUpiId(e.target.value)}
-                  className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2.5 text-sm text-white focus:border-[#FFB300] outline-none"
+                  className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-sm text-white focus:border-emerald-500 outline-none transition-colors"
                 />
               </div>
             )}
 
             {rewardNeedsTree(selectedReward) && (
               <div>
-                <label className="text-xs text-zinc-300 block mb-1">
+                <label className="text-xs text-zinc-300 block mb-2 font-medium">
                   Name to print on Digital Tree Certificate
                 </label>
                 <input
@@ -1007,22 +1017,22 @@ export default function GreenRewardsDashboard() {
                   placeholder={profile?.full_name}
                   value={treeName}
                   onChange={(e) => setTreeName(e.target.value)}
-                  className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2.5 text-sm text-white focus:border-[#FFB300] outline-none"
+                  className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-sm text-white focus:border-emerald-500 outline-none transition-colors"
                 />
               </div>
             )}
 
-            <div className="flex gap-3">
+            <div className="flex gap-3 pt-2">
               <button
                 onClick={() => setSelectedReward(null)}
-                className="w-1/2 py-2.5 bg-zinc-800 hover:bg-zinc-700 text-white rounded-xl text-xs font-semibold"
+                className="w-1/2 py-3.5 bg-zinc-800 hover:bg-zinc-700 text-white rounded-xl text-xs font-semibold transition-colors"
               >
                 Cancel
               </button>
               <button
                 onClick={handleRedeemReward}
                 disabled={isRedeeming}
-                className="w-1/2 py-2.5 bg-[#FFB300] hover:bg-amber-400 text-black rounded-xl text-xs font-bold flex items-center justify-center gap-2"
+                className="w-1/2 py-3.5 bg-emerald-500 hover:bg-emerald-400 text-black rounded-xl text-xs font-bold flex items-center justify-center gap-2 shadow-[0_0_15px_rgba(16,185,129,0.3)] transition-all"
               >
                 {isRedeeming ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Confirm Redemption'}
               </button>
