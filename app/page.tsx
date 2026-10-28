@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import Image from 'next/image'
-import { ArrowRight, Heart, Users, TreePine, Utensils, Sparkles, Recycle } from 'lucide-react'
+import { ArrowRight, Heart, Users, TreePine, Utensils, Sparkles, Recycle, Gift } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import WhatsAppFloat from '@/components/WhatsAppFloat'
 import BeTheChange from '@/components/BeTheChange'
@@ -387,6 +387,51 @@ export default async function Home() {
           </div>
         </section>
       )}
+
+      {/* NEW: Green Rewards Preview */}
+      <section className="py-20 bg-black border-t border-[#FFB300]/10">
+        <div className="container mx-auto px-4">
+          <div className="bg-gradient-to-br from-[#0a150c] to-black rounded-3xl p-8 md:p-14 border border-emerald-500/20 flex flex-col lg:flex-row items-center justify-between gap-12 overflow-hidden relative shadow-2xl">
+            {/* Decorative glow */}
+            <div className="absolute top-0 left-0 w-64 h-64 bg-emerald-500/10 rounded-full blur-[100px] -ml-20 -mt-20 pointer-events-none"></div>
+
+            <div className="flex-1 relative z-10">
+              <div className="text-emerald-500 text-xs font-bold uppercase tracking-widest mb-4 flex items-center gap-3">
+                <span className="w-8 h-px bg-emerald-500"></span> Member Portal
+              </div>
+              <h2 className="text-3xl md:text-5xl font-bold text-white mb-6 leading-tight">
+                Sampige <span className="text-emerald-500">Green Rewards</span>
+              </h2>
+              <p className="text-[#B0B0B0] text-base md:text-lg mb-8 max-w-xl leading-relaxed">
+                Turn your recyclable waste into tangible rewards. Schedule doorstep pickups or drop off at our hubs, earn points, and redeem them for UPI cashback, store vouchers, or environmental impact.
+              </p>
+              <Link
+                href="/green-rewards"
+                className="inline-flex items-center gap-2 bg-emerald-500 text-black font-extrabold px-8 py-4 rounded-full text-sm uppercase tracking-wider hover:bg-emerald-400 hover:scale-105 transition-all"
+              >
+                Access Member Portal <ArrowRight className="w-4 h-4" />
+              </Link>
+            </div>
+
+            <div className="w-full lg:w-5/12 grid grid-cols-2 gap-4 relative z-10">
+              <div className="bg-[#0A0A0A] p-6 rounded-2xl border border-emerald-500/20 text-center hover:border-emerald-500/40 transition-colors">
+                <div className="flex justify-center mb-3">
+                  <Recycle className="h-8 w-8 text-emerald-500" />
+                </div>
+                <div className="text-sm text-white font-bold mb-1">Recycle Waste</div>
+                <div className="text-xs text-gray-500">Drop-off or Pickup</div>
+              </div>
+              <div className="bg-[#0A0A0A] p-6 rounded-2xl border border-emerald-500/20 text-center lg:translate-y-6 hover:border-emerald-500/40 transition-colors">
+                <div className="flex justify-center mb-3">
+                  <Gift className="h-8 w-8 text-emerald-500" />
+                </div>
+                <div className="text-sm text-white font-bold mb-1">Earn Rewards</div>
+                <div className="text-xs text-gray-500">Cashback & Vouchers</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
 
       {/* Gallery */}
       {galleryAlbums && galleryAlbums.length > 0 && (

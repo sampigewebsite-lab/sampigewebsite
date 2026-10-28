@@ -2,11 +2,11 @@
 
 import { usePathname, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { 
-  LayoutDashboard, 
-  FolderTree, 
-  Users, 
-  LogOut, 
+import {
+  LayoutDashboard,
+  FolderTree,
+  Users,
+  LogOut,
   Image,
   FileText,
   Settings,
@@ -21,7 +21,8 @@ import {
   Layout,
   Sparkles,
   Handshake,
-  Search, // ⭐ ADD THIS
+  Search,
+  Recycle,
 } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import toast from 'react-hot-toast'
@@ -56,8 +57,9 @@ export default function Sidebar() {
     { icon: Handshake, label: 'CSR Partners', href: '/admin/csr' },
     { icon: FileText, label: 'Pages', href: '/admin/pages' },
     { icon: Layout, label: 'Page Heroes', href: '/admin/page-heroes' },
-    { icon: Leaf , label: 'Pooja to Prakruthi', href: '/admin/pooja-to-prakruthi'  },
-    { icon: Search, label: 'SEO Services', href: '/admin/seo-services' }, // ⭐ ADD THIS
+    { icon: Leaf, label: 'Pooja to Prakruthi', href: '/admin/pooja-to-prakruthi' },
+    { icon: Recycle, label: 'Green Rewards', href: '/admin/green-rewards' },
+    { icon: Search, label: 'SEO Services', href: '/admin/seo-services' },
     { icon: Settings, label: 'Settings', href: '/admin/settings' },
   ]
 
@@ -81,7 +83,7 @@ export default function Sidebar() {
       <nav className="space-y-1 flex-1 overflow-y-auto pr-1">
         {menuItems.map((item) => {
           const isActive = pathname === item.href || pathname?.startsWith(item.href + '/')
-          
+
           return (
             <a
               key={item.label}
@@ -121,15 +123,17 @@ export default function Sidebar() {
         </button>
 
         {isOpen && (
-          <div 
+          <div
             className="fixed inset-0 bg-black/70 z-40"
             onClick={() => setIsOpen(false)}
           />
         )}
 
-        <aside className={`fixed top-0 right-0 h-full w-64 bg-[#0A0A0A] border-l border-gold-500/10 p-6 flex flex-col z-50 transition-transform duration-300 ${
-          isOpen ? 'translate-x-0' : 'translate-x-full'
-        }`}>
+        <aside
+          className={`fixed top-0 right-0 h-full w-64 bg-[#0A0A0A] border-l border-gold-500/10 p-6 flex flex-col z-50 transition-transform duration-300 ${
+            isOpen ? 'translate-x-0' : 'translate-x-full'
+          }`}
+        >
           <SidebarContent />
         </aside>
       </>
