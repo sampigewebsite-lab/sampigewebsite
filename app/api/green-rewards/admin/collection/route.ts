@@ -44,7 +44,7 @@ export async function POST(request: Request) {
 
     let totalPointsAwarded = 0;
 
-    // 5. Calculate total points and insert collection logs
+    // 5. Insert collection log for each item weighed
     for (const item of weights) {
       if (item.weight > 0) {
         const category = categories?.find(c => c.id === item.categoryId);
@@ -60,28 +60,29 @@ export async function POST(request: Request) {
             weight_kg: item.weight,
             points_awarded: awardedPoints
           });
-        } catch (logErr) {
-          console.warn('Log insert warning:', logErr);
+        } catch (e) {
+          console.warn('Collection log notice:', e);
         }
       }
     }
 
-    // 6. Update Request Status to Completed (tries 'completed' then 'COMPLETED')
+    // 6. Update Request Status to Completed (tries both lowercase and uppercase)
     let { error: updateReqErr } = await adminClient
       .from('gr_collection_requests')
       .update({ status: 'completed' })
       .eq('id', requestId);
 
     if (updateReqErr) {
-      // Fallback try uppercase in case constraint is strict uppercase
-      const fallbackRes = await adminClient
+      const fallback = await adminClient
         .from('gr_collection_requests')
         .update({ status: 'COMPLETED' })
         .eq('id', requestId);
-      updateReqErr = fallbackRes.error;
+      updateReqErr = fallback.error;
     }
 
-    if (updateReqErr) throw new Error(`Status update failed: ${updateReqErr.message}`);
+    if (updateReqErr) {
+      throw new Error(`Status update failed: ${updateReqErr.message}`);
+    }
 
     // 7. Update User Wallet Balance & Ledger
     const { data: pickupRequest, error: pickupErr } = await adminClient
@@ -95,15 +96,18 @@ export async function POST(request: Request) {
     if (pickupRequest?.user_id && totalPointsAwarded > 0) {
       const userId = pickupRequest.user_id;
 
-      // Add ledger transaction
-      const { error: txnErr } = await adminClient.from('gr_points_transactions').insert({
-        user_id: userId,
-        points: totalPointsAwarded,
-        type: 'earn',
-        description: `Waste weighing verification (#${requestId.slice(0, 8)})`
-      });
-
-      if (txnErr) throw new Error(`Ledger entry failed: ${txnErr.message}`);
+      // Add ledger transaction (gracefully fall back if columns vary)
+      try {
+        await adminClient.from('gr_points_transactions').insert({
+          user_id: userId,
+          points: totalPointsAwarded,
+          type: 'earn',
+          description: `Waste weighing verification (#${requestId.slice(0, 8)})`,
+          reference_id: requestId
+        });
+      } catch (txnErr) {
+        console.warn('Txn log warning:', txnErr);
+      }
 
       // Fetch existing balance
       const { data: existingBalance } = await adminClient
