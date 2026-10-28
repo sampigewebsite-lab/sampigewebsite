@@ -6,38 +6,33 @@ export async function GET() {
     const supabase = createAdminClient();
 
     // 1. Fetch Global Settings
-    const { data: settings, error: settingsError } = await supabase
+    const { data: settings } = await supabase
       .from("gr_settings")
       .select("*")
       .eq("key", "global")
       .maybeSingle();
 
-    if (settingsError && settingsError.code !== "PGRST116") {
-      console.error("Settings fetch error:", settingsError);
-    }
+    // 2. Fetch Waste Categories (Safely without throwing on order)
+    const { data: rawCategories } = await supabase.from("gr_waste_categories").select("*");
+    const categories = (rawCategories || []).sort((a, b) =>
+      (a.name_en || a.name || "").localeCompare(b.name_en || b.name || "")
+    );
 
-    // 2. Fetch Waste Categories
-    const { data: categories } = await supabase
-      .from("gr_waste_categories")
-      .select("*")
-      .order("name_en", { ascending: true, nullsFirst: false })
-      .order("name", { ascending: true });
-
-    // 3. Fetch Collection Locations
-    const { data: locations } = await supabase
-      .from("gr_collection_locations")
-      .select("*")
-      .order("name_en", { ascending: true, nullsFirst: false })
-      .order("name", { ascending: true });
+    // 3. Fetch Collection Locations (Safely)
+    const { data: rawLocations } = await supabase.from("gr_collection_locations").select("*");
+    const locations = (rawLocations || []).sort((a, b) =>
+      (a.name_en || a.name || "").localeCompare(b.name_en || b.name || "")
+    );
 
     // 4. Fetch Rewards Catalog
-    const { data: rewards } = await supabase
-      .from("gr_rewards")
-      .select("*")
-      .order("created_at", { ascending: false });
+    const { data: rawRewards } = await supabase.from("gr_rewards").select("*");
+    const rewards = (rawRewards || []).sort(
+      (a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime()
+    );
 
-    // 5. Fetch Redemptions with Profiles & Rewards
-    const { data: redemptions, error: redError } = await supabase
+    // 5. Fetch Redemptions (Attempt join, fallback to manual fetch if FK missing)
+    let redemptionsList: any[] = [];
+    const { data: joinedRedemptions, error: redErr } = await supabase
       .from("gr_redemptions")
       .select(`
         *,
@@ -46,10 +41,38 @@ export async function GET() {
       `)
       .order("created_at", { ascending: false });
 
-    if (redError) console.error("Redemptions fetch error:", redError);
+    if (!redErr && joinedRedemptions) {
+      redemptionsList = joinedRedemptions;
+    } else {
+      // Fallback manual join if DB foreign keys are missing
+      const { data: baseRedemptions } = await supabase
+        .from("gr_redemptions")
+        .select("*")
+        .order("created_at", { ascending: false });
 
-    // 6. Fetch Collection Requests (Doorstep Pickups & Self Drop-Offs)
-    const { data: pickups, error: pickupsError } = await supabase
+      if (baseRedemptions && baseRedemptions.length > 0) {
+        const userIds = Array.from(new Set(baseRedemptions.map((r) => r.user_id).filter(Boolean)));
+        const rewardIds = Array.from(new Set(baseRedemptions.map((r) => r.reward_id).filter(Boolean)));
+
+        const [{ data: userProfiles }, { data: rewardItems }] = await Promise.all([
+          userIds.length > 0 ? supabase.from("profiles").select("id, full_name, phone_number, email").in("id", userIds) : Promise.resolve({ data: [] }),
+          rewardIds.length > 0 ? supabase.from("gr_rewards").select("*").in("id", rewardIds) : Promise.resolve({ data: [] }),
+        ]);
+
+        const profileMap = new Map((userProfiles || []).map((u) => [u.id, u]));
+        const rewardMap = new Map((rewardItems || []).map((rw) => [rw.id, rw]));
+
+        redemptionsList = baseRedemptions.map((r) => ({
+          ...r,
+          user: profileMap.get(r.user_id) || null,
+          reward: rewardMap.get(r.reward_id) || null,
+        }));
+      }
+    }
+
+    // 6. Fetch Pickups & Drop-offs (Attempt join, fallback to manual fetch if FK missing)
+    let pickupsList: any[] = [];
+    const { data: joinedPickups, error: pickErr } = await supabase
       .from("gr_collection_requests")
       .select(`
         *,
@@ -59,7 +82,38 @@ export async function GET() {
       `)
       .order("created_at", { ascending: false });
 
-    if (pickupsError) console.error("Collection requests fetch error:", pickupsError);
+    if (!pickErr && joinedPickups) {
+      pickupsList = joinedPickups;
+    } else {
+      // Fallback manual join
+      const { data: basePickups } = await supabase
+        .from("gr_collection_requests")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      if (basePickups && basePickups.length > 0) {
+        const userIds = Array.from(new Set(basePickups.map((p) => p.user_id).filter(Boolean)));
+        const addressIds = Array.from(new Set(basePickups.map((p) => p.address_id).filter(Boolean)));
+        const locationIds = Array.from(new Set(basePickups.map((p) => p.location_id).filter(Boolean)));
+
+        const [{ data: userProfiles }, { data: addresses }, { data: locs }] = await Promise.all([
+          userIds.length > 0 ? supabase.from("profiles").select("id, full_name, phone_number, email").in("id", userIds) : Promise.resolve({ data: [] }),
+          addressIds.length > 0 ? supabase.from("gr_addresses").select("*").in("id", addressIds) : Promise.resolve({ data: [] }),
+          locationIds.length > 0 ? supabase.from("gr_collection_locations").select("*").in("id", locationIds) : Promise.resolve({ data: [] }),
+        ]);
+
+        const profileMap = new Map((userProfiles || []).map((u) => [u.id, u]));
+        const addressMap = new Map((addresses || []).map((a) => [a.id, a]));
+        const locationMap = new Map((locs || []).map((l) => [l.id, l]));
+
+        pickupsList = basePickups.map((p) => ({
+          ...p,
+          user: profileMap.get(p.user_id) || null,
+          address: addressMap.get(p.address_id) || null,
+          location: locationMap.get(p.location_id) || null,
+        }));
+      }
+    }
 
     // Helper to extract amount from title (e.g., "₹100 Store Voucher", "Rs 50 Off")
     const extractAmountFromTitle = (title: string): number | null => {
@@ -69,7 +123,7 @@ export async function GET() {
     };
 
     // Normalize Redemptions
-    const normalizedRedemptions = redemptions?.map((r) => {
+    const normalizedRedemptions = redemptionsList.map((r) => {
       const rate = settings?.points_to_rupee_rate ? Number(settings.points_to_rupee_rate) : 0.1;
       const pointsUsed = r.points_used ?? r.points_spent ?? 0;
       const calculatedValue = pointsUsed * rate;
@@ -102,7 +156,7 @@ export async function GET() {
     });
 
     // Normalize Pickups & Drop-offs
-    const normalizedPickups = pickups?.map((p) => {
+    const normalizedPickups = pickupsList.map((p) => {
       const rawPhone = p.user?.phone_number || p.contact_phone || "";
       const cleanedPhone = rawPhone.replace(/\D/g, "");
       const whatsappUrl = cleanedPhone
@@ -145,11 +199,11 @@ export async function GET() {
         min_redemption_points: 100,
         allowed_time_slots: ["09:00 AM - 12:00 PM", "02:00 PM - 05:00 PM"],
       },
-      categories: categories || [],
-      locations: locations || [],
-      rewards: rewards || [],
-      redemptions: normalizedRedemptions || [],
-      pickups: normalizedPickups || [],
+      categories,
+      locations,
+      rewards,
+      redemptions: normalizedRedemptions,
+      pickups: normalizedPickups,
     });
   } catch (error: any) {
     console.error("Admin Settings GET error:", error);
