@@ -3,7 +3,6 @@ import { NextResponse } from 'next/server';
 
 export async function POST(request: Request) {
   try {
-    // 1. Get logged-in user session
     const supabase = await createClient();
     const { data: { user }, error: authError } = await supabase.auth.getUser();
 
@@ -11,10 +10,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, error: 'Unauthorized: Session expired.' }, { status: 401 });
     }
 
-    // 2. Synchronous Admin Client
     const adminClient = createAdminClient();
 
-    // 3. Verify Admin Role in DB or Email
     const { data: profile } = await adminClient
       .from('gr_profiles')
       .select('role, email')
@@ -25,10 +22,7 @@ export async function POST(request: Request) {
     const isAdmin = profile?.role === 'admin' || isMasterAdmin;
 
     if (!isAdmin) {
-      return NextResponse.json({ 
-        success: false, 
-        error: 'Forbidden: Admin access required.' 
-      }, { status: 403 });
+      return NextResponse.json({ success: false, error: 'Forbidden: Admin access required.' }, { status: 403 });
     }
 
     const { requestId, weights, notes } = await request.json();
@@ -37,14 +31,13 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, error: 'Invalid request payload.' }, { status: 400 });
     }
 
-    // 4. Get Waste Categories
-    const { data: categories } = await adminClient
-      .from('gr_waste_categories')
-      .select('*');
+    // 1. Get Waste Categories
+    const { data: categories } = await adminClient.from('gr_waste_categories').select('*');
 
     let totalPointsAwarded = 0;
+    let totalWeightKg = 0;
 
-    // 5. Insert collection log for each item weighed
+    // 2. Insert into native gr_collection_items table
     for (const item of weights) {
       if (item.weight > 0) {
         const category = categories?.find(c => c.id === item.categoryId);
@@ -52,39 +45,23 @@ export async function POST(request: Request) {
         const awardedPoints = Math.floor(item.weight * ptsPerKg);
 
         totalPointsAwarded += awardedPoints;
+        totalWeightKg += item.weight;
 
         try {
-          await adminClient.from('gr_collection_logs').insert({
+          await adminClient.from('gr_collection_items').insert({
             request_id: requestId,
             category_id: item.categoryId,
             weight_kg: item.weight,
-            points_awarded: awardedPoints
+            points_per_kg: ptsPerKg,
+            calculated_points: awardedPoints
           });
         } catch (e) {
-          console.warn('Collection log notice:', e);
+          console.warn('Item insert warning:', e);
         }
       }
     }
 
-    // 6. Update Request Status to Completed (tries both lowercase and uppercase)
-    let { error: updateReqErr } = await adminClient
-      .from('gr_collection_requests')
-      .update({ status: 'completed' })
-      .eq('id', requestId);
-
-    if (updateReqErr) {
-      const fallback = await adminClient
-        .from('gr_collection_requests')
-        .update({ status: 'COMPLETED' })
-        .eq('id', requestId);
-      updateReqErr = fallback.error;
-    }
-
-    if (updateReqErr) {
-      throw new Error(`Status update failed: ${updateReqErr.message}`);
-    }
-
-    // 7. Update User Wallet Balance & Ledger
+    // 3. Get the User ID from the request
     const { data: pickupRequest, error: pickupErr } = await adminClient
       .from('gr_collection_requests')
       .select('user_id')
@@ -96,40 +73,69 @@ export async function POST(request: Request) {
     if (pickupRequest?.user_id && totalPointsAwarded > 0) {
       const userId = pickupRequest.user_id;
 
-      // Add ledger transaction (gracefully fall back if columns vary)
-      try {
-        await adminClient.from('gr_points_transactions').insert({
-          user_id: userId,
-          points: totalPointsAwarded,
-          type: 'earn',
-          description: `Waste weighing verification (#${requestId.slice(0, 8)})`,
-          reference_id: requestId
-        });
-      } catch (txnErr) {
-        console.warn('Txn log warning:', txnErr);
-      }
-
-      // Fetch existing balance
-      const { data: existingBalance } = await adminClient
+      // 4. Fetch current balance FIRST (to calculate balance_after)
+      const { data: balanceData } = await adminClient
         .from('gr_points_balances')
-        .select('total_points')
+        .select('current_balance, total_earned')
         .eq('user_id', userId)
         .maybeSingle();
 
-      const newBalance = (existingBalance?.total_points || 0) + totalPointsAwarded;
+      const currentBalance = Number(balanceData?.current_balance || 0);
+      const totalEarned = Number(balanceData?.total_earned || 0);
+      
+      const newBalance = currentBalance + totalPointsAwarded;
+      const newTotalEarned = totalEarned + totalPointsAwarded;
 
-      // Upsert point balance
-      const { error: balErr } = await adminClient.from('gr_points_balances').upsert(
-        {
-          user_id: userId,
-          total_points: newBalance,
-          updated_at: new Date().toISOString()
-        },
-        { onConflict: 'user_id' }
-      );
+      // 5. Insert Transaction with STRICT schema fields
+      const { error: txnErr } = await adminClient.from('gr_points_transactions').insert({
+        user_id: userId,
+        request_id: requestId,
+        transaction_type: 'EARN',
+        points: totalPointsAwarded,
+        balance_after: newBalance,
+        description: `Waste weighing verification (#${requestId.slice(0, 8)})`
+      });
+
+      if (txnErr) throw new Error(`Transaction failed: ${txnErr.message}`);
+
+      // 6. Upsert Balances with STRICT schema fields
+      const { error: balErr } = await adminClient.from('gr_points_balances').upsert({
+        user_id: userId,
+        current_balance: newBalance,
+        total_earned: newTotalEarned,
+        updated_at: new Date().toISOString()
+      }, { onConflict: 'user_id' });
 
       if (balErr) throw new Error(`Balance update failed: ${balErr.message}`);
     }
+
+    // 7. Update Request Status to Completed (Try lowercase, then uppercase)
+    let { error: updateReqErr } = await adminClient
+      .from('gr_collection_requests')
+      .update({ 
+        status: 'completed',
+        total_weight_kg: totalWeightKg,
+        total_points_awarded: totalPointsAwarded,
+        admin_notes: notes || null,
+        collected_at: new Date().toISOString()
+      })
+      .eq('id', requestId);
+
+    if (updateReqErr) {
+      const fallback = await adminClient
+        .from('gr_collection_requests')
+        .update({ 
+          status: 'COMPLETED',
+          total_weight_kg: totalWeightKg,
+          total_points_awarded: totalPointsAwarded,
+          admin_notes: notes || null,
+          collected_at: new Date().toISOString()
+        })
+        .eq('id', requestId);
+      updateReqErr = fallback.error;
+    }
+
+    if (updateReqErr) throw new Error(`Status update failed: ${updateReqErr.message}`);
 
     return NextResponse.json({ 
       success: true, 
