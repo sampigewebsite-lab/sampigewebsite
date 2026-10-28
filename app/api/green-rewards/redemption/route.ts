@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server';
+import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { NextResponse } from 'next/server';
 
 export async function GET() {
@@ -9,22 +9,24 @@ export async function GET() {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
+  const adminClient = createAdminClient();
+
   // Fetch user balance
-  const { data: balance } = await supabase
+  const { data: balance } = await adminClient
     .from('gr_points_balances')
     .select('*')
     .eq('user_id', user.id)
-    .single();
+    .maybeSingle();
 
   // Fetch user redemption requests
-  const { data: redemptions } = await supabase
+  const { data: redemptions } = await adminClient
     .from('gr_redemptions')
     .select('*, reward:gr_rewards(*)')
     .eq('user_id', user.id)
     .order('created_at', { ascending: false });
 
   // Fetch active catalog rewards
-  const { data: rewards } = await supabase
+  const { data: rewards } = await adminClient
     .from('gr_rewards')
     .select('*')
     .eq('is_active', true)
@@ -45,6 +47,8 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
+  const adminClient = createAdminClient();
+
   try {
     const { reward_id, payout_details } = await request.json();
 
@@ -53,7 +57,7 @@ export async function POST(request: Request) {
     }
 
     // 1. Get Reward Details
-    const { data: reward, error: rewardErr } = await supabase
+    const { data: reward, error: rewardErr } = await adminClient
       .from('gr_rewards')
       .select('*')
       .eq('id', reward_id)
@@ -64,18 +68,23 @@ export async function POST(request: Request) {
     }
 
     // 2. Check Member Balance
-    const { data: userBalance } = await supabase
+    const { data: userBalance } = await adminClient
       .from('gr_points_balances')
-      .select('current_balance')
+      .select('current_balance, total_spent')
       .eq('user_id', user.id)
-      .single();
+      .maybeSingle();
 
-    const currentPts = userBalance?.current_balance || 0;
+    const currentPts = Number(userBalance?.current_balance || 0);
+    const totalSpent = Number(userBalance?.total_spent || 0);
+
     if (currentPts < reward.points_required) {
       return NextResponse.json({
         error: `Insufficient balance. You need ${reward.points_required} points but currently have ${currentPts}.`
       }, { status: 400 });
     }
+
+    const newBalance = currentPts - reward.points_required;
+    const newTotalSpent = totalSpent + reward.points_required;
 
     // 3. Generate Redemption Number
     const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
@@ -83,7 +92,7 @@ export async function POST(request: Request) {
     const redemption_number = `RD-${dateStr}-${randomSuffix}`;
 
     // 4. Create Redemption Record
-    const { data: redemption, error: redeemErr } = await supabase
+    const { data: redemption, error: redeemErr } = await adminClient
       .from('gr_redemptions')
       .insert([
         {
@@ -100,31 +109,67 @@ export async function POST(request: Request) {
       .single();
 
     if (redeemErr) {
-      return NextResponse.json({ error: redeemErr.message }, { status: 400 });
+      return NextResponse.json({ error: `Redemption creation failed: ${redeemErr.message}` }, { status: 400 });
     }
 
-    // 5. Deduct Points via Server-Side Ledger Entry (Negative points)
-    const { error: transErr } = await supabase
-      .from('gr_points_transactions')
-      .insert([
-        {
-          user_id: user.id,
-          redemption_id: redemption.id,
-          transaction_type: reward.reward_type === 'donation_tree' ? 'redeemed_donation' : 'redeemed_cash',
-          points: -Math.abs(reward.points_required),
-          description: `Redemption: ${reward.title_en} (${redemption_number})`,
-          created_by: user.id
-        }
-      ]);
+    // 5. Deduct Points via Server-Side Ledger Entry (Tries fallback transaction types)
+    const pointsDeducted = -Math.abs(reward.points_required);
+    let txnInserted = false;
+    let lastTxnError: any = null;
 
-    if (transErr) {
-      // Rollback redemption if ledger insert failed
-      await supabase.from('gr_redemptions').delete().eq('id', redemption.id);
-      return NextResponse.json({ error: 'Transaction failed: ' + transErr.message }, { status: 500 });
+    const candidateTypes = ['redeem', 'redemption', 'spent'];
+    if (reward.reward_type === 'donation_tree') {
+      candidateTypes.unshift('redeemed_donation');
+    } else {
+      candidateTypes.unshift('redeemed_cash');
     }
 
-    return NextResponse.json({ success: true, redemption });
+    for (const tType of candidateTypes) {
+      const { error: transErr } = await adminClient
+        .from('gr_points_transactions')
+        .insert([
+          {
+            user_id: user.id,
+            redemption_id: redemption.id,
+            transaction_type: tType,
+            type: 'redeem',
+            points: pointsDeducted,
+            balance_after: newBalance,
+            description: `Redemption: ${reward.title_en} (${redemption_number})`,
+            created_by: user.id
+          }
+        ]);
+
+      if (!transErr) {
+        txnInserted = true;
+        break;
+      }
+      lastTxnError = transErr;
+    }
+
+    if (!txnInserted) {
+      // Rollback redemption record if ledger insert failed
+      await adminClient.from('gr_redemptions').delete().eq('id', redemption.id);
+      return NextResponse.json({ error: `Transaction failed: ${lastTxnError?.message || 'Check constraint'}` }, { status: 500 });
+    }
+
+    // 6. Update cached wallet balance in gr_points_balances
+    const { error: balErr } = await adminClient
+      .from('gr_points_balances')
+      .upsert({
+        user_id: user.id,
+        current_balance: newBalance,
+        total_spent: newTotalSpent,
+        updated_at: new Date().toISOString()
+      }, { onConflict: 'user_id' });
+
+    if (balErr) {
+      console.warn('Balance update warning:', balErr);
+    }
+
+    return NextResponse.json({ success: true, redemption, newBalance });
   } catch (err: any) {
+    console.error('Redemption Error:', err);
     return NextResponse.json({ error: err.message || 'Server error' }, { status: 500 });
   }
 }
