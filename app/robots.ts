@@ -1,10 +1,20 @@
 import type { MetadataRoute } from 'next'
 
 const getBaseUrl = () => {
-  if (process.env.NEXT_PUBLIC_SITE_URL) {
-    return process.env.NEXT_PUBLIC_SITE_URL.replace(/\/$/, '')
+  let url = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.sampigefoundation.com'
+  
+  if (url.startsWith('http://')) {
+    url = url.replace('http://', 'https://')
   }
-  return 'https://sampigewebsite.vercel.app'
+  if (!url.startsWith('https://')) {
+    url = `https://${url}`
+  }
+  
+  if (url.includes('sampigefoundation.com') && !url.includes('www.sampigefoundation.com')) {
+    url = url.replace('sampigefoundation.com', 'www.sampigefoundation.com')
+  }
+  
+  return url.replace(/\/$/, '')
 }
 
 export default function robots(): MetadataRoute.Robots {
@@ -15,7 +25,7 @@ export default function robots(): MetadataRoute.Robots {
       {
         userAgent: '*',
         allow: '/',
-        disallow: ['/admin/', '/admin/*'],
+        disallow: ['/admin/', '/admin/*', '/api/'],
       },
     ],
     sitemap: `${baseUrl}/sitemap.xml`,

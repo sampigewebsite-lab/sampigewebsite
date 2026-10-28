@@ -22,7 +22,7 @@ export async function middleware(request: NextRequest) {
           return request.cookies.getAll()
         },
         setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value, options }) =>
+          cookiesToSet.forEach(({ name, value }) =>
             request.cookies.set(name, value)
           )
           supabaseResponse = NextResponse.next({
@@ -40,17 +40,31 @@ export async function middleware(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser()
 
-  // If user is not logged in and trying to access admin routes (except login)
-  if (!user && request.nextUrl.pathname.startsWith('/admin') && request.nextUrl.pathname !== '/admin/login') {
+  const pathname = request.nextUrl.pathname
+
+  // 1. Admin Protection
+  if (!user && pathname.startsWith('/admin') && pathname !== '/admin/login') {
     const url = request.nextUrl.clone()
     url.pathname = '/admin/login'
     return NextResponse.redirect(url)
   }
 
-  // If user is logged in and trying to access login page
-  if (user && request.nextUrl.pathname === '/admin/login') {
+  if (user && pathname === '/admin/login') {
     const url = request.nextUrl.clone()
     url.pathname = '/admin/dashboard'
+    return NextResponse.redirect(url)
+  }
+
+  // 2. Green Rewards Member Protection
+  if (!user && pathname.startsWith('/green-rewards') && pathname !== '/green-rewards/login') {
+    const url = request.nextUrl.clone()
+    url.pathname = '/green-rewards/login'
+    return NextResponse.redirect(url)
+  }
+
+  if (user && pathname === '/green-rewards/login') {
+    const url = request.nextUrl.clone()
+    url.pathname = '/green-rewards'
     return NextResponse.redirect(url)
   }
 
@@ -60,5 +74,6 @@ export async function middleware(request: NextRequest) {
 export const config = {
   matcher: [
     '/admin/:path*',
+    '/green-rewards/:path*',
   ],
 }
