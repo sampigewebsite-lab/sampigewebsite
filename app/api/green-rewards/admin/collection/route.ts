@@ -44,7 +44,7 @@ export async function POST(request: Request) {
 
     let totalPointsAwarded = 0;
 
-    // 5. Calculate total points and attempt logging
+    // 5. Calculate total points and insert collection logs
     for (const item of weights) {
       if (item.weight > 0) {
         const category = categories?.find(c => c.id === item.categoryId);
@@ -53,7 +53,6 @@ export async function POST(request: Request) {
 
         totalPointsAwarded += awardedPoints;
 
-        // Try inserting into collection logs (non-fatal if table missing)
         try {
           await adminClient.from('gr_collection_logs').insert({
             request_id: requestId,
@@ -61,17 +60,26 @@ export async function POST(request: Request) {
             weight_kg: item.weight,
             points_awarded: awardedPoints
           });
-        } catch (logError) {
-          console.warn('Collection log non-fatal warning:', logError);
+        } catch (logErr) {
+          console.warn('Log insert warning:', logErr);
         }
       }
     }
 
-    // 6. Update Request Status to Completed
-    const { error: updateReqErr } = await adminClient
+    // 6. Update Request Status to Completed (tries 'completed' then 'COMPLETED')
+    let { error: updateReqErr } = await adminClient
       .from('gr_collection_requests')
       .update({ status: 'completed' })
       .eq('id', requestId);
+
+    if (updateReqErr) {
+      // Fallback try uppercase in case constraint is strict uppercase
+      const fallbackRes = await adminClient
+        .from('gr_collection_requests')
+        .update({ status: 'COMPLETED' })
+        .eq('id', requestId);
+      updateReqErr = fallbackRes.error;
+    }
 
     if (updateReqErr) throw new Error(`Status update failed: ${updateReqErr.message}`);
 
