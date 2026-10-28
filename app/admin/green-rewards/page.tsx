@@ -23,6 +23,121 @@ import {
 } from "lucide-react";
 import { toast } from "react-hot-toast";
 
+/* ------------------------------------------------------------------ */
+/* Helpers – face value & UPI must NEVER invent amounts from pts×rate */
+/* ------------------------------------------------------------------ */
+
+function extractAmountFromTitle(title: unknown): number | null {
+  if (!title) return null;
+  const m = String(title).match(/₹\s*(\d+(?:\.\d+)?)|Rs\.?\s*(\d+(?:\.\d+)?)|INR\s*(\d+(?:\.\d+)?)/i);
+  if (!m) return null;
+  const n = Number(m[1] || m[2] || m[3]);
+  return Number.isFinite(n) ? n : null;
+}
+
+/** Real ₹ face value for admin display. Never uses points × rate. */
+function getRedemptionAmountInr(red: any): number | null {
+  const candidates = [
+    red?.amount_inr,
+    red?.monetary_value_inr,
+    red?.value_inr,
+    red?.reward?.monetary_value_inr,
+    red?.reward?.value_inr,
+    red?.reward?.amount_inr
+  ];
+  for (const c of candidates) {
+    if (c != null && c !== "" && Number.isFinite(Number(c))) {
+      return Number(c);
+    }
+  }
+  const title =
+    red?.rewardTitle ||
+    red?.reward_title ||
+    red?.reward?.title_en ||
+    red?.reward?.title ||
+    "";
+  return extractAmountFromTitle(title);
+}
+
+function getRewardTitle(red: any): string {
+  return (
+    red?.rewardTitle ||
+    red?.reward_title ||
+    red?.reward?.title_en ||
+    red?.reward?.title ||
+    red?.reward?.name ||
+    "Reward Claim"
+  );
+}
+
+function getRewardType(red: any): string {
+  return (
+    red?.rewardType ||
+    red?.reward_type ||
+    red?.reward?.type ||
+    red?.reward?.reward_type ||
+    "voucher"
+  );
+}
+
+/** UPI / voucher code from every known snapshot location */
+function getUpiOrVoucher(red: any): { kind: "upi" | "code" | "none"; value: string } {
+  const details =
+    (red?.payoutDetails && typeof red.payoutDetails === "object" ? red.payoutDetails : null) ||
+    (red?.payout_details && typeof red.payout_details === "object" ? red.payout_details : null) ||
+    {};
+
+  const upiCandidates = [
+    red?.payout_code_display,
+    red?.upi_id,
+    red?.upi,
+    red?.upiId,
+    details?.upi_id,
+    details?.upi,
+    details?.upiId,
+    details?.upi_id_snapshot
+  ];
+  for (const u of upiCandidates) {
+    if (u != null && String(u).trim()) {
+      return { kind: "upi", value: String(u).trim() };
+    }
+  }
+
+  const codeCandidates = [
+    red?.voucher_code,
+    red?.voucherCode,
+    details?.voucher_code,
+    details?.code,
+    details?.voucherCode
+  ];
+  for (const c of codeCandidates) {
+    if (c != null && String(c).trim()) {
+      return { kind: "code", value: String(c).trim() };
+    }
+  }
+
+  return { kind: "none", value: "" };
+}
+
+function getPointsSpent(red: any): number {
+  const n = Number(red?.points_spent ?? red?.points_used ?? red?.points ?? 0);
+  return Number.isFinite(n) ? n : 0;
+}
+
+/** location_id present ⇒ ALWAYS Self Drop-Off (legacy-safe) */
+function isHomePickupRequest(p: any): boolean {
+  if (p?.location_id) return false;
+  const t = String(p?.request_type || p?.type || "").toLowerCase();
+  if (t === "dropoff" || t === "drop_off" || t === "self_dropoff" || t === "self_drop_off") {
+    return false;
+  }
+  return true;
+}
+
+function normalizedStatus(s: any) {
+  return String(s || "").toLowerCase();
+}
+
 export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState<
     "pickups" | "redemptions" | "locations" | "categories" | "settings"
@@ -35,10 +150,9 @@ export default function AdminDashboard() {
   const [systemSettings, setSystemSettings] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
-  // Added "confirmed" to pickup filters
-  const [pickupFilter, setPickupFilter] = useState<"all" | "pending" | "confirmed" | "completed" | "cancelled">(
-    "pending"
-  );
+  const [pickupFilter, setPickupFilter] = useState<
+    "all" | "pending" | "confirmed" | "completed" | "cancelled"
+  >("pending");
   const [redemptionFilter, setRedemptionFilter] = useState<
     "all" | "pending" | "completed" | "rejected"
   >("pending");
@@ -114,7 +228,6 @@ export default function AdminDashboard() {
     }
   }
 
-  // --- NEW: Handle Confirming Doorstep Pickup ---
   const handleConfirmPickup = async (id: string) => {
     try {
       const response = await fetch("/api/green-rewards/admin/settings", {
@@ -133,7 +246,7 @@ export default function AdminDashboard() {
       } else {
         toast.error(result.error || "Failed to confirm pickup");
       }
-    } catch (error) {
+    } catch {
       toast.error("Error updating status");
     }
   };
@@ -339,8 +452,6 @@ export default function AdminDashboard() {
     }
   };
 
-  const normalizedStatus = (s: any) => String(s || "").toLowerCase();
-
   const filteredPickups = pickups.filter((p) => {
     const st = normalizedStatus(p.status);
     const matchesFilter = pickupFilter === "all" || st === pickupFilter;
@@ -357,12 +468,14 @@ export default function AdminDashboard() {
     const st = normalizedStatus(r.status);
     const matchesFilter = redemptionFilter === "all" || st === redemptionFilter;
     const q = searchQuery.toLowerCase();
+    const upiInfo = getUpiOrVoucher(r);
+    const title = getRewardTitle(r);
     const matchesSearch =
       searchQuery === "" ||
       (r.userName && r.userName.toLowerCase().includes(q)) ||
       (r.userPhone && r.userPhone.includes(searchQuery)) ||
-      (r.upi_id && r.upi_id.toLowerCase().includes(q)) ||
-      (r.rewardTitle && r.rewardTitle.toLowerCase().includes(q)) ||
+      (upiInfo.value && upiInfo.value.toLowerCase().includes(q)) ||
+      (title && title.toLowerCase().includes(q)) ||
       (r.redemption_number && r.redemption_number.toLowerCase().includes(q));
     return matchesFilter && matchesSearch;
   });
@@ -528,15 +641,14 @@ export default function AdminDashboard() {
                 </thead>
                 <tbody className="divide-y divide-white/5 text-sm">
                   {filteredPickups.map((pickup) => {
-                    const isDoorstep = pickup.request_type === "home_pickup";
-                    
+                    const isDoorstep = isHomePickupRequest(pickup);
+
                     return (
                       <tr key={pickup.id} className="hover:bg-white/[0.02] transition-colors">
                         <td className="px-6 py-4 font-mono text-xs font-bold text-amber-500">
                           {pickup.request_number || pickup.id.slice(0, 8)}
                         </td>
-                        
-                        {/* Normalized Name and Phone */}
+
                         <td className="px-6 py-4">
                           <div className="flex flex-col">
                             <span className="font-bold text-white text-sm">
@@ -562,7 +674,6 @@ export default function AdminDashboard() {
                           </div>
                         </td>
 
-                        {/* Badges for Home Pickup vs Drop-Off */}
                         <td className="px-6 py-4">
                           <div className="flex flex-col items-start gap-1.5">
                             <span
@@ -573,10 +684,18 @@ export default function AdminDashboard() {
                               }`}
                             >
                               {isDoorstep ? <Home size={10} /> : <Store size={10} />}
-                              {pickup.badge || (isDoorstep ? "Home Pickup" : "Self Drop-Off")}
+                              {pickup.badge ||
+                                (isDoorstep ? "Doorstep Home Pickup" : "Self Drop-Off")}
                             </span>
                             <span className="text-gray-300 font-semibold text-xs line-clamp-2 max-w-[250px]">
-                              {pickup.locationName || "Unknown Location"}
+                              {isDoorstep
+                                ? pickup.locationName ||
+                                  pickup.address_line ||
+                                  pickup.fullAddress ||
+                                  "Home address"
+                                : pickup.locationName
+                                  ? `Self Drop-Off at ${pickup.locationName}`
+                                  : "Self Drop-Off Center"}
                             </span>
                           </div>
                         </td>
@@ -591,17 +710,21 @@ export default function AdminDashboard() {
                             </span>
                           </div>
                         </td>
-                        
+
                         <td className="px-6 py-4">
                           <span
                             className={`text-[10px] uppercase font-extrabold px-2.5 py-1 rounded-full border ${
                               normalizedStatus(pickup.status) === "pending"
                                 ? "bg-amber-500/10 text-amber-500 border-amber-500/20"
-                                : normalizedStatus(pickup.status) === "confirmed"
-                                ? "bg-blue-500/10 text-blue-400 border-blue-500/20"
-                                : normalizedStatus(pickup.status) === "completed"
-                                ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
-                                : "bg-gray-500/10 text-gray-400 border-gray-500/20"
+                                : normalizedStatus(pickup.status) === "confirmed" ||
+                                    normalizedStatus(pickup.status) === "scheduled"
+                                  ? "bg-blue-500/10 text-blue-400 border-blue-500/20"
+                                  : normalizedStatus(pickup.status) === "completed"
+                                    ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
+                                    : normalizedStatus(pickup.status) === "cancelled" ||
+                                        normalizedStatus(pickup.status) === "rejected"
+                                      ? "bg-red-500/10 text-red-400 border-red-500/20"
+                                      : "bg-gray-500/10 text-gray-400 border-gray-500/20"
                             }`}
                           >
                             {pickup.status}
@@ -610,15 +733,15 @@ export default function AdminDashboard() {
 
                         <td className="px-6 py-4 text-right">
                           {normalizedStatus(pickup.status) === "pending" && isDoorstep ? (
-                            // Confirm Schedule Button for Doorstep Pickups
                             <button
                               onClick={() => handleConfirmPickup(pickup.id)}
                               className="bg-blue-500 hover:bg-blue-400 text-white px-4 py-2 rounded-xl text-xs font-black shadow-lg shadow-blue-500/20 transition-all flex items-center gap-1.5 ml-auto"
                             >
                               <CheckCircle2 size={15} /> Confirm Schedule
                             </button>
-                          ) : normalizedStatus(pickup.status) === "pending" || normalizedStatus(pickup.status) === "confirmed" ? (
-                            // Weigh Button for Drop-Offs or Confirmed Pickups
+                          ) : normalizedStatus(pickup.status) === "pending" ||
+                            normalizedStatus(pickup.status) === "confirmed" ||
+                            normalizedStatus(pickup.status) === "scheduled" ? (
                             <button
                               onClick={() => handleOpenWeighModal(pickup)}
                               className="bg-amber-500 hover:bg-amber-400 text-black px-4 py-2 rounded-xl text-xs font-black shadow-lg shadow-amber-500/20 transition-all flex items-center gap-1.5 ml-auto"
@@ -626,7 +749,6 @@ export default function AdminDashboard() {
                               <Scale size={15} /> Weigh & Award Points
                             </button>
                           ) : (
-                            // Completed / Processed state
                             <span className="text-xs text-gray-500 italic font-mono">
                               {normalizedStatus(pickup.status) === "completed"
                                 ? "Points Awarded"
@@ -710,9 +832,11 @@ export default function AdminDashboard() {
                 </thead>
                 <tbody className="divide-y divide-white/5 text-sm">
                   {filteredRedemptions.map((red) => {
-                    const pts = red.points_spent ?? red.points_used ?? 0;
-                    const amount = red.amount_inr;
-                    const upi = red.upi_id || "";
+                    const pts = getPointsSpent(red);
+                    const amount = getRedemptionAmountInr(red);
+                    const upiOrCode = getUpiOrVoucher(red);
+                    const title = getRewardTitle(red);
+                    const rType = getRewardType(red);
 
                     return (
                       <tr key={red.id} className="hover:bg-white/[0.02] transition-colors">
@@ -746,10 +870,10 @@ export default function AdminDashboard() {
                             <Gift size={14} className="text-amber-500 mt-0.5 shrink-0" />
                             <div>
                               <p className="font-semibold text-white text-sm leading-snug">
-                                {red.rewardTitle || "Reward Claim"}
+                                {title}
                               </p>
                               <p className="text-[10px] uppercase tracking-wider text-gray-500 mt-0.5">
-                                {red.rewardType || "voucher"}
+                                {rType}
                               </p>
                             </div>
                           </div>
@@ -760,17 +884,17 @@ export default function AdminDashboard() {
                         </td>
 
                         <td className="px-5 py-4 font-black text-emerald-400 text-base font-mono whitespace-nowrap">
-                          {amount != null ? `₹${amount}` : "—"}
+                          {amount != null ? `₹${Number(amount).toFixed(0)}` : "—"}
                         </td>
 
                         <td className="px-5 py-4">
-                          {upi ? (
+                          {upiOrCode.kind === "upi" ? (
                             <span className="text-xs font-mono text-gray-200 bg-white/[0.04] px-2.5 py-1.5 rounded border border-white/10 block max-w-[220px] break-all">
-                              UPI: {upi}
+                              UPI: {upiOrCode.value}
                             </span>
-                          ) : red.voucher_code ? (
-                            <span className="text-xs font-mono text-emerald-400 bg-emerald-500/10 px-2.5 py-1.5 rounded border border-emerald-500/20 block">
-                              Code: {red.voucher_code}
+                          ) : upiOrCode.kind === "code" ? (
+                            <span className="text-xs font-mono text-emerald-400 bg-emerald-500/10 px-2.5 py-1.5 rounded border border-emerald-500/20 block max-w-[220px] break-all">
+                              Code: {upiOrCode.value}
                             </span>
                           ) : (
                             <span className="text-xs text-gray-600 italic">No UPI / code</span>
@@ -782,9 +906,14 @@ export default function AdminDashboard() {
                             className={`text-[10px] uppercase font-extrabold px-2.5 py-1 rounded-full border ${
                               normalizedStatus(red.status) === "pending"
                                 ? "bg-amber-500/10 text-amber-500 border-amber-500/20"
-                                : normalizedStatus(red.status) === "completed"
+                                : normalizedStatus(red.status) === "completed" ||
+                                    normalizedStatus(red.status) === "paid" ||
+                                    normalizedStatus(red.status) === "fulfilled"
                                   ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
-                                  : "bg-gray-500/10 text-gray-400 border-gray-500/20"
+                                  : normalizedStatus(red.status) === "rejected" ||
+                                      normalizedStatus(red.status) === "cancelled"
+                                    ? "bg-red-500/10 text-red-400 border-red-500/20"
+                                    : "bg-gray-500/10 text-gray-400 border-gray-500/20"
                             }`}
                           >
                             {red.status}
@@ -963,7 +1092,8 @@ export default function AdminDashboard() {
               <Settings size={22} /> Green Rewards System Settings
             </h2>
             <p className="text-xs text-gray-400 mb-8 border-b border-white/10 pb-4">
-              Configure door-step pickup toggles, point exchange rates, and minimum redemption limits.
+              Configure door-step pickup toggles, point exchange rates, and minimum redemption
+              limits.
             </p>
 
             <div className="space-y-6">
@@ -1017,7 +1147,8 @@ export default function AdminDashboard() {
                   />
                 </div>
                 <p className="text-[11px] text-gray-500 italic">
-                  Default: 0.10 means 100 points = ₹10 INR.
+                  Default: 0.10 means 100 points = ₹10 INR. Used only for generic cash conversion —
+                  voucher face values come from the reward catalog.
                 </p>
               </div>
 
@@ -1202,6 +1333,18 @@ export default function AdminDashboard() {
               </div>
               <div>
                 <label className="block text-gray-400 mb-1 font-bold uppercase">
+                  Address (Kannada - ಕನ್ನಡ)
+                </label>
+                <textarea
+                  value={locationForm.address_kn}
+                  onChange={(e) =>
+                    setLocationForm({ ...locationForm, address_kn: e.target.value })
+                  }
+                  className="w-full bg-black border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-amber-500 focus:outline-none h-16"
+                />
+              </div>
+              <div>
+                <label className="block text-gray-400 mb-1 font-bold uppercase">
                   Operating Hours
                 </label>
                 <input
@@ -1212,6 +1355,24 @@ export default function AdminDashboard() {
                   }
                   className="w-full bg-black border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-amber-500 focus:outline-none"
                 />
+              </div>
+              <div className="flex items-center justify-between bg-black/40 border border-white/10 rounded-lg px-3 py-2">
+                <span className="text-gray-400 font-bold uppercase">Active Hub</span>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setLocationForm({ ...locationForm, is_active: !locationForm.is_active })
+                  }
+                  className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors ${
+                    locationForm.is_active ? "bg-amber-500" : "bg-gray-700"
+                  }`}
+                >
+                  <span
+                    className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-black shadow transition ${
+                      locationForm.is_active ? "translate-x-5" : "translate-x-0"
+                    }`}
+                  />
+                </button>
               </div>
             </div>
             <div className="flex justify-end gap-2 mt-6">
@@ -1277,6 +1438,24 @@ export default function AdminDashboard() {
                   }
                   className="w-full bg-black border border-white/10 rounded-lg px-3 py-2 text-sm font-mono text-amber-500 focus:border-amber-500 focus:outline-none"
                 />
+              </div>
+              <div className="flex items-center justify-between bg-black/40 border border-white/10 rounded-lg px-3 py-2">
+                <span className="text-gray-400 font-bold uppercase">Active Category</span>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setCategoryForm({ ...categoryForm, is_active: !categoryForm.is_active })
+                  }
+                  className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors ${
+                    categoryForm.is_active ? "bg-amber-500" : "bg-gray-700"
+                  }`}
+                >
+                  <span
+                    className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-black shadow transition ${
+                      categoryForm.is_active ? "translate-x-5" : "translate-x-0"
+                    }`}
+                  />
+                </button>
               </div>
             </div>
             <div className="flex justify-end gap-2 mt-6">

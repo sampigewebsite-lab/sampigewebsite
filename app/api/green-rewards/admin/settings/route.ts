@@ -71,6 +71,33 @@ export async function GET() {
       console.error("Auth admin listUsers warning:", e);
     }
 
+    // Also merge gr_profiles if present
+    try {
+      const { data: grProfiles } = await supabase.from("gr_profiles").select("*");
+      (grProfiles || []).forEach((p: any) => {
+        if (!p.id) return;
+        const existing = userLookupMap.get(p.id) || { full_name: "", phone_number: "", email: "" };
+        userLookupMap.set(p.id, {
+          full_name:
+            (existing.full_name && existing.full_name !== "Member"
+              ? existing.full_name
+              : null) ||
+            p.full_name ||
+            p.name ||
+            "Member",
+          phone_number:
+            existing.phone_number ||
+            p.phone_number ||
+            p.phone ||
+            p.mobile ||
+            "",
+          email: existing.email || p.email || "",
+        });
+      });
+    } catch (e) {
+      // optional table
+    }
+
     // 6. Fetch Redemptions
     let redemptionsList: any[] = [];
     const { data: baseRedemptions } = await supabase
@@ -80,9 +107,10 @@ export async function GET() {
 
     if (baseRedemptions && baseRedemptions.length > 0) {
       const rewardIds = Array.from(new Set(baseRedemptions.map((r) => r.reward_id).filter(Boolean)));
-      const { data: rewardItems } = rewardIds.length > 0
-        ? await supabase.from("gr_rewards").select("*").in("id", rewardIds)
-        : { data: [] };
+      const { data: rewardItems } =
+        rewardIds.length > 0
+          ? await supabase.from("gr_rewards").select("*").in("id", rewardIds)
+          : { data: [] };
       const rewardMap = new Map((rewardItems || []).map((rw: any) => [rw.id, rw]));
 
       redemptionsList = baseRedemptions.map((r) => ({
@@ -91,6 +119,169 @@ export async function GET() {
         reward: rewardMap.get(r.reward_id) || null,
       }));
     }
+
+    // Helper to extract amount from title (e.g., "₹100 Store Voucher", "Rs 50 Off")
+    const extractAmountFromTitle = (title: string): number | null => {
+      if (!title) return null;
+      const match =
+        title.match(/(?:₹|Rs\.?|INR|\$)\s?(\d+(\.\d+)?)/i) ||
+        title.match(/(\d+)\s?(?:rupees|rs|inr|off)/i);
+      return match ? parseFloat(match[1]) : null;
+    };
+
+    const parsePayoutDetails = (raw: any): Record<string, any> => {
+      if (!raw) return {};
+      if (typeof raw === "object") return raw;
+      if (typeof raw === "string") {
+        try {
+          const parsed = JSON.parse(raw);
+          return parsed && typeof parsed === "object" ? parsed : {};
+        } catch {
+          return {};
+        }
+      }
+      return {};
+    };
+
+    // Normalize Redemptions — FIXED title / face value / UPI
+    const normalizedRedemptions = redemptionsList.map((r) => {
+      const lookupUser = userLookupMap.get(r.user_id) || ({} as any);
+      const reward = r.reward || {};
+      const payoutDetails = parsePayoutDetails(r.payout_details);
+
+      const rate =
+        settings?.points_to_rupee_rate != null
+          ? Number(settings.points_to_rupee_rate)
+          : 0.1;
+
+      const pointsUsed = Number(
+        r.points_used ?? r.points_spent ?? reward.points_required ?? 0
+      );
+
+      // Title: support title_en (member catalog) AND title (admin catalog)
+      const rewardTitle =
+        reward.title_en ||
+        reward.title ||
+        reward.name_en ||
+        reward.name ||
+        r.reward_title ||
+        r.title ||
+        payoutDetails.reward_title ||
+        "Redemption";
+
+      // Type: reward_type (member) AND type (admin)
+      const rewardType =
+        reward.reward_type ||
+        reward.type ||
+        r.reward_type ||
+        r.type ||
+        "discount";
+
+      // Face value priority:
+      // 1) snapshot on redemption row
+      // 2) reward.monetary_value_inr (member schema)
+      // 3) reward.value_inr (admin schema)
+      // 4) amount embedded in title (e.g. Voucher ₹100)
+      // 5) ONLY then points * rate (last resort)
+      const snapshotVal =
+        r.amount_inr ??
+        r.payout_amount ??
+        r.monetary_value_inr ??
+        r.reward_value_inr ??
+        payoutDetails.amount_inr ??
+        payoutDetails.monetary_value_inr;
+
+      const catalogVal =
+        reward.monetary_value_inr ??
+        reward.value_inr ??
+        reward.value ??
+        reward.amount_inr;
+
+      const titleVal = extractAmountFromTitle(rewardTitle);
+      const calculatedValue = pointsUsed * rate;
+
+      let payoutAmount: number;
+      if (snapshotVal != null && snapshotVal !== "" && !Number.isNaN(Number(snapshotVal))) {
+        payoutAmount = Number(snapshotVal);
+      } else if (catalogVal != null && catalogVal !== "" && !Number.isNaN(Number(catalogVal))) {
+        payoutAmount = Number(catalogVal);
+      } else if (titleVal != null) {
+        payoutAmount = titleVal;
+      } else {
+        payoutAmount = calculatedValue;
+      }
+
+      // UPI / voucher code from many possible shapes
+      const upiOrCode =
+        payoutDetails.upi_id ||
+        payoutDetails.upi ||
+        payoutDetails.upiId ||
+        payoutDetails.voucher_code ||
+        payoutDetails.code ||
+        payoutDetails.coupon_code ||
+        r.upi_id ||
+        r.upi ||
+        r.voucher_code ||
+        r.coupon_code ||
+        r.payout_upi ||
+        null;
+
+      const voucherCode =
+        r.voucher_code ||
+        payoutDetails.voucher_code ||
+        payoutDetails.code ||
+        payoutDetails.coupon_code ||
+        null;
+
+      const rawName =
+        lookupUser.full_name || r.user?.full_name || r.user_name || "Unknown Member";
+      const rawPhone =
+        lookupUser.phone_number || r.user?.phone_number || r.user_phone || "";
+      const cleanedPhone = String(rawPhone || "").replace(/\D/g, "");
+      const whatsappUrl = cleanedPhone
+        ? `https://wa.me/${cleanedPhone.startsWith("91") ? cleanedPhone : "91" + cleanedPhone}`
+        : null;
+
+      const isVoucher =
+        rewardType === "voucher" ||
+        rewardType === "store_discount" ||
+        rewardType === "coupon" ||
+        String(rewardTitle).toLowerCase().includes("voucher") ||
+        String(rewardTitle).toLowerCase().includes("discount");
+
+      const isUpi =
+        rewardType === "upi" ||
+        rewardType === "cashback" ||
+        String(rewardTitle).toLowerCase().includes("upi") ||
+        String(rewardTitle).toLowerCase().includes("cashback");
+
+      return {
+        ...r,
+        userName: rawName,
+        userPhone: rawPhone || "No phone",
+        userEmail: lookupUser.email || r.user?.email || r.user_email || "No email",
+        whatsappUrl,
+        rewardTitle,
+        rewardType,
+        amount_inr: payoutAmount,
+        points_spent: pointsUsed,
+        points_used: pointsUsed,
+        upi_id: upiOrCode,
+        voucher_code: voucherCode,
+        // What admin table should show in UPI / VOUCHER CODE column
+        payout_code_display: upiOrCode || voucherCode || "No UPI / code",
+        payoutDetails,
+        isVoucher,
+        isUpi,
+        reward: {
+          ...reward,
+          title: rewardTitle,
+          type: rewardType,
+          value_inr: payoutAmount,
+          monetary_value_inr: payoutAmount,
+        },
+      };
+    });
 
     // 7. Fetch Collection Requests (Doorstep Pickups & Self Drop-Offs)
     let pickupsList: any[] = [];
@@ -104,8 +295,12 @@ export async function GET() {
       const locationIds = Array.from(new Set(basePickups.map((p) => p.location_id).filter(Boolean)));
 
       const [{ data: addresses }, { data: locs }] = await Promise.all([
-        addressIds.length > 0 ? supabase.from("gr_addresses").select("*").in("id", addressIds) : Promise.resolve({ data: [] }),
-        locationIds.length > 0 ? supabase.from("gr_collection_locations").select("*").in("id", locationIds) : Promise.resolve({ data: [] }),
+        addressIds.length > 0
+          ? supabase.from("gr_addresses").select("*").in("id", addressIds)
+          : Promise.resolve({ data: [] as any[] }),
+        locationIds.length > 0
+          ? supabase.from("gr_collection_locations").select("*").in("id", locationIds)
+          : Promise.resolve({ data: [] as any[] }),
       ]);
 
       const addressMap = new Map((addresses || []).map((a: any) => [a.id, a]));
@@ -119,71 +314,38 @@ export async function GET() {
       }));
     }
 
-    // Helper to extract amount from title (e.g., "₹100 Store Voucher", "Rs 50 Off")
-    const extractAmountFromTitle = (title: string): number | null => {
-      if (!title) return null;
-      const match = title.match(/(?:₹|Rs\.?|INR|\$)\s?(\d+(\.\d+)?)/i) || title.match(/(\d+)\s?(?:rupees|rs|inr|off)/i);
-      return match ? parseFloat(match[1]) : null;
-    };
-
-    // Normalize Redemptions
-    const normalizedRedemptions = redemptionsList.map((r) => {
-      const lookupUser = userLookupMap.get(r.user_id) || {};
-      const rate = settings?.points_to_rupee_rate ? Number(settings.points_to_rupee_rate) : 0.1;
-      const pointsUsed = r.points_used ?? r.points_spent ?? 0;
-      const calculatedValue = pointsUsed * rate;
-
-      const rewardVal = r.reward?.value_inr ?? r.amount_inr;
-      const titleVal = extractAmountFromTitle(r.reward?.title || r.reward_title || "");
-      const payoutAmount = rewardVal != null ? Number(rewardVal) : (titleVal ?? calculatedValue);
-
-      const rawName = lookupUser.full_name || r.user?.full_name || r.user_name || "Unknown Member";
-      const rawPhone = lookupUser.phone_number || r.user?.phone_number || r.user_phone || "";
-      const cleanedPhone = rawPhone.replace(/\D/g, "");
-      const whatsappUrl = cleanedPhone
-        ? `https://wa.me/${cleanedPhone.startsWith("91") ? cleanedPhone : "91" + cleanedPhone}`
-        : null;
-
-      return {
-        ...r,
-        userName: rawName,
-        userPhone: rawPhone || "No phone",
-        userEmail: lookupUser.email || r.user?.email || r.user_email || "No email",
-        whatsappUrl,
-        rewardTitle: r.reward?.title || r.reward_title || "Redemption",
-        rewardType: r.reward?.type || r.reward_type || "discount",
-        amount_inr: payoutAmount,
-        points_spent: pointsUsed,
-        isVoucher:
-          r.reward?.type === "voucher" ||
-          r.reward?.type === "store_discount" ||
-          (r.reward?.title && r.reward.title.toLowerCase().includes("voucher")),
-      };
-    });
-
     // Normalize Pickups & Drop-offs
     const normalizedPickups = pickupsList.map((p) => {
-      const lookupUser = userLookupMap.get(p.user_id) || {};
-      const rawName = lookupUser.full_name || p.user?.full_name || p.contact_name || "Unknown Member";
-      const rawPhone = lookupUser.phone_number || p.user?.phone_number || p.contact_phone || "";
-      const cleanedPhone = rawPhone.replace(/\D/g, "");
+      const lookupUser = userLookupMap.get(p.user_id) || ({} as any);
+      const rawName =
+        lookupUser.full_name || p.user?.full_name || p.contact_name || "Unknown Member";
+      const rawPhone =
+        lookupUser.phone_number || p.user?.phone_number || p.contact_phone || "";
+      const cleanedPhone = String(rawPhone || "").replace(/\D/g, "");
       const whatsappUrl = cleanedPhone
         ? `https://wa.me/${cleanedPhone.startsWith("91") ? cleanedPhone : "91" + cleanedPhone}`
         : null;
 
-      // CRITICAL FIX: If location_id is present, it is a Self Drop-Off at Center!
+      // CRITICAL: location_id present = Self Drop-Off
       const isHomePickup = !p.location_id;
       const badgeText = isHomePickup ? "Home Pickup" : "Self Drop-Off at Center";
 
       const addressStr = p.address
-        ? [p.address.address_line1, p.address.address_line2, p.address.landmark, p.address.city, p.address.pincode]
+        ? [
+            p.address.street_address || p.address.address_line1,
+            p.address.address_line2,
+            p.address.landmark,
+            p.address.area_name,
+            p.address.city,
+            p.address.pincode,
+          ]
             .filter(Boolean)
             .join(", ")
         : null;
 
       const locationName = isHomePickup
-        ? (addressStr || "Doorstep Home Address")
-        : (p.location?.name_en || p.location?.name || "Drop-off Center Hub");
+        ? addressStr || p.pickup_address || "Doorstep Home Address"
+        : p.location?.name_en || p.location?.name || "Drop-off Center Hub";
 
       return {
         ...p,
@@ -237,7 +399,8 @@ export async function POST(req: Request) {
           enable_home_pickup: Boolean(payload.enable_home_pickup),
           points_to_rupee_rate: Number(payload.points_to_rupee_rate),
           min_redemption_points: Number(payload.min_redemption_points),
-          allowed_time_slots: payload.allowed_time_slots || ["09:00 AM - 12:00 PM", "02:00 PM - 05:00 PM"],
+          allowed_time_slots:
+            payload.allowed_time_slots || ["09:00 AM - 12:00 PM", "02:00 PM - 05:00 PM"],
         },
         { onConflict: "key" }
       );
@@ -247,13 +410,22 @@ export async function POST(req: Request) {
 
     // --- Action: Update Redemption ---
     if (action === "update_redemption") {
-      const { status, voucher_code, notes } = payload;
-      const updateData: Record<string, any> = { status, updated_at: new Date().toISOString() };
-      if (status === "completed" || status === "fulfilled") updateData.processed_at = new Date().toISOString();
+      const { status, voucher_code, notes, upi_id } = payload;
+      const updateData: Record<string, any> = {
+        status,
+        updated_at: new Date().toISOString(),
+      };
+      if (status === "completed" || status === "fulfilled" || status === "paid") {
+        updateData.processed_at = new Date().toISOString();
+      }
       if (voucher_code !== undefined) updateData.voucher_code = voucher_code;
       if (notes !== undefined) updateData.notes = notes;
+      if (upi_id !== undefined) updateData.upi_id = upi_id;
 
-      const { error } = await supabase.from("gr_redemptions").update(updateData).eq("id", id || payload.id);
+      const { error } = await supabase
+        .from("gr_redemptions")
+        .update(updateData)
+        .eq("id", id || payload.id);
       if (error) throw error;
       return NextResponse.json({ success: true, message: "Redemption updated" });
     }
@@ -268,7 +440,6 @@ export async function POST(req: Request) {
         .eq("id", targetId);
       if (error) throw error;
 
-      // FIXED: Avoid .catch() on PostgREST Builder
       try {
         await supabase.from("gr_collection_status_history").insert([
           {
@@ -286,12 +457,18 @@ export async function POST(req: Request) {
 
     // --- Action: Manage Rewards Catalog ---
     if (action === "save_reward") {
-      const rewardPayload = {
-        title: payload.title,
-        description: payload.description,
+      const rewardPayload: Record<string, any> = {
+        title: payload.title || payload.title_en,
+        title_en: payload.title_en || payload.title,
+        title_kn: payload.title_kn || "",
+        description: payload.description || payload.description_en || "",
+        description_en: payload.description_en || payload.description || "",
+        description_kn: payload.description_kn || "",
         points_required: Number(payload.points_required),
-        value_inr: Number(payload.value_inr || 0),
-        type: payload.type || "voucher",
+        value_inr: Number(payload.value_inr ?? payload.monetary_value_inr ?? 0),
+        monetary_value_inr: Number(payload.monetary_value_inr ?? payload.value_inr ?? 0),
+        type: payload.type || payload.reward_type || "voucher",
+        reward_type: payload.reward_type || payload.type || "voucher",
         is_active: payload.is_active !== undefined ? Boolean(payload.is_active) : true,
         stock: payload.stock !== undefined ? Number(payload.stock) : null,
         terms: payload.terms || null,
@@ -300,7 +477,10 @@ export async function POST(req: Request) {
 
       let query;
       if (id || payload.id) {
-        query = supabase.from("gr_rewards").update(rewardPayload).eq("id", id || payload.id);
+        query = supabase
+          .from("gr_rewards")
+          .update(rewardPayload)
+          .eq("id", id || payload.id);
       } else {
         query = supabase.from("gr_rewards").insert([rewardPayload]);
       }
@@ -310,7 +490,10 @@ export async function POST(req: Request) {
     }
 
     if (action === "delete_reward") {
-      const { error } = await supabase.from("gr_rewards").delete().eq("id", id || payload.id);
+      const { error } = await supabase
+        .from("gr_rewards")
+        .delete()
+        .eq("id", id || payload.id);
       if (error) throw error;
       return NextResponse.json({ success: true, message: "Reward deleted" });
     }
@@ -329,7 +512,10 @@ export async function POST(req: Request) {
 
       let query;
       if (id || payload.id) {
-        query = supabase.from("gr_waste_categories").update(catPayload).eq("id", id || payload.id);
+        query = supabase
+          .from("gr_waste_categories")
+          .update(catPayload)
+          .eq("id", id || payload.id);
       } else {
         query = supabase.from("gr_waste_categories").insert([catPayload]);
       }
@@ -339,7 +525,10 @@ export async function POST(req: Request) {
     }
 
     if (action === "delete_waste_category") {
-      const { error } = await supabase.from("gr_waste_categories").delete().eq("id", id || payload.id);
+      const { error } = await supabase
+        .from("gr_waste_categories")
+        .delete()
+        .eq("id", id || payload.id);
       if (error) throw error;
       return NextResponse.json({ success: true, message: "Category deleted" });
     }
@@ -360,7 +549,10 @@ export async function POST(req: Request) {
 
       let query;
       if (id || payload.id) {
-        query = supabase.from("gr_collection_locations").update(locPayload).eq("id", id || payload.id);
+        query = supabase
+          .from("gr_collection_locations")
+          .update(locPayload)
+          .eq("id", id || payload.id);
       } else {
         query = supabase.from("gr_collection_locations").insert([locPayload]);
       }
@@ -370,7 +562,10 @@ export async function POST(req: Request) {
     }
 
     if (action === "delete_location") {
-      const { error } = await supabase.from("gr_collection_locations").delete().eq("id", id || payload.id);
+      const { error } = await supabase
+        .from("gr_collection_locations")
+        .delete()
+        .eq("id", id || payload.id);
       if (error) throw error;
       return NextResponse.json({ success: true, message: "Location deleted" });
     }

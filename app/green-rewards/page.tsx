@@ -41,7 +41,7 @@ export default function GreenRewardsDashboard() {
   const [userRequests, setUserRequests] = useState<any[]>([])
   const [userRedemptions, setUserRedemptions] = useState<any[]>([])
 
-  // Normalized system settings (from gr_settings global row OR legacy key/value rows)
+  // Normalized system settings
   const [isHomePickupEnabled, setIsHomePickupEnabled] = useState(false)
   const [pointsToRupeeRate, setPointsToRupeeRate] = useState(0.1)
   const [parsedTimeSlots, setParsedTimeSlots] = useState<string[]>([
@@ -50,7 +50,6 @@ export default function GreenRewardsDashboard() {
   ])
 
   // Drop-off / Pickup Form State
-  // 'dropoff' = self drop at hub | 'doorstep' = home pickup
   const [pickupMode, setPickupMode] = useState<'dropoff' | 'doorstep'>('dropoff')
   const [selectedLocation, setSelectedLocation] = useState('')
   const [selectedHubObj, setSelectedHubObj] = useState<any>(null)
@@ -61,7 +60,7 @@ export default function GreenRewardsDashboard() {
   const [userNotes, setUserNotes] = useState('')
   const [isBooking, setIsBooking] = useState(false)
 
-  // Redemption Form Modal State
+  // Redemption Modal State
   const [selectedReward, setSelectedReward] = useState<any>(null)
   const [upiId, setUpiId] = useState('')
   const [treeName, setTreeName] = useState('')
@@ -71,15 +70,10 @@ export default function GreenRewardsDashboard() {
     checkUserSession()
   }, [])
 
-  /** Normalize gr_settings whether stored as:
-   *  A) single row { key: 'global', enable_home_pickup, points_to_rupee_rate, allowed_time_slots }
-   *  B) legacy rows { key: 'enable_home_pickup', value: 'true' }
-   */
   function applySettings(stgData: any[]) {
     const rows = stgData || []
     const globalRow = rows.find((s: any) => s.key === 'global') || rows[0] || null
 
-    // --- enable_home_pickup ---
     let homeEnabled = false
     if (globalRow && typeof globalRow.enable_home_pickup === 'boolean') {
       homeEnabled = globalRow.enable_home_pickup
@@ -90,10 +84,8 @@ export default function GreenRewardsDashboard() {
       homeEnabled = String(legacy?.value) === 'true' || legacy?.value === true
     }
     setIsHomePickupEnabled(homeEnabled)
-    // If home pickup disabled, force drop-off mode
     if (!homeEnabled) setPickupMode('dropoff')
 
-    // --- points_to_rupee_rate ---
     let rate = 0.1
     if (globalRow?.points_to_rupee_rate != null) {
       rate = parseFloat(String(globalRow.points_to_rupee_rate)) || 0.1
@@ -103,7 +95,6 @@ export default function GreenRewardsDashboard() {
     }
     setPointsToRupeeRate(rate)
 
-    // --- allowed_time_slots ---
     let slots: string[] = ['09:00 AM - 12:00 PM', '02:00 PM - 05:00 PM']
     const rawSlots = globalRow?.allowed_time_slots
     if (Array.isArray(rawSlots) && rawSlots.length > 0) {
@@ -134,14 +125,11 @@ export default function GreenRewardsDashboard() {
 
     setUser(authUser)
 
-    // 1. Fetch Profile
     const { data: prof } = await supabase.from('gr_profiles').select('*').eq('id', authUser.id).single()
     setProfile(prof || {})
     if (prof?.language_preference) setLang(prof.language_preference)
-    // Prefill home address from profile if available
     if (prof?.address) setHomeAddress(prof.address)
 
-    // 2. Fetch Locations, Waste Categories, and Settings
     const [locRes, catRes, stgRes] = await Promise.all([
       supabase.from('gr_collection_locations').select('*').eq('is_active', true).order('created_at'),
       supabase.from('gr_waste_categories').select('*').eq('is_active', true).order('display_order'),
@@ -185,6 +173,70 @@ export default function GreenRewardsDashboard() {
     }
   }
 
+  function isHomePickupRequest(req: any): boolean {
+    return !req?.location_id
+  }
+
+  function getRequestTypeLabel(req: any): string {
+    if (isHomePickupRequest(req)) {
+      return lang === 'en' ? 'Doorstep Home Pickup' : 'ಮನೆ ಪಿಕಪ್'
+    }
+    const centerName =
+      req.location?.name_en ||
+      req.location?.name ||
+      req.hubDetails?.name_en ||
+      req.hubDetails?.name ||
+      req.locationName ||
+      locations.find((l) => l.id === req.location_id)?.name_en ||
+      locations.find((l) => l.id === req.location_id)?.name ||
+      (lang === 'en' ? 'Center' : 'ಕೇಂದ್ರ')
+
+    return lang === 'en' ? `Self Drop-Off at ${centerName}` : `${centerName} ನಲ್ಲಿ ಡ್ರಾಪ್-ಆಫ್`
+  }
+
+  function getStatusMeta(statusRaw: string) {
+    const status = (statusRaw || 'pending').toLowerCase()
+    if (status === 'completed' || status === 'verified' || status === 'paid' || status === 'fulfilled') {
+      return {
+        label: 'COMPLETED',
+        className: 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+      }
+    }
+    if (status === 'confirmed' || status === 'scheduled') {
+      return {
+        label: status === 'scheduled' ? 'SCHEDULED' : 'CONFIRMED',
+        className: 'bg-sky-500/10 text-sky-400 border border-sky-500/20'
+      }
+    }
+    if (status === 'cancelled' || status === 'rejected') {
+      return {
+        label: status.toUpperCase(),
+        className: 'bg-red-500/10 text-red-400 border border-red-500/20'
+      }
+    }
+    return {
+      label: 'PENDING',
+      className: 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
+    }
+  }
+
+  function getAddressOrHubLine(req: any): string {
+    if (isHomePickupRequest(req)) {
+      const a = req.address || req.addressDetails
+      if (a) {
+        return [a.street_address || a.address_line1, a.landmark || a.address_line2, a.area_name, a.city, a.pincode]
+          .filter(Boolean)
+          .join(', ')
+      }
+      return req.pickup_address || req.locationName || (lang === 'en' ? 'Doorstep Home Address' : 'ಮನೆ ವಿಳಾಸ')
+    }
+    const loc = req.location || req.hubDetails
+    if (loc) {
+      return loc.address_en || loc.address || loc.name_en || loc.name || ''
+    }
+    return ''
+  }
+
   async function handleBookPickup(e: React.FormEvent) {
     e.preventDefault()
     if (!pickupDate) {
@@ -207,50 +259,40 @@ export default function GreenRewardsDashboard() {
     setIsBooking(true)
 
     try {
-      // Build address record
-      const addressPayload = isDoorstep
-        ? {
-            user_id: user.id,
-            address_title: 'Home Pickup Address',
-            street_address: homeAddress.trim(),
-            area_name: homeLandmark.trim() || 'Bengaluru',
-            pincode: profile?.pincode || '',
-            city: 'Bengaluru',
-            landmark: homeLandmark.trim() || null
-          }
-        : {
-            user_id: user.id,
-            address_title: 'Sampige Collection Hub',
-            street_address:
-              selectedHubObj?.address_en ||
-              selectedHubObj?.address ||
-              selectedHubObj?.notes ||
-              selectedHubObj?.name_en ||
-              'Malleshwaram Drop-Off Center',
-            area_name: selectedHubObj?.name_en || selectedHubObj?.name || 'Malleshwaram',
-            pincode: selectedHubObj?.pincode || '560003',
-            city: 'Bengaluru'
-          }
+      let addressId: string | null = null
 
-      const { data: newAddr, error: addrErr } = await supabase
-        .from('gr_addresses')
-        .insert([addressPayload])
-        .select()
-        .single()
+      if (isDoorstep) {
+        const addressPayload = {
+          user_id: user.id,
+          address_title: 'Home Pickup Address',
+          street_address: homeAddress.trim(),
+          address_line1: homeAddress.trim(),
+          area_name: homeLandmark.trim() || 'Bengaluru',
+          pincode: profile?.pincode || '',
+          city: 'Bengaluru',
+          landmark: homeLandmark.trim() || null
+        }
 
-      if (addrErr) throw addrErr
+        const { data: newAddr, error: addrErr } = await supabase
+          .from('gr_addresses')
+          .insert([addressPayload])
+          .select()
+          .single()
+
+        if (addrErr) throw addrErr
+        addressId = newAddr.id
+      }
 
       const res = await fetch('/api/green-rewards/pickup-request', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          address_id: newAddr.id,
+          address_id: addressId,
           location_id: isDoorstep ? null : selectedLocation || null,
           preferred_date: pickupDate,
           time_slot: timeSlot,
           user_notes: userNotes,
           request_type: isDoorstep ? 'home_pickup' : 'dropoff',
-          // Extra fields some backends may store
           pickup_address: isDoorstep ? homeAddress.trim() : null,
           landmark: isDoorstep ? homeLandmark.trim() : null
         })
@@ -281,20 +323,57 @@ export default function GreenRewardsDashboard() {
     }
   }
 
+  // Helpers to detect reward type/title/value robustly (works with both schemas)
+  function getRewardTitle(rw: any): string {
+    return rw?.title_en || rw?.title || rw?.name_en || rw?.name || 'Reward'
+  }
+  function getRewardTitleKn(rw: any): string {
+    return rw?.title_kn || getRewardTitle(rw)
+  }
+  function getRewardType(rw: any): string {
+    return rw?.reward_type || rw?.type || ''
+  }
+  function getRewardValue(rw: any): number {
+    const v = rw?.monetary_value_inr ?? rw?.value_inr ?? rw?.value ?? rw?.amount_inr
+    if (v != null && !Number.isNaN(Number(v))) return Number(v)
+    const title = getRewardTitle(rw)
+    const m = title.match(/(?:₹|Rs\.?|INR|\$)\s?(\d+(?:\.\d+)?)/i)
+    return m ? parseFloat(m[1]) : 0
+  }
+  function rewardNeedsUpi(rw: any): boolean {
+    const t = getRewardType(rw).toLowerCase()
+    const title = getRewardTitle(rw).toLowerCase()
+    return (
+      t === 'upi' ||
+      t === 'cashback' ||
+      title.includes('upi') ||
+      title.includes('cashback')
+    )
+  }
+  function rewardNeedsTree(rw: any): boolean {
+    const t = getRewardType(rw).toLowerCase()
+    const title = getRewardTitle(rw).toLowerCase()
+    return t === 'donation_tree' || t === 'tree' || title.includes('tree') || title.includes('sapling')
+  }
+
   async function handleRedeemReward() {
     if (!selectedReward) return
     setIsRedeeming(true)
 
+    const needsUpi = rewardNeedsUpi(selectedReward)
+    const needsTree = rewardNeedsTree(selectedReward)
+
     let payoutDetails: any = {}
-    if (selectedReward.reward_type === 'upi') {
-      if (!upiId) {
+
+    if (needsUpi) {
+      if (!upiId.trim()) {
         toast.error('Please enter your UPI ID')
         setIsRedeeming(false)
         return
       }
-      payoutDetails = { upi_id: upiId }
-    } else if (selectedReward.reward_type === 'donation_tree') {
-      payoutDetails = { tree_certificate_name: treeName || profile.full_name }
+      payoutDetails = { upi_id: upiId.trim() }
+    } else if (needsTree) {
+      payoutDetails = { tree_certificate_name: treeName || profile?.full_name || '' }
     }
 
     const res = await fetch('/api/green-rewards/redemption', {
@@ -349,7 +428,7 @@ export default function GreenRewardsDashboard() {
                 Sampige Green Rewards
               </span>
               <h1 className="text-base font-bold text-white leading-tight">
-                {profile.full_name || 'Eco Member'}
+                {profile?.full_name || 'Eco Member'}
               </h1>
             </div>
           </div>
@@ -383,7 +462,7 @@ export default function GreenRewardsDashboard() {
             <div>
               <div className="inline-flex items-center gap-2 px-3 py-1 bg-[#FFB300]/10 border border-[#FFB300]/20 rounded-full text-[#FFB300] text-xs font-semibold mb-3">
                 <Award className="w-3.5 h-3.5" />
-                {lang === 'en' ? 'Eco Tier' : 'ಪರಿಸರ ಶ್ರೇಣಿ'}: {profile.green_tier || 'Bronze'}
+                {lang === 'en' ? 'Eco Tier' : 'ಪರಿಸರ ಶ್ರೇಣಿ'}: {profile?.green_tier || 'Bronze'}
               </div>
               <span className="text-xs text-zinc-400 block uppercase tracking-wider">
                 {lang === 'en' ? 'Available Balance' : 'ಲಭ್ಯವಿರುವ ಪಾಯಿಂಟ್‌ಗಳು'}
@@ -468,7 +547,6 @@ export default function GreenRewardsDashboard() {
             onSubmit={handleBookPickup}
             className="bg-zinc-900 border border-zinc-800 p-6 md:p-8 rounded-3xl space-y-6"
           >
-            {/* Mode badge OR mode toggle */}
             {isHomePickupEnabled ? (
               <div className="flex bg-zinc-950 border border-zinc-800 p-1 rounded-xl max-w-lg">
                 <button
@@ -525,15 +603,12 @@ export default function GreenRewardsDashboard() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* LEFT: Address OR Center selector */}
               {showDoorstep ? (
                 <>
                   <div className="md:col-span-2">
                     <label className="text-xs text-zinc-300 block mb-2 font-medium flex items-center gap-1.5">
                       <Home className="w-3.5 h-3.5 text-[#FFB300]" />
-                      {lang === 'en'
-                        ? 'Full Home / Collection Address'
-                        : 'ಸಂಪೂರ್ಣ ಮನೆ ವಿಳಾಸ'}
+                      {lang === 'en' ? 'Full Home / Collection Address' : 'ಸಂಪೂರ್ಣ ಮನೆ ವಿಳಾಸ'}
                     </label>
                     <textarea
                       required
@@ -568,13 +643,10 @@ export default function GreenRewardsDashboard() {
                 </>
               ) : (
                 <>
-                  {/* Select Drop-off Center */}
                   <div>
                     <label className="text-xs text-zinc-300 block mb-2 font-medium flex items-center gap-1.5">
                       <MapPin className="w-3.5 h-3.5 text-[#FFB300]" />
-                      {lang === 'en'
-                        ? 'Select Sampige Collection Center'
-                        : 'ಸಂಗ್ರಹಣಾ ಕೇಂದ್ರ ಆಯ್ಕೆಮಾಡಿ'}
+                      {lang === 'en' ? 'Select Sampige Collection Center' : 'ಸಂಗ್ರಹಣಾ ಕೇಂದ್ರ ಆಯ್ಕೆಮಾಡಿ'}
                     </label>
                     <select
                       value={selectedLocation}
@@ -594,7 +666,6 @@ export default function GreenRewardsDashboard() {
                     </select>
                   </div>
 
-                  {/* Drop-Off Hub Address Details */}
                   <div>
                     <label className="text-xs text-zinc-300 block mb-2 font-medium">
                       {lang === 'en' ? 'Center Address & Operating Hours' : 'ಕೇಂದ್ರದ ವಿಳಾಸ'}
@@ -605,25 +676,18 @@ export default function GreenRewardsDashboard() {
                         selectedHubObj?.notes ||
                         selectedHubObj?.operating_hours ||
                         'Sampige Foundation Office, Malleshwaram, Bengaluru'}
-                      {selectedHubObj?.operating_hours
-                        ? ` · ${selectedHubObj.operating_hours}`
-                        : ''}
+                      {selectedHubObj?.operating_hours ? ` · ${selectedHubObj.operating_hours}` : ''}
                     </div>
                   </div>
                 </>
               )}
 
-              {/* Preferred Date */}
               <div>
                 <label className="text-xs text-zinc-300 block mb-2 font-medium flex items-center gap-1.5">
                   <Calendar className="w-3.5 h-3.5 text-[#FFB300]" />
                   {showDoorstep
-                    ? lang === 'en'
-                      ? 'Preferred Pickup Date'
-                      : 'ಪಿಕಪ್ ದಿನಾಂಕ'
-                    : lang === 'en'
-                      ? 'Preferred Drop-Off Date'
-                      : 'ಆದ್ಯತೆಯ ದಿನಾಂಕ'}
+                    ? lang === 'en' ? 'Preferred Pickup Date' : 'ಪಿಕಪ್ ದಿನಾಂಕ'
+                    : lang === 'en' ? 'Preferred Drop-Off Date' : 'ಆದ್ಯತೆಯ ದಿನಾಂಕ'}
                 </label>
                 <input
                   type="date"
@@ -635,17 +699,12 @@ export default function GreenRewardsDashboard() {
                 />
               </div>
 
-              {/* Dynamic Time Window from Settings */}
               <div>
                 <label className="text-xs text-zinc-300 block mb-2 font-medium flex items-center gap-1.5">
                   <Clock className="w-3.5 h-3.5 text-[#FFB300]" />
                   {showDoorstep
-                    ? lang === 'en'
-                      ? 'Pickup Time Window'
-                      : 'ಪಿಕಪ್ ಸಮಯ'
-                    : lang === 'en'
-                      ? 'Arrival Window'
-                      : 'ಸಮಯದ ಅವಧಿ'}
+                    ? lang === 'en' ? 'Pickup Time Window' : 'ಪಿಕಪ್ ಸಮಯ'
+                    : lang === 'en' ? 'Arrival Window' : 'ಸಮಯದ ಅವಧಿ'}
                 </label>
                 <select
                   value={timeSlot}
@@ -685,12 +744,8 @@ export default function GreenRewardsDashboard() {
                 <>
                   <CheckCircle2 className="w-5 h-5" />
                   {showDoorstep
-                    ? lang === 'en'
-                      ? 'Confirm Home Pickup'
-                      : 'ಮನೆ ಪಿಕಪ್ ಖಚಿತಪಡಿಸಿ'
-                    : lang === 'en'
-                      ? 'Confirm Drop-Off Appointment'
-                      : 'ಅಪಾಯಿಂಟ್‌ಮೆಂಟ್ ಖಚಿತಪಡಿಸಿ'}
+                    ? lang === 'en' ? 'Confirm Home Pickup' : 'ಮನೆ ಪಿಕಪ್ ಖಚಿತಪಡಿಸಿ'
+                    : lang === 'en' ? 'Confirm Drop-Off Appointment' : 'ಅಪಾಯಿಂಟ್‌ಮೆಂಟ್ ಖಚಿತಪಡಿಸಿ'}
                 </>
               )}
             </button>
@@ -712,49 +767,50 @@ export default function GreenRewardsDashboard() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {rewards.map((rw) => (
-                <div
-                  key={rw.id}
-                  className="bg-zinc-900 border border-zinc-800 p-6 rounded-2xl flex flex-col justify-between space-y-4"
-                >
-                  <div>
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="px-2.5 py-1 bg-[#FFB300]/10 border border-[#FFB300]/30 text-[#FFB300] font-mono text-xs font-bold rounded-lg">
-                        {rw.points_required} pts
-                      </span>
-                      {rw.monetary_value_inr > 0 && (
-                        <span className="text-xs text-emerald-400 font-semibold">
-                          ₹{rw.monetary_value_inr} Value
-                        </span>
-                      )}
-                    </div>
-                    <h3 className="font-bold text-white text-base">
-                      {lang === 'en' ? rw.title_en : rw.title_kn}
-                    </h3>
-                    <p className="text-xs text-zinc-400 mt-2">
-                      {lang === 'en' ? rw.description_en : rw.description_kn}
-                    </p>
-                  </div>
-
-                  <button
-                    onClick={() => setSelectedReward(rw)}
-                    disabled={(balance.current_balance || 0) < rw.points_required}
-                    className={`w-full py-2.5 rounded-xl text-xs font-bold transition ${
-                      (balance.current_balance || 0) >= rw.points_required
-                        ? 'bg-[#FFB300] text-black hover:bg-amber-400'
-                        : 'bg-zinc-800 text-zinc-500 cursor-not-allowed'
-                    }`}
+              {rewards.map((rw) => {
+                const faceValue = getRewardValue(rw)
+                return (
+                  <div
+                    key={rw.id}
+                    className="bg-zinc-900 border border-zinc-800 p-6 rounded-2xl flex flex-col justify-between space-y-4"
                   >
-                    {(balance.current_balance || 0) >= rw.points_required
-                      ? lang === 'en'
-                        ? 'Redeem Now'
-                        : 'ಈಗ ಪಡೆದುಕೊಳ್ಳಿ'
-                      : lang === 'en'
-                        ? 'Insufficient Points'
-                        : 'ಸಾಕಷ್ಟು ಪಾಯಿಂಟ್‌ಗಳಿಲ್ಲ'}
-                  </button>
-                </div>
-              ))}
+                    <div>
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="px-2.5 py-1 bg-[#FFB300]/10 border border-[#FFB300]/30 text-[#FFB300] font-mono text-xs font-bold rounded-lg">
+                          {rw.points_required} pts
+                        </span>
+                        {faceValue > 0 && (
+                          <span className="text-xs text-emerald-400 font-semibold">
+                            ₹{faceValue} Value
+                          </span>
+                        )}
+                      </div>
+                      <h3 className="font-bold text-white text-base">
+                        {lang === 'en' ? getRewardTitle(rw) : getRewardTitleKn(rw)}
+                      </h3>
+                      <p className="text-xs text-zinc-400 mt-2">
+                        {lang === 'en'
+                          ? rw.description_en || rw.description || ''
+                          : rw.description_kn || rw.description_en || rw.description || ''}
+                      </p>
+                    </div>
+
+                    <button
+                      onClick={() => setSelectedReward(rw)}
+                      disabled={(balance.current_balance || 0) < rw.points_required}
+                      className={`w-full py-2.5 rounded-xl text-xs font-bold transition ${
+                        (balance.current_balance || 0) >= rw.points_required
+                          ? 'bg-[#FFB300] text-black hover:bg-amber-400'
+                          : 'bg-zinc-800 text-zinc-500 cursor-not-allowed'
+                      }`}
+                    >
+                      {(balance.current_balance || 0) >= rw.points_required
+                        ? lang === 'en' ? 'Redeem Now' : 'ಈಗ ಪಡೆದುಕೊಳ್ಳಿ'
+                        : lang === 'en' ? 'Insufficient Points' : 'ಸಾಕಷ್ಟು ಪಾಯಿಂಟ್‌ಗಳಿಲ್ಲ'}
+                    </button>
+                  </div>
+                )
+              })}
             </div>
           </div>
         )}
@@ -773,46 +829,107 @@ export default function GreenRewardsDashboard() {
               <div className="divide-y divide-zinc-800">
                 {userRequests.length === 0 ? (
                   <div className="p-6 text-center text-xs text-zinc-500">
-                    No drop-off records found.
+                    {lang === 'en' ? 'No drop-off records found.' : 'ಯಾವುದೇ ದಾಖಲೆಗಳಿಲ್ಲ.'}
                   </div>
                 ) : (
-                  userRequests.map((req) => (
-                    <div
-                      key={req.id}
-                      className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
-                    >
-                      <div>
-                        <div className="font-mono text-xs font-bold text-white">
-                          {req.request_number}
+                  userRequests.map((req) => {
+                    const home = isHomePickupRequest(req)
+                    const statusMeta = getStatusMeta(req.status)
+                    const typeLabel = getRequestTypeLabel(req)
+                    const subLine = getAddressOrHubLine(req)
+
+                    return (
+                      <div
+                        key={req.id}
+                        className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+                      >
+                        <div className="min-w-0">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="font-mono text-xs font-bold text-white">
+                              {req.request_number || req.id?.slice?.(0, 8)}
+                            </span>
+                            <span
+                              className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border ${
+                                home
+                                  ? 'bg-[#FFB300]/10 text-[#FFB300] border-[#FFB300]/25'
+                                  : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                              }`}
+                            >
+                              {home ? <Truck className="w-3 h-3" /> : <Building2 className="w-3 h-3" />}
+                              {typeLabel}
+                            </span>
+                          </div>
+
+                          <div className="text-xs text-zinc-400 mt-1.5">
+                            {lang === 'en' ? 'Date' : 'ದಿನಾಂಕ'}: {req.preferred_date}
+                            {req.time_slot ? ` · ${req.time_slot}` : ''}
+                          </div>
+
+                          {subLine ? (
+                            <div className="text-[11px] text-zinc-500 mt-1 flex items-start gap-1">
+                              <MapPin className="w-3 h-3 mt-0.5 shrink-0 text-zinc-600" />
+                              <span className="truncate">{subLine}</span>
+                            </div>
+                          ) : null}
                         </div>
-                        <div className="text-xs text-zinc-400 mt-1">
-                          Date: {req.preferred_date} ({req.time_slot})
-                          {req.request_type === 'home_pickup' && (
-                            <span className="ml-2 text-[#FFB300]">· Home Pickup</span>
+
+                        <div className="flex items-center gap-3 shrink-0">
+                          <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold tracking-wide ${statusMeta.className}`}>
+                            {statusMeta.label}
+                          </span>
+                          {Number(req.total_points_awarded) > 0 && (
+                            <span className="text-xs font-bold text-[#FFB300] font-mono">
+                              +{req.total_points_awarded} pts
+                            </span>
                           )}
                         </div>
                       </div>
-                      <div className="flex items-center gap-4">
-                        <span
-                          className={`px-2.5 py-1 rounded-full text-xs font-semibold ${
-                            req.status === 'verified' || req.status === 'completed'
-                              ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
-                              : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
-                          }`}
-                        >
-                          {req.status}
-                        </span>
-                        {req.total_points_awarded > 0 && (
-                          <span className="text-xs font-bold text-[#FFB300] font-mono">
-                            +{req.total_points_awarded} pts
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  ))
+                    )
+                  })
                 )}
               </div>
             </div>
+
+            {/* Redemptions history */}
+            {userRedemptions.length > 0 && (
+              <div className="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden">
+                <div className="p-4 border-b border-zinc-800 text-sm font-bold text-[#FFB300]">
+                  {lang === 'en' ? 'Reward Redemptions' : 'ಬಹುಮಾನ ರಿಡೆಂಪ್ಷನ್‌ಗಳು'}
+                </div>
+                <div className="divide-y divide-zinc-800">
+                  {userRedemptions.map((rd: any) => {
+                    const st = getStatusMeta(rd.status)
+                    const title =
+                      rd.reward_title ||
+                      rd.reward?.title_en ||
+                      rd.reward?.title ||
+                      'Reward'
+                    const value =
+                      rd.amount_inr ??
+                      rd.reward?.monetary_value_inr ??
+                      rd.reward?.value_inr ??
+                      0
+                    return (
+                      <div
+                        key={rd.id}
+                        className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+                      >
+                        <div>
+                          <div className="text-sm font-semibold text-white">{title}</div>
+                          <div className="text-xs text-zinc-500 mt-1">
+                            {(rd.points_spent ?? rd.points_used ?? 0)} pts
+                            {Number(value) > 0 ? ` · ₹${value}` : ''}
+                          </div>
+                        </div>
+                        <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold ${st.className}`}>
+                          {st.label}
+                        </span>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
           </div>
         )}
 
@@ -830,10 +947,12 @@ export default function GreenRewardsDashboard() {
                   className="bg-zinc-900 border border-zinc-800 p-6 rounded-2xl space-y-3"
                 >
                   <h3 className="font-bold text-white text-base">
-                    {lang === 'en' ? cat.name_en : cat.name_kn}
+                    {lang === 'en' ? cat.name_en || cat.name : cat.name_kn || cat.name_en || cat.name}
                   </h3>
                   <p className="text-xs text-zinc-400">
-                    {lang === 'en' ? cat.description_en : cat.description_kn}
+                    {lang === 'en'
+                      ? cat.description_en || cat.description
+                      : cat.description_kn || cat.description_en || cat.description}
                   </p>
                   <div className="pt-2 text-xl font-extrabold text-[#FFB300] font-mono">
                     {cat.points_per_kg} pts / kg
@@ -845,7 +964,7 @@ export default function GreenRewardsDashboard() {
         )}
       </div>
 
-      {/* REDEMPTION CONFIRMATION MODAL */}
+      {/* REDEMPTION MODAL */}
       {selectedReward && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">
           <div className="bg-zinc-900 border border-zinc-800 w-full max-w-md rounded-2xl p-6 space-y-6">
@@ -855,14 +974,15 @@ export default function GreenRewardsDashboard() {
 
             <div className="bg-zinc-950 p-4 rounded-xl border border-zinc-800 space-y-2">
               <div className="text-sm font-bold text-[#FFB300]">
-                {lang === 'en' ? selectedReward.title_en : selectedReward.title_kn}
+                {lang === 'en' ? getRewardTitle(selectedReward) : getRewardTitleKn(selectedReward)}
               </div>
               <div className="text-xs text-zinc-400 font-mono">
                 Points Required: {selectedReward.points_required} pts
+                {getRewardValue(selectedReward) > 0 ? ` · ₹${getRewardValue(selectedReward)} Value` : ''}
               </div>
             </div>
 
-            {selectedReward.reward_type === 'upi' && (
+            {rewardNeedsUpi(selectedReward) && (
               <div>
                 <label className="text-xs text-zinc-300 block mb-1">
                   Enter your UPI ID (Google Pay / PhonePe / Paytm)
@@ -877,14 +997,14 @@ export default function GreenRewardsDashboard() {
               </div>
             )}
 
-            {selectedReward.reward_type === 'donation_tree' && (
+            {rewardNeedsTree(selectedReward) && (
               <div>
                 <label className="text-xs text-zinc-300 block mb-1">
                   Name to print on Digital Tree Certificate
                 </label>
                 <input
                   type="text"
-                  placeholder={profile.full_name}
+                  placeholder={profile?.full_name}
                   value={treeName}
                   onChange={(e) => setTreeName(e.target.value)}
                   className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2.5 text-sm text-white focus:border-[#FFB300] outline-none"
@@ -904,11 +1024,7 @@ export default function GreenRewardsDashboard() {
                 disabled={isRedeeming}
                 className="w-1/2 py-2.5 bg-[#FFB300] hover:bg-amber-400 text-black rounded-xl text-xs font-bold flex items-center justify-center gap-2"
               >
-                {isRedeeming ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  'Confirm Redemption'
-                )}
+                {isRedeeming ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Confirm Redemption'}
               </button>
             </div>
           </div>
