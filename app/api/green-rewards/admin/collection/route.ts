@@ -61,7 +61,7 @@ export async function POST(request: Request) {
       }
     }
 
-    // 3. Get the User ID from the request
+    // 3. Get User ID from request
     const { data: pickupRequest, error: pickupErr } = await adminClient
       .from('gr_collection_requests')
       .select('user_id')
@@ -73,7 +73,7 @@ export async function POST(request: Request) {
     if (pickupRequest?.user_id && totalPointsAwarded > 0) {
       const userId = pickupRequest.user_id;
 
-      // 4. Fetch current balance FIRST (to calculate balance_after)
+      // 4. Fetch current balance
       const { data: balanceData } = await adminClient
         .from('gr_points_balances')
         .select('current_balance, total_earned')
@@ -86,19 +86,33 @@ export async function POST(request: Request) {
       const newBalance = currentBalance + totalPointsAwarded;
       const newTotalEarned = totalEarned + totalPointsAwarded;
 
-      // 5. Insert Transaction with STRICT schema fields
-      const { error: txnErr } = await adminClient.from('gr_points_transactions').insert({
-        user_id: userId,
-        request_id: requestId,
-        transaction_type: 'EARN',
-        points: totalPointsAwarded,
-        balance_after: newBalance,
-        description: `Waste weighing verification (#${requestId.slice(0, 8)})`
-      });
+      // 5. Insert Transaction (tries 'earn', then 'EARN', then 'collection')
+      let txnInserted = false;
+      let lastTxnError: any = null;
 
-      if (txnErr) throw new Error(`Transaction failed: ${txnErr.message}`);
+      for (const typeVal of ['earn', 'EARN', 'collection']) {
+        const { error: txnErr } = await adminClient.from('gr_points_transactions').insert({
+          user_id: userId,
+          request_id: requestId,
+          transaction_type: typeVal,
+          type: typeVal,
+          points: totalPointsAwarded,
+          balance_after: newBalance,
+          description: `Waste weighing verification (#${requestId.slice(0, 8)})`
+        });
 
-      // 6. Upsert Balances with STRICT schema fields
+        if (!txnErr) {
+          txnInserted = true;
+          break;
+        }
+        lastTxnError = txnErr;
+      }
+
+      if (!txnInserted && lastTxnError) {
+        throw new Error(`Transaction failed: ${lastTxnError.message}`);
+      }
+
+      // 6. Upsert Balances
       const { error: balErr } = await adminClient.from('gr_points_balances').upsert({
         user_id: userId,
         current_balance: newBalance,
@@ -109,7 +123,7 @@ export async function POST(request: Request) {
       if (balErr) throw new Error(`Balance update failed: ${balErr.message}`);
     }
 
-    // 7. Update Request Status to Completed (Try lowercase, then uppercase)
+    // 7. Update Request Status to Completed
     let { error: updateReqErr } = await adminClient
       .from('gr_collection_requests')
       .update({ 
