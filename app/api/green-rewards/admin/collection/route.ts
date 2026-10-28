@@ -11,7 +11,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, error: 'Unauthorized: Session expired.' }, { status: 401 });
     }
 
-    // 2. Synchronous admin client instance (DO NOT await createAdminClient)
+    // 2. Synchronous Admin Client (Do NOT await)
     const adminClient = createAdminClient();
 
     // 3. Verify Admin Role in DB or Email
@@ -21,14 +21,13 @@ export async function POST(request: Request) {
       .eq('id', user.id)
       .maybeSingle();
 
-    const isMasterAdminEmail = user.email?.trim().toLowerCase() === 'admin@sampige.org';
-    const hasAdminRole = profile?.role === 'admin';
-    const isAdmin = hasAdminRole || isMasterAdminEmail;
+    const isMasterAdmin = user.email?.trim().toLowerCase() === 'admin@sampige.org';
+    const isAdmin = profile?.role === 'admin' || isMasterAdmin;
 
     if (!isAdmin) {
       return NextResponse.json({ 
         success: false, 
-        error: `Forbidden: Admin access required. (Logged in as: ${user.email}, Role: ${profile?.role || 'none'})` 
+        error: 'Forbidden: Admin access required.' 
       }, { status: 403 });
     }
 
@@ -39,9 +38,11 @@ export async function POST(request: Request) {
     }
 
     // 4. Get Waste Categories
-    const { data: categories } = await adminClient
+    const { data: categories, error: catErr } = await adminClient
       .from('gr_waste_categories')
       .select('*');
+
+    if (catErr) throw new Error(`Categories fetch failed: ${catErr.message}`);
 
     let totalPointsAwarded = 0;
 
@@ -54,56 +55,67 @@ export async function POST(request: Request) {
 
         totalPointsAwarded += awardedPoints;
 
-        await adminClient.from('gr_collection_logs').insert({
+        const { error: logErr } = await adminClient.from('gr_collection_logs').insert({
           request_id: requestId,
           category_id: item.categoryId,
           weight_kg: item.weight,
           points_awarded: awardedPoints
         });
+
+        if (logErr) throw new Error(`Collection log failed: ${logErr.message}`);
       }
     }
 
     // 6. Update Request Status to Completed
-    await adminClient
+    const { error: updateReqErr } = await adminClient
       .from('gr_collection_requests')
-      .update({ 
-        status: 'completed',
-        collected_at: new Date().toISOString(),
-        admin_notes: notes || null
-      })
+      .update({ status: 'completed' })
       .eq('id', requestId);
 
-    // 7. Update User Wallet Balance
-    const { data: pickupRequest } = await adminClient
+    if (updateReqErr) throw new Error(`Status update failed: ${updateReqErr.message}`);
+
+    // 7. Update User Wallet Balance & Ledger
+    const { data: pickupRequest, error: pickupErr } = await adminClient
       .from('gr_collection_requests')
       .select('user_id')
       .eq('id', requestId)
       .single();
 
+    if (pickupErr) throw new Error(`Pickup fetch failed: ${pickupErr.message}`);
+
     if (pickupRequest?.user_id && totalPointsAwarded > 0) {
+      const userId = pickupRequest.user_id;
+
       // Add ledger transaction
-      await adminClient.from('gr_points_transactions').insert({
-        user_id: pickupRequest.user_id,
+      const { error: txnErr } = await adminClient.from('gr_points_transactions').insert({
+        user_id: userId,
         points: totalPointsAwarded,
         type: 'earn',
         description: `Waste weighing verification (#${requestId.slice(0, 8)})`
       });
 
+      if (txnErr) throw new Error(`Ledger entry failed: ${txnErr.message}`);
+
       // Fetch existing balance
       const { data: existingBalance } = await adminClient
         .from('gr_points_balances')
         .select('total_points')
-        .eq('user_id', pickupRequest.user_id)
+        .eq('user_id', userId)
         .maybeSingle();
 
       const newBalance = (existingBalance?.total_points || 0) + totalPointsAwarded;
 
       // Upsert point balance
-      await adminClient.from('gr_points_balances').upsert({
-        user_id: pickupRequest.user_id,
-        total_points: newBalance,
-        updated_at: new Date().toISOString()
-      }, { onConflict: 'user_id' });
+      const { error: balErr } = await adminClient.from('gr_points_balances').upsert(
+        {
+          user_id: userId,
+          total_points: newBalance,
+          updated_at: new Date().toISOString()
+        },
+        { onConflict: 'user_id' }
+      );
+
+      if (balErr) throw new Error(`Balance update failed: ${balErr.message}`);
     }
 
     return NextResponse.json({ 
@@ -116,5 +128,3 @@ export async function POST(request: Request) {
     return NextResponse.json({ success: false, error: error.message || 'Server error' }, { status: 500 });
   }
 }
-
-

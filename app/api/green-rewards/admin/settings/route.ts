@@ -3,8 +3,8 @@ import { NextResponse } from 'next/server';
 
 export async function GET() {
   try {
-    // Safely await the admin client instance
-    const adminClient = await createAdminClient();
+    // Synchronous call (Do NOT await)
+    const adminClient = createAdminClient();
 
     const [
       { data: settings },
@@ -14,16 +14,27 @@ export async function GET() {
       { data: rawRedemptions },
       { data: profiles }
     ] = await Promise.all([
-      adminClient.from('gr_settings').select('*').single(),
+      adminClient.from('gr_settings').select('*').maybeSingle(),
       adminClient.from('gr_collection_locations').select('*').order('created_at', { ascending: true }),
       adminClient.from('gr_waste_categories').select('*').order('points_per_kg', { ascending: false }),
       adminClient.from('gr_collection_requests').select('*').order('created_at', { ascending: false }),
       adminClient.from('gr_redemptions').select('*').order('created_at', { ascending: false }),
-      adminClient.from('gr_profiles').select('id, full_name, phone, role')
+      adminClient.from('gr_profiles').select('*')
     ]);
 
-    // Map relations in memory to bypass PostgREST cache issues
-    const profilesMap = new Map((profiles || []).map(p => [p.id, p]));
+    // Map relations in memory with all phone column fallbacks
+    const profilesMap = new Map((profiles || []).map(p => {
+      const phoneNum = p.phone || p.phone_number || p.mobile || '';
+      return [
+        p.id, 
+        { 
+          ...p, 
+          full_name: p.full_name || 'Member', 
+          phone: phoneNum 
+        }
+      ];
+    }));
+
     const locationsMap = new Map((locations || []).map(l => [l.id, l]));
 
     const pickups = (rawPickups || []).map(p => ({
@@ -54,7 +65,7 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
-    const adminClient = await createAdminClient();
+    const adminClient = createAdminClient();
     const { action, id, data } = await request.json();
 
     if (action === 'save_settings') {
