@@ -17,7 +17,9 @@ import {
   X,
   Search,
   RefreshCw,
-  Gift
+  Gift,
+  Home,
+  Store
 } from "lucide-react";
 import { toast } from "react-hot-toast";
 
@@ -33,7 +35,8 @@ export default function AdminDashboard() {
   const [systemSettings, setSystemSettings] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
-  const [pickupFilter, setPickupFilter] = useState<"all" | "pending" | "completed" | "cancelled">(
+  // Added "confirmed" to pickup filters
+  const [pickupFilter, setPickupFilter] = useState<"all" | "pending" | "confirmed" | "completed" | "cancelled">(
     "pending"
   );
   const [redemptionFilter, setRedemptionFilter] = useState<
@@ -110,6 +113,30 @@ export default function AdminDashboard() {
       setLoading(false);
     }
   }
+
+  // --- NEW: Handle Confirming Doorstep Pickup ---
+  const handleConfirmPickup = async (id: string) => {
+    try {
+      const response = await fetch("/api/green-rewards/admin/settings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "update_pickup",
+          id,
+          data: { status: "confirmed", admin_notes: "Admin confirmed doorstep schedule." }
+        })
+      });
+      const result = await response.json();
+      if (result.success) {
+        toast.success("Doorstep Pickup Confirmed & Scheduled!");
+        fetchAdminData();
+      } else {
+        toast.error(result.error || "Failed to confirm pickup");
+      }
+    } catch (error) {
+      toast.error("Error updating status");
+    }
+  };
 
   const handleOpenWeighModal = (pickup: any) => {
     setSelectedPickup(pickup);
@@ -321,8 +348,8 @@ export default function AdminDashboard() {
     const matchesSearch =
       searchQuery === "" ||
       (p.request_number && p.request_number.toLowerCase().includes(q)) ||
-      (p.user?.full_name && p.user.full_name.toLowerCase().includes(q)) ||
-      (p.user?.phone && p.user.phone.includes(searchQuery));
+      (p.userName && p.userName.toLowerCase().includes(q)) ||
+      (p.userPhone && p.userPhone.includes(searchQuery));
     return matchesFilter && matchesSearch;
   });
 
@@ -332,25 +359,13 @@ export default function AdminDashboard() {
     const q = searchQuery.toLowerCase();
     const matchesSearch =
       searchQuery === "" ||
-      (r.user?.full_name && r.user.full_name.toLowerCase().includes(q)) ||
-      (r.user?.phone && r.user.phone.includes(searchQuery)) ||
+      (r.userName && r.userName.toLowerCase().includes(q)) ||
+      (r.userPhone && r.userPhone.includes(searchQuery)) ||
       (r.upi_id && r.upi_id.toLowerCase().includes(q)) ||
-      (r.reward_title && r.reward_title.toLowerCase().includes(q)) ||
+      (r.rewardTitle && r.rewardTitle.toLowerCase().includes(q)) ||
       (r.redemption_number && r.redemption_number.toLowerCase().includes(q));
     return matchesFilter && matchesSearch;
   });
-
-  const phoneDisplay = (phone?: string) => {
-    const p = (phone || "").trim();
-    return p || null;
-  };
-
-  const waLink = (phone?: string) => {
-    const digits = String(phone || "").replace(/\D/g, "");
-    if (!digits) return null;
-    const full = digits.length === 10 ? `91${digits}` : digits;
-    return `https://wa.me/${full}`;
-  };
 
   if (loading)
     return (
@@ -459,10 +474,10 @@ export default function AdminDashboard() {
             <div className="p-6 border-b border-white/10 flex flex-col md:flex-row md:items-center justify-between gap-4">
               <div>
                 <h2 className="text-xl font-bold flex items-center gap-2 text-amber-500">
-                  <Recycle size={22} /> Manage Drop-Off Appointments & Weighing
+                  <Recycle size={22} /> Manage Drop-Off Appointments & Pickups
                 </h2>
                 <p className="text-xs text-gray-400 mt-1">
-                  Weigh member waste on arrival and automatically calculate & award green points.
+                  Confirm home pickup schedules, weigh waste, and award points.
                 </p>
               </div>
 
@@ -482,7 +497,7 @@ export default function AdminDashboard() {
                 </div>
 
                 <div className="flex bg-[#141414] border border-white/10 rounded-lg p-1 text-xs font-semibold">
-                  {(["all", "pending", "completed"] as const).map((status) => (
+                  {(["all", "pending", "confirmed", "completed"] as const).map((status) => (
                     <button
                       key={status}
                       onClick={() => setPickupFilter(status)}
@@ -505,7 +520,7 @@ export default function AdminDashboard() {
                   <tr>
                     <th className="px-6 py-4 font-bold">Request #</th>
                     <th className="px-6 py-4 font-bold">User Contact</th>
-                    <th className="px-6 py-4 font-bold">Drop-Off Hub / Address</th>
+                    <th className="px-6 py-4 font-bold">Type & Location Details</th>
                     <th className="px-6 py-4 font-bold">Scheduled Slot</th>
                     <th className="px-6 py-4 font-bold">Status</th>
                     <th className="px-6 py-4 font-bold text-right">Action</th>
@@ -513,26 +528,28 @@ export default function AdminDashboard() {
                 </thead>
                 <tbody className="divide-y divide-white/5 text-sm">
                   {filteredPickups.map((pickup) => {
-                    const phone = phoneDisplay(pickup.user?.phone);
-                    const wa = waLink(phone || undefined);
+                    const isDoorstep = pickup.request_type === "home_pickup";
+                    
                     return (
                       <tr key={pickup.id} className="hover:bg-white/[0.02] transition-colors">
                         <td className="px-6 py-4 font-mono text-xs font-bold text-amber-500">
                           {pickup.request_number || pickup.id.slice(0, 8)}
                         </td>
+                        
+                        {/* Normalized Name and Phone */}
                         <td className="px-6 py-4">
                           <div className="flex flex-col">
                             <span className="font-bold text-white text-sm">
-                              {pickup.user?.full_name || "Member"}
+                              {pickup.userName}
                             </span>
                             <div className="flex items-center gap-2 mt-1">
                               <span className="text-xs text-gray-300 font-mono flex items-center gap-1.5 bg-white/5 px-2 py-0.5 rounded border border-white/10">
                                 <Phone size={12} className="text-amber-500" />
-                                {phone || "No phone recorded"}
+                                {pickup.userPhone || "No phone recorded"}
                               </span>
-                              {wa && (
+                              {pickup.whatsappUrl && (
                                 <a
-                                  href={wa}
+                                  href={pickup.whatsappUrl}
                                   target="_blank"
                                   rel="noreferrer"
                                   className="text-emerald-400 hover:text-emerald-300 transition-colors p-1 bg-emerald-500/10 rounded hover:bg-emerald-500/20"
@@ -544,14 +561,26 @@ export default function AdminDashboard() {
                             </div>
                           </div>
                         </td>
+
+                        {/* Badges for Home Pickup vs Drop-Off */}
                         <td className="px-6 py-4">
-                          <span className="text-amber-400 font-semibold block">
-                            {pickup.location?.name_en || pickup.location?.name || "Main Hub"}
-                          </span>
-                          <span className="text-gray-500 text-xs line-clamp-1">
-                            {pickup.location?.address_en || pickup.location?.address}
-                          </span>
+                          <div className="flex flex-col items-start gap-1.5">
+                            <span
+                              className={`text-[10px] uppercase font-black px-2 py-0.5 rounded border flex items-center gap-1 ${
+                                isDoorstep
+                                  ? "bg-blue-500/10 text-blue-400 border-blue-500/20"
+                                  : "bg-purple-500/10 text-purple-400 border-purple-500/20"
+                              }`}
+                            >
+                              {isDoorstep ? <Home size={10} /> : <Store size={10} />}
+                              {pickup.badge || (isDoorstep ? "Home Pickup" : "Self Drop-Off")}
+                            </span>
+                            <span className="text-gray-300 font-semibold text-xs line-clamp-2 max-w-[250px]">
+                              {pickup.locationName || "Unknown Location"}
+                            </span>
+                          </div>
                         </td>
+
                         <td className="px-6 py-4 text-xs">
                           <div className="flex flex-col">
                             <span className="text-gray-200 font-medium">
@@ -562,21 +591,34 @@ export default function AdminDashboard() {
                             </span>
                           </div>
                         </td>
+                        
                         <td className="px-6 py-4">
                           <span
                             className={`text-[10px] uppercase font-extrabold px-2.5 py-1 rounded-full border ${
                               normalizedStatus(pickup.status) === "pending"
                                 ? "bg-amber-500/10 text-amber-500 border-amber-500/20"
+                                : normalizedStatus(pickup.status) === "confirmed"
+                                ? "bg-blue-500/10 text-blue-400 border-blue-500/20"
                                 : normalizedStatus(pickup.status) === "completed"
-                                  ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
-                                  : "bg-gray-500/10 text-gray-400 border-gray-500/20"
+                                ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
+                                : "bg-gray-500/10 text-gray-400 border-gray-500/20"
                             }`}
                           >
                             {pickup.status}
                           </span>
                         </td>
+
                         <td className="px-6 py-4 text-right">
-                          {normalizedStatus(pickup.status) === "pending" ? (
+                          {normalizedStatus(pickup.status) === "pending" && isDoorstep ? (
+                            // Confirm Schedule Button for Doorstep Pickups
+                            <button
+                              onClick={() => handleConfirmPickup(pickup.id)}
+                              className="bg-blue-500 hover:bg-blue-400 text-white px-4 py-2 rounded-xl text-xs font-black shadow-lg shadow-blue-500/20 transition-all flex items-center gap-1.5 ml-auto"
+                            >
+                              <CheckCircle2 size={15} /> Confirm Schedule
+                            </button>
+                          ) : normalizedStatus(pickup.status) === "pending" || normalizedStatus(pickup.status) === "confirmed" ? (
+                            // Weigh Button for Drop-Offs or Confirmed Pickups
                             <button
                               onClick={() => handleOpenWeighModal(pickup)}
                               className="bg-amber-500 hover:bg-amber-400 text-black px-4 py-2 rounded-xl text-xs font-black shadow-lg shadow-amber-500/20 transition-all flex items-center gap-1.5 ml-auto"
@@ -584,6 +626,7 @@ export default function AdminDashboard() {
                               <Scale size={15} /> Weigh & Award Points
                             </button>
                           ) : (
+                            // Completed / Processed state
                             <span className="text-xs text-gray-500 italic font-mono">
                               {normalizedStatus(pickup.status) === "completed"
                                 ? "Points Awarded"
@@ -667,8 +710,6 @@ export default function AdminDashboard() {
                 </thead>
                 <tbody className="divide-y divide-white/5 text-sm">
                   {filteredRedemptions.map((red) => {
-                    const phone = phoneDisplay(red.user?.phone);
-                    const wa = waLink(phone || undefined);
                     const pts = red.points_spent ?? red.points_used ?? 0;
                     const amount = red.amount_inr;
                     const upi = red.upi_id || "";
@@ -678,16 +719,16 @@ export default function AdminDashboard() {
                         <td className="px-5 py-4">
                           <div className="flex flex-col">
                             <span className="font-bold text-white">
-                              {red.user?.full_name || "Member"}
+                              {red.userName || "Unknown Member"}
                             </span>
                             <div className="flex items-center gap-2 mt-1">
                               <span className="text-xs text-gray-300 font-mono flex items-center gap-1.5 bg-white/5 px-2 py-0.5 rounded border border-white/10">
                                 <Phone size={12} className="text-amber-500" />
-                                {phone || "No phone"}
+                                {red.userPhone || "No phone"}
                               </span>
-                              {wa && (
+                              {red.whatsappUrl && (
                                 <a
-                                  href={wa}
+                                  href={red.whatsappUrl}
                                   target="_blank"
                                   rel="noreferrer"
                                   className="text-emerald-400 hover:text-emerald-300 p-1 bg-emerald-500/10 rounded"
@@ -705,10 +746,10 @@ export default function AdminDashboard() {
                             <Gift size={14} className="text-amber-500 mt-0.5 shrink-0" />
                             <div>
                               <p className="font-semibold text-white text-sm leading-snug">
-                                {red.reward_title || "Reward Claim"}
+                                {red.rewardTitle || "Reward Claim"}
                               </p>
                               <p className="text-[10px] uppercase tracking-wider text-gray-500 mt-0.5">
-                                {red.reward_type || "voucher"}
+                                {red.rewardType || "voucher"}
                               </p>
                             </div>
                           </div>
