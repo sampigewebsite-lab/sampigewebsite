@@ -21,7 +21,7 @@ export async function GET() {
       .from("gr_waste_categories")
       .select("*")
       .order("name_en", { ascending: true, nullsFirst: false })
-      .order("name", { ascending: true }); // Fallback sorting
+      .order("name", { ascending: true });
 
     // 3. Fetch Collection Locations
     const { data: locations } = await supabase
@@ -48,15 +48,18 @@ export async function GET() {
 
     if (redError) console.error("Redemptions fetch error:", redError);
 
-    // 6. Fetch Home Pickups
-    const { data: pickups } = await supabase
-      .from("gr_pickups")
+    // 6. Fetch Collection Requests (Doorstep Pickups & Self Drop-Offs)
+    const { data: pickups, error: pickupsError } = await supabase
+      .from("gr_collection_requests")
       .select(`
         *,
         user:profiles(full_name, phone_number, email),
+        address:gr_addresses(*),
         location:gr_collection_locations(*)
       `)
       .order("created_at", { ascending: false });
+
+    if (pickupsError) console.error("Collection requests fetch error:", pickupsError);
 
     // Helper to extract amount from title (e.g., "₹100 Store Voucher", "Rs 50 Off")
     const extractAmountFromTitle = (title: string): number | null => {
@@ -89,8 +92,8 @@ export async function GET() {
         whatsappUrl,
         rewardTitle: r.reward?.title || r.reward_title || "Redemption",
         rewardType: r.reward?.type || r.reward_type || "discount",
-        amount_inr: payoutAmount, // Aligning with frontend expectation
-        points_spent: pointsUsed, // Aligning with frontend expectation
+        amount_inr: payoutAmount,
+        points_spent: pointsUsed,
         isVoucher:
           r.reward?.type === "voucher" ||
           r.reward?.type === "store_discount" ||
@@ -98,7 +101,7 @@ export async function GET() {
       };
     });
 
-    // Normalize Pickups
+    // Normalize Pickups & Drop-offs
     const normalizedPickups = pickups?.map((p) => {
       const rawPhone = p.user?.phone_number || p.contact_phone || "";
       const cleanedPhone = rawPhone.replace(/\D/g, "");
@@ -106,12 +109,30 @@ export async function GET() {
         ? `https://wa.me/${cleanedPhone.startsWith("91") ? cleanedPhone : "91" + cleanedPhone}`
         : null;
 
+      const isHomePickup = p.request_type === "home_pickup" || (!p.location_id && Boolean(p.address_id));
+      const badgeText = isHomePickup ? "Home Pickup" : "Self Drop-Off at Center";
+
+      const addressStr = p.address
+        ? [p.address.address_line1, p.address.address_line2, p.address.landmark, p.address.city, p.address.pincode]
+            .filter(Boolean)
+            .join(", ")
+        : null;
+
+      const locationName = isHomePickup
+        ? (addressStr || "Doorstep Address")
+        : (p.location?.name_en || p.location?.name || "Drop-off Center Hub");
+
       return {
         ...p,
+        request_type: isHomePickup ? "home_pickup" : "dropoff",
+        badge: badgeText,
         userName: p.user?.full_name || p.contact_name || "Unknown Member",
         userPhone: rawPhone || "No phone",
+        userEmail: p.user?.email || "No email",
         whatsappUrl,
-        locationName: p.location?.name_en || p.location?.name || "Home Address",
+        locationName,
+        addressDetails: p.address,
+        hubDetails: p.location,
       };
     });
 
@@ -140,11 +161,10 @@ export async function POST(req: Request) {
   try {
     const supabase = createAdminClient();
     const body = await req.json();
-    
-    // Robust parsing to handle both flat payloads and nested `data: {}` payloads from frontend
+
     const action = body.action;
     const id = body.id;
-    const payload = body.data || body; 
+    const payload = body.data || body;
 
     // --- Action: Save Settings ---
     if (action === "save_settings") {
@@ -175,14 +195,24 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: true, message: "Redemption updated" });
     }
 
-    // --- Action: Update Pickup ---
+    // --- Action: Update Pickup / Drop-off Status ---
     if (action === "update_pickup") {
       const { status, admin_notes } = payload;
+      const targetId = id || payload.id;
       const { error } = await supabase
-        .from("gr_pickups")
+        .from("gr_collection_requests")
         .update({ status, admin_notes, updated_at: new Date().toISOString() })
-        .eq("id", id || payload.id);
+        .eq("id", targetId);
       if (error) throw error;
+
+      await supabase.from("gr_collection_status_history").insert([
+        {
+          request_id: targetId,
+          new_status: status,
+          comments: admin_notes || `Status updated to ${status} by admin`,
+        },
+      ]).catch(() => null);
+
       return NextResponse.json({ success: true, message: "Pickup status updated" });
     }
 
@@ -222,7 +252,7 @@ export async function POST(req: Request) {
       const catPayload = {
         name_en: payload.name_en || payload.name,
         name_kn: payload.name_kn || "",
-        name: payload.name_en || payload.name, // Fallback for old schema
+        name: payload.name_en || payload.name,
         points_per_kg: Number(payload.points_per_kg),
         description: payload.description || "",
         icon: payload.icon || "Recycle",
@@ -251,10 +281,10 @@ export async function POST(req: Request) {
       const locPayload = {
         name_en: payload.name_en || payload.name,
         name_kn: payload.name_kn || "",
-        name: payload.name_en || payload.name, // Fallback for old schema
+        name: payload.name_en || payload.name,
         address_en: payload.address_en || payload.address,
         address_kn: payload.address_kn || "",
-        address: payload.address_en || payload.address, // Fallback
+        address: payload.address_en || payload.address,
         operating_hours: payload.operating_hours || "09:00 AM - 06:00 PM",
         contact_phone: payload.contact_phone || "",
         is_active: payload.is_active !== undefined ? Boolean(payload.is_active) : true,

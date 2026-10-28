@@ -9,12 +9,13 @@ export async function GET() {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  // Fetch user's collection requests
+  // Fetch user's collection requests (Home Pickups & Self Drop-Offs)
   const { data: requests, error } = await supabase
     .from('gr_collection_requests')
     .select(`
       *,
       address:gr_addresses(*),
+      location:gr_collection_locations(*),
       items:gr_collection_items(
         *,
         category:gr_waste_categories(*)
@@ -40,10 +41,20 @@ export async function POST(request: Request) {
 
   try {
     const body = await request.json();
-    const { address_id, location_id, preferred_date, time_slot, user_notes } = body;
+    const { address_id, location_id, preferred_date, time_slot, user_notes, request_type } = body;
 
-    if (!address_id || !preferred_date || !time_slot) {
-      return NextResponse.json({ error: 'Missing required booking fields' }, { status: 400 });
+    const determinedType = request_type || (location_id ? 'dropoff' : 'home_pickup');
+
+    if (determinedType === 'home_pickup' && !address_id) {
+      return NextResponse.json({ error: 'Home address is required for doorstep pickup' }, { status: 400 });
+    }
+
+    if (determinedType === 'dropoff' && !location_id) {
+      return NextResponse.json({ error: 'Drop-off center hub selection is required' }, { status: 400 });
+    }
+
+    if (!preferred_date || !time_slot) {
+      return NextResponse.json({ error: 'Missing required date or time slot' }, { status: 400 });
     }
 
     // Generate unique request number: GR-YYYYMMDD-XXXX
@@ -57,7 +68,8 @@ export async function POST(request: Request) {
         {
           request_number,
           user_id: user.id,
-          address_id,
+          request_type: determinedType,
+          address_id: address_id || null,
           location_id: location_id || null,
           preferred_date,
           time_slot,
@@ -65,7 +77,11 @@ export async function POST(request: Request) {
           status: 'pending'
         }
       ])
-      .select()
+      .select(`
+        *,
+        address:gr_addresses(*),
+        location:gr_collection_locations(*)
+      `)
       .single();
 
     if (error) {
@@ -78,7 +94,9 @@ export async function POST(request: Request) {
         request_id: newRequest.id,
         new_status: 'pending',
         changed_by: user.id,
-        comments: 'Collection request placed by member'
+        comments: determinedType === 'home_pickup'
+          ? 'Doorstep home pickup request placed by member'
+          : 'Self drop-off appointment scheduled by member'
       }
     ]);
 
