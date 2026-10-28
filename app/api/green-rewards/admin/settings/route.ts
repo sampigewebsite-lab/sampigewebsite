@@ -1,121 +1,117 @@
-import { createClient, createAdminClient } from '@/lib/supabase/server'
-import { NextResponse } from 'next/server'
+import { createClient, createAdminClient } from '@/lib/supabase/server';
+import { NextResponse } from 'next/server';
 
 export async function GET() {
-  const supabase = await createClient()
-  
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const adminClient = createAdminClient();
 
-  // Check profile or recognize master admin email
-  const { data: profile } = await supabase
-    .from('gr_profiles')
-    .select('role')
-    .eq('id', user.id)
-    .single()
+  try {
+    const [
+      { data: settings },
+      { data: locations },
+      { data: categories },
+      { data: rawPickups },
+      { data: rawRedemptions },
+      { data: profiles }
+    ] = await Promise.all([
+      adminClient.from('gr_settings').select('*').single(),
+      adminClient.from('gr_collection_locations').select('*').order('created_at', { ascending: true }),
+      adminClient.from('gr_waste_categories').select('*').order('points_per_kg', { ascending: false }),
+      adminClient.from('gr_collection_requests').select('*').order('created_at', { ascending: false }),
+      adminClient.from('gr_redemptions').select('*').order('created_at', { ascending: false }),
+      adminClient.from('gr_profiles').select('id, full_name, phone, role')
+    ]);
 
-  const isAdmin = profile?.role === 'admin' || user.email === 'admin@sampige.org'
+    // Manual relation mapping to prevent PostgREST join failures
+    const profilesMap = new Map(profiles?.map(p => [p.id, p]) || []);
+    const locationsMap = new Map(locations?.map(l => [l.id, l]) || []);
 
-  if (!isAdmin) {
-    return NextResponse.json({ error: 'Forbidden. Admin access required.' }, { status: 403 })
+    const pickups = (rawPickups || []).map(p => ({
+      ...p,
+      user: profilesMap.get(p.user_id) || { full_name: 'Member', phone: '' },
+      location: locationsMap.get(p.location_id) || null
+    }));
+
+    const redemptions = (rawRedemptions || []).map(r => ({
+      ...r,
+      user: profilesMap.get(r.user_id) || { full_name: 'Member', phone: '' }
+    }));
+
+    return NextResponse.json({
+      success: true,
+      settings: settings || null,
+      locations: locations || [],
+      categories: categories || [],
+      pickups,
+      redemptions
+    });
+
+  } catch (error: any) {
+    console.error("Admin Settings GET Error:", error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
-
-  const adminDb = await createAdminClient()
-
-  // Auto-promote admin@sampige.org in database if not set
-  if (user.email === 'admin@sampige.org' && profile?.role !== 'admin') {
-    await adminDb.from('gr_profiles').update({ role: 'admin' }).eq('id', user.id)
-  }
-
-  // Fetch each table individually
-  const [stgRes, catRes, locRes, reqRes, redRes, profRes, addrRes, rewRes] = await Promise.all([
-    adminDb.from('gr_settings').select('*'),
-    adminDb.from('gr_waste_categories').select('*').order('display_order'),
-    adminDb.from('gr_collection_locations').select('*').order('created_at', { ascending: false }),
-    adminDb.from('gr_collection_requests').select('*').order('created_at', { ascending: false }),
-    adminDb.from('gr_redemptions').select('*').order('created_at', { ascending: false }),
-    adminDb.from('gr_profiles').select('id, full_name, phone, email'),
-    adminDb.from('gr_addresses').select('*'),
-    adminDb.from('gr_rewards').select('*')
-  ])
-
-  // Create lookups
-  const profilesMap = new Map((profRes.data || []).map((p: any) => [p.id, p]))
-  const addrMap = new Map((addrRes.data || []).map((a: any) => [a.id, a]))
-  const rewMap = new Map((rewRes.data || []).map((r: any) => [r.id, r]))
-
-  const pickups = (reqRes.data || []).map((req: any) => ({
-    ...req,
-    user: profilesMap.get(req.user_id) || { full_name: 'Member', email: '', phone: '' },
-    address: addrMap.get(req.address_id) || null
-  }))
-
-  const redemptions = (redRes.data || []).map((red: any) => ({
-    ...red,
-    user: profilesMap.get(red.user_id) || { full_name: 'Member', email: '', phone: '' },
-    reward: rewMap.get(red.reward_id) || null
-  }))
-
-  return NextResponse.json({
-    settings: stgRes.data || [],
-    categories: catRes.data || [],
-    locations: locRes.data || [],
-    pickups,
-    redemptions
-  })
 }
 
 export async function POST(request: Request) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-
-  const { data: profile } = await supabase.from('gr_profiles').select('role').eq('id', user.id).single()
-  const isAdmin = profile?.role === 'admin' || user.email === 'admin@sampige.org'
-
-  if (!isAdmin) {
-    return NextResponse.json({ error: 'Forbidden. Admin access required.' }, { status: 403 })
-  }
-
-  const adminDb = await createAdminClient()
-
-  if (user.email === 'admin@sampige.org' && profile?.role !== 'admin') {
-    await adminDb.from('gr_profiles').update({ role: 'admin' }).eq('id', user.id)
-  }
-
   try {
-    const body = await request.json()
-    const { type, payload } = body
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
 
-    if (type === 'update_setting') {
-      const { key, value } = payload
-      const { error } = await adminDb
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const adminClient = createAdminClient();
+    const { action, id, data } = await request.json();
+
+    if (action === 'save_settings') {
+      const { data: updatedSettings, error } = await adminClient
         .from('gr_settings')
-        .upsert({ key, value, updated_at: new Date().toISOString() })
-      if (error) return NextResponse.json({ error: error.message }, { status: 400 })
+        .upsert({
+          id: id || undefined,
+          ...data,
+          updated_at: new Date().toISOString()
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+      return NextResponse.json({ success: true, settings: updatedSettings });
     }
 
-    if (type === 'update_rate') {
-      const { id, points } = payload
-      const { error } = await adminDb
+    if (action === 'save_location') {
+      const { data: loc, error } = await adminClient
+        .from('gr_collection_locations')
+        .upsert({
+          id: id || undefined,
+          ...data,
+          updated_at: new Date().toISOString()
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+      return NextResponse.json({ success: true, location: loc });
+    }
+
+    if (action === 'save_category') {
+      const { data: cat, error } = await adminClient
         .from('gr_waste_categories')
-        .update({ points_per_kg: points, updated_at: new Date().toISOString() })
-        .eq('id', id)
-      if (error) return NextResponse.json({ error: error.message }, { status: 400 })
+        .upsert({
+          id: id || undefined,
+          ...data,
+          updated_at: new Date().toISOString()
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+      return NextResponse.json({ success: true, category: cat });
     }
 
-    if (type === 'add_location') {
-      const { error } = await adminDb.from('gr_collection_locations').insert([payload])
-      if (error) return NextResponse.json({ error: error.message }, { status: 400 })
-    }
+    return NextResponse.json({ error: 'Unknown action' }, { status: 400 });
 
-    if (type === 'delete_location') {
-      const { error } = await adminDb.from('gr_collection_locations').delete().eq('id', payload.id)
-      if (error) return NextResponse.json({ error: error.message }, { status: 400 })
-    }
-
-    return NextResponse.json({ success: true })
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message || 'Server error' }, { status: 500 })
+  } catch (error: any) {
+    console.error("Admin Settings POST Error:", error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
