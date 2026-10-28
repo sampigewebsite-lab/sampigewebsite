@@ -160,10 +160,10 @@ export default function AdminDashboard() {
     )
       return;
     try {
-      const response = await fetch("/api/green-rewards/admin/redemption", {
+      const response = await fetch("/api/green-rewards/admin/settings", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ redemptionId: id, status: "completed" })
+        body: JSON.stringify({ action: "update_redemption", id, status: "completed" })
       });
       const data = await response.json();
       if (data.success) {
@@ -181,9 +181,9 @@ export default function AdminDashboard() {
     if (location) {
       setEditingLocation(location);
       setLocationForm({
-        name_en: location.name_en || "",
+        name_en: location.name_en || location.name || "",
         name_kn: location.name_kn || "",
-        address_en: location.address_en || "",
+        address_en: location.address_en || location.address || "",
         address_kn: location.address_kn || "",
         operating_hours: location.operating_hours || "09:00 AM - 06:00 PM",
         is_active: location.is_active ?? true
@@ -234,7 +234,7 @@ export default function AdminDashboard() {
     if (category) {
       setEditingCategory(category);
       setCategoryForm({
-        name_en: category.name_en || "",
+        name_en: category.name_en || category.name || "",
         name_kn: category.name_kn || "",
         points_per_kg: category.points_per_kg || 10,
         is_active: category.is_active ?? true
@@ -292,13 +292,10 @@ export default function AdminDashboard() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           action: "save_settings",
-          id: systemSettings?.id,
-          data: {
-            enable_home_pickup: settingsForm.enable_home_pickup,
-            points_to_rupee_rate: Number(settingsForm.points_to_rupee_rate),
-            min_redemption_points: Number(settingsForm.min_redemption_points),
-            allowed_time_slots: slotsArray
-          }
+          enable_home_pickup: settingsForm.enable_home_pickup,
+          points_to_rupee_rate: Number(settingsForm.points_to_rupee_rate),
+          min_redemption_points: Number(settingsForm.min_redemption_points),
+          allowed_time_slots: slotsArray
         })
       });
       const res = await response.json();
@@ -351,7 +348,6 @@ export default function AdminDashboard() {
   const waLink = (phone?: string) => {
     const digits = String(phone || "").replace(/\D/g, "");
     if (!digits) return null;
-    // India default country code if 10-digit local
     const full = digits.length === 10 ? `91${digits}` : digits;
     return `https://wa.me/${full}`;
   };
@@ -550,10 +546,10 @@ export default function AdminDashboard() {
                         </td>
                         <td className="px-6 py-4">
                           <span className="text-amber-400 font-semibold block">
-                            {pickup.location?.name_en || "Main Hub"}
+                            {pickup.location?.name_en || pickup.location?.name || "Main Hub"}
                           </span>
                           <span className="text-gray-500 text-xs line-clamp-1">
-                            {pickup.location?.address_en}
+                            {pickup.location?.address_en || pickup.location?.address}
                           </span>
                         </td>
                         <td className="px-6 py-4 text-xs">
@@ -617,10 +613,10 @@ export default function AdminDashboard() {
             <div className="p-6 border-b border-white/10 flex flex-col md:flex-row md:items-center justify-between gap-4">
               <div>
                 <h2 className="text-xl font-bold flex items-center gap-2 text-amber-500">
-                  <Coins size={22} /> Payout & UPI Redemption Requests
+                  <Coins size={22} /> Payout & Voucher Redemption Requests
                 </h2>
                 <p className="text-xs text-gray-400 mt-1">
-                  See reward type, points, amount / UPI, then mark paid after fulfilment.
+                  See reward type, points, face value / UPI, then confirm fulfillment.
                 </p>
               </div>
 
@@ -661,10 +657,10 @@ export default function AdminDashboard() {
                 <thead className="bg-black/60 text-gray-400 text-xs uppercase tracking-wider border-b border-white/10">
                   <tr>
                     <th className="px-5 py-4 font-bold">User Contact</th>
-                    <th className="px-5 py-4 font-bold">Reward</th>
-                    <th className="px-5 py-4 font-bold">Points</th>
+                    <th className="px-5 py-4 font-bold">Reward Item</th>
+                    <th className="px-5 py-4 font-bold">Points Spent</th>
                     <th className="px-5 py-4 font-bold">Payout / Value</th>
-                    <th className="px-5 py-4 font-bold">UPI / Details</th>
+                    <th className="px-5 py-4 font-bold">UPI / Voucher Code</th>
                     <th className="px-5 py-4 font-bold">Status</th>
                     <th className="px-5 py-4 font-bold text-right">Action</th>
                   </tr>
@@ -673,17 +669,9 @@ export default function AdminDashboard() {
                   {filteredRedemptions.map((red) => {
                     const phone = phoneDisplay(red.user?.phone);
                     const wa = waLink(phone || undefined);
-                    const pts = red.points_spent ?? red.points_redeemed ?? 0;
+                    const pts = red.points_spent ?? red.points_used ?? 0;
                     const amount = red.amount_inr;
                     const upi = red.upi_id || "";
-                    const details = red.payout_details || {};
-                    const extraDetail =
-                      details.store_note ||
-                      details.address ||
-                      details.delivery_address ||
-                      details.notes ||
-                      details.certificate_name ||
-                      "";
 
                     return (
                       <tr key={red.id} className="hover:bg-white/[0.02] transition-colors">
@@ -709,11 +697,6 @@ export default function AdminDashboard() {
                                 </a>
                               )}
                             </div>
-                            {red.redemption_number && (
-                              <span className="text-[10px] text-gray-500 font-mono mt-1">
-                                {red.redemption_number}
-                              </span>
-                            )}
                           </div>
                         </td>
 
@@ -722,10 +705,10 @@ export default function AdminDashboard() {
                             <Gift size={14} className="text-amber-500 mt-0.5 shrink-0" />
                             <div>
                               <p className="font-semibold text-white text-sm leading-snug">
-                                {red.reward_title || "Reward"}
+                                {red.reward_title || "Reward Claim"}
                               </p>
                               <p className="text-[10px] uppercase tracking-wider text-gray-500 mt-0.5">
-                                {red.reward_type || red.payout_type || "—"}
+                                {red.reward_type || "voucher"}
                               </p>
                             </div>
                           </div>
@@ -736,20 +719,20 @@ export default function AdminDashboard() {
                         </td>
 
                         <td className="px-5 py-4 font-black text-emerald-400 text-base font-mono whitespace-nowrap">
-                          {amount != null && amount !== "" ? `₹${amount}` : "—"}
+                          {amount != null ? `₹${amount}` : "—"}
                         </td>
 
                         <td className="px-5 py-4">
                           {upi ? (
                             <span className="text-xs font-mono text-gray-200 bg-white/[0.04] px-2.5 py-1.5 rounded border border-white/10 block max-w-[220px] break-all">
-                              {upi}
+                              UPI: {upi}
                             </span>
-                          ) : extraDetail ? (
-                            <span className="text-xs text-gray-400 line-clamp-2 max-w-[220px]">
-                              {String(extraDetail)}
+                          ) : red.voucher_code ? (
+                            <span className="text-xs font-mono text-emerald-400 bg-emerald-500/10 px-2.5 py-1.5 rounded border border-emerald-500/20 block">
+                              Code: {red.voucher_code}
                             </span>
                           ) : (
-                            <span className="text-xs text-gray-600 italic">No UPI / details</span>
+                            <span className="text-xs text-gray-600 italic">No UPI / code</span>
                           )}
                         </td>
 
@@ -806,7 +789,7 @@ export default function AdminDashboard() {
                   <MapPin size={22} /> Drop-Off Hubs & Collection Centers
                 </h2>
                 <p className="text-xs text-gray-400 mt-1">
-                  Manage operating centers where members can drop off segregated waste.
+                  Manage operating centers where members can drop off waste.
                 </p>
               </div>
               <button
@@ -826,8 +809,10 @@ export default function AdminDashboard() {
                   <div>
                     <div className="flex justify-between items-start mb-3">
                       <div>
-                        <h3 className="text-lg font-bold text-white">{loc.name_en}</h3>
-                        <p className="text-xs text-amber-500 font-medium italic">{loc.name_kn}</p>
+                        <h3 className="text-lg font-bold text-white">{loc.name_en || loc.name}</h3>
+                        {loc.name_kn && (
+                          <p className="text-xs text-amber-500 font-medium italic">{loc.name_kn}</p>
+                        )}
                       </div>
                       <span
                         className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded ${
@@ -839,8 +824,10 @@ export default function AdminDashboard() {
                         {loc.is_active ? "Active" : "Disabled"}
                       </span>
                     </div>
-                    <p className="text-sm text-gray-300 mb-2">{loc.address_en}</p>
-                    <p className="text-xs text-gray-500 mb-4">{loc.address_kn}</p>
+                    <p className="text-sm text-gray-300 mb-2">{loc.address_en || loc.address}</p>
+                    {loc.address_kn && (
+                      <p className="text-xs text-gray-500 mb-4">{loc.address_kn}</p>
+                    )}
                     <div className="bg-white/5 rounded-lg p-2.5 text-xs text-gray-400 flex items-center gap-2 mb-4">
                       <Clock size={14} className="text-amber-500" />
                       <span>{loc.operating_hours || "09:00 AM - 06:00 PM"}</span>
@@ -889,8 +876,10 @@ export default function AdminDashboard() {
                   <div>
                     <div className="flex justify-between items-start mb-3">
                       <div>
-                        <h3 className="text-base font-bold text-white">{cat.name_en}</h3>
-                        <p className="text-xs text-amber-500 font-medium italic">{cat.name_kn}</p>
+                        <h3 className="text-base font-bold text-white">{cat.name_en || cat.name}</h3>
+                        {cat.name_kn && (
+                          <p className="text-xs text-amber-500 font-medium italic">{cat.name_kn}</p>
+                        )}
                       </div>
                       <span
                         className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded ${
@@ -933,8 +922,7 @@ export default function AdminDashboard() {
               <Settings size={22} /> Green Rewards System Settings
             </h2>
             <p className="text-xs text-gray-400 mb-8 border-b border-white/10 pb-4">
-              Configure door-step pickup toggles, point exchange rates, and minimum redemption
-              limits.
+              Configure door-step pickup toggles, point exchange rates, and minimum redemption limits.
             </p>
 
             <div className="space-y-6">
@@ -1042,7 +1030,7 @@ export default function AdminDashboard() {
       {/* WEIGHING MODAL */}
       {selectedPickup && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/90 backdrop-blur-md">
-          <div className="bg-[#141414] border border-white/15 w-full max-w-xl rounded-2xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+          <div className="bg-[#141414] border border-white/15 w-full max-w-xl rounded-2xl shadow-2xl overflow-hidden">
             <div className="p-6 border-b border-white/10 flex justify-between items-center bg-black/40">
               <div>
                 <h2 className="text-xl font-extrabold text-white">Weigh Waste & Award Points</h2>
@@ -1069,7 +1057,7 @@ export default function AdminDashboard() {
                   className="bg-black/50 border border-white/10 p-4 rounded-xl flex items-center justify-between"
                 >
                   <div>
-                    <p className="font-bold text-white text-sm">{cat.name_en}</p>
+                    <p className="font-bold text-white text-sm">{cat.name_en || cat.name}</p>
                     <p className="text-xs text-amber-500">{cat.points_per_kg} pts / kg</p>
                   </div>
                   <div className="flex items-center gap-3">

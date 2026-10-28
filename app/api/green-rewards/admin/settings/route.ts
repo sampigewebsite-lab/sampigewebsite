@@ -1,222 +1,285 @@
-import { createAdminClient } from '@/lib/supabase/server';
-import { NextResponse } from 'next/server';
-
-function pickPhone(p: any): string {
-  if (!p) return '';
-  const raw =
-    p.phone ||
-    p.phone_number ||
-    p.mobile ||
-    p.mobile_number ||
-    p.whatsapp ||
-    p.whatsapp_number ||
-    '';
-  return String(raw).trim();
-}
-
-function pickUpi(details: any): string {
-  if (!details || typeof details !== 'object') return '';
-  return String(
-    details.upi_id ||
-      details.upiId ||
-      details.upi ||
-      details.upi_address ||
-      details.vpa ||
-      details.payee_vpa ||
-      ''
-  ).trim();
-}
-
-function pickAmount(r: any, rate: number): number | null {
-  const details = r.payout_details || {};
-  const fromDetails = Number(
-    details.amount_inr ?? details.amount ?? details.value_inr ?? details.payout_amount ?? NaN
-  );
-  if (!Number.isNaN(fromDetails) && fromDetails > 0) return fromDetails;
-
-  const reward = r.reward || {};
-  const fromReward = Number(
-    reward.value_inr ??
-      reward.cash_value ??
-      reward.amount_inr ??
-      reward.reward_value ??
-      reward.inr_value ??
-      NaN
-  );
-  if (!Number.isNaN(fromReward) && fromReward > 0) return fromReward;
-
-  // Derive from points × conversion rate (e.g. 500 pts × 0.10 = ₹50)
-  const pts = Number(r.points_spent ?? r.points_redeemed ?? 0);
-  if (pts > 0 && rate > 0) return Math.round(pts * rate * 100) / 100;
-
-  return null;
-}
+import { createAdminClient } from "@/lib/supabase/server";
+import { NextResponse } from "next/server";
 
 export async function GET() {
   try {
-    const adminClient = createAdminClient();
+    const supabase = createAdminClient();
 
-    const [
-      { data: settings },
-      { data: locations },
-      { data: categories },
-      { data: rawPickups },
-      { data: rawRedemptions },
-      { data: profiles },
-      { data: rewards }
-    ] = await Promise.all([
-      adminClient.from('gr_settings').select('*').maybeSingle(),
-      adminClient.from('gr_collection_locations').select('*').order('created_at', { ascending: true }),
-      adminClient.from('gr_waste_categories').select('*').order('points_per_kg', { ascending: false }),
-      adminClient.from('gr_collection_requests').select('*').order('created_at', { ascending: false }),
-      adminClient
-        .from('gr_redemptions')
-        .select('*, reward:gr_rewards(*)')
-        .order('created_at', { ascending: false }),
-      adminClient.from('gr_profiles').select('*'),
-      adminClient.from('gr_rewards').select('*')
-    ]);
+    // 1. Fetch Global Settings
+    const { data: settings, error: settingsError } = await supabase
+      .from("gr_settings")
+      .select("*")
+      .eq("key", "global")
+      .maybeSingle();
 
-    const rate = Number(settings?.points_to_rupee_rate ?? 0.1) || 0.1;
+    if (settingsError && settingsError.code !== "PGRST116") {
+      console.error("Settings fetch error:", settingsError);
+    }
 
-    const profilesMap = new Map(
-      (profiles || []).map((p: any) => {
-        const phoneNum = pickPhone(p);
-        return [
-          p.id,
-          {
-            ...p,
-            full_name: p.full_name || p.name || 'Member',
-            phone: phoneNum
-          }
-        ];
-      })
-    );
+    // 2. Fetch Waste Categories
+    const { data: categories } = await supabase
+      .from("gr_waste_categories")
+      .select("*")
+      .order("name_en", { ascending: true, nullsFirst: false })
+      .order("name", { ascending: true }); // Fallback sorting
 
-    const locationsMap = new Map((locations || []).map((l: any) => [l.id, l]));
-    const rewardsMap = new Map((rewards || []).map((rw: any) => [rw.id, rw]));
+    // 3. Fetch Collection Locations
+    const { data: locations } = await supabase
+      .from("gr_collection_locations")
+      .select("*")
+      .order("name_en", { ascending: true, nullsFirst: false })
+      .order("name", { ascending: true });
 
-    const pickups = (rawPickups || []).map((p: any) => ({
-      ...p,
-      status: (p.status || '').toLowerCase(),
-      scheduled_date: p.preferred_date || p.scheduled_date || null,
-      scheduled_slot: p.time_slot || p.scheduled_slot || null,
-      user: profilesMap.get(p.user_id) || { full_name: 'Member', phone: '' },
-      location: locationsMap.get(p.location_id) || null
-    }));
+    // 4. Fetch Rewards Catalog
+    const { data: rewards } = await supabase
+      .from("gr_rewards")
+      .select("*")
+      .order("created_at", { ascending: false });
 
-    const redemptions = (rawRedemptions || []).map((r: any) => {
-      const reward = r.reward || rewardsMap.get(r.reward_id) || null;
-      const details =
-        typeof r.payout_details === 'string'
-          ? (() => {
-              try {
-                return JSON.parse(r.payout_details);
-              } catch {
-                return {};
-              }
-            })()
-          : r.payout_details || {};
+    // 5. Fetch Redemptions with Profiles & Rewards
+    const { data: redemptions, error: redError } = await supabase
+      .from("gr_redemptions")
+      .select(`
+        *,
+        user:profiles(full_name, phone_number, email),
+        reward:gr_rewards(*)
+      `)
+      .order("created_at", { ascending: false });
 
-      const user = profilesMap.get(r.user_id) || { full_name: 'Member', phone: '' };
-      const points = Number(r.points_spent ?? r.points_redeemed ?? 0) || 0;
-      const amount = pickAmount({ ...r, reward, payout_details: details }, rate);
-      const upi = pickUpi(details);
-      const rewardTitle =
-        reward?.title_en ||
-        reward?.name_en ||
-        reward?.title ||
-        reward?.name ||
-        r.payout_type ||
-        'Reward';
-      const rewardType = reward?.reward_type || r.payout_type || details.reward_type || '';
+    if (redError) console.error("Redemptions fetch error:", redError);
+
+    // 6. Fetch Home Pickups
+    const { data: pickups } = await supabase
+      .from("gr_pickups")
+      .select(`
+        *,
+        user:profiles(full_name, phone_number, email),
+        location:gr_collection_locations(*)
+      `)
+      .order("created_at", { ascending: false });
+
+    // Helper to extract amount from title (e.g., "₹100 Store Voucher", "Rs 50 Off")
+    const extractAmountFromTitle = (title: string): number | null => {
+      if (!title) return null;
+      const match = title.match(/(?:₹|Rs\.?|INR|\$)\s?(\d+(\.\d+)?)/i) || title.match(/(\d+)\s?(?:rupees|rs|inr|off)/i);
+      return match ? parseFloat(match[1]) : null;
+    };
+
+    // Normalize Redemptions
+    const normalizedRedemptions = redemptions?.map((r) => {
+      const rate = settings?.points_to_rupee_rate ? Number(settings.points_to_rupee_rate) : 0.1;
+      const pointsUsed = r.points_used ?? r.points_spent ?? 0;
+      const calculatedValue = pointsUsed * rate;
+
+      const rewardVal = r.reward?.value_inr ?? r.amount_inr;
+      const titleVal = extractAmountFromTitle(r.reward?.title || r.reward_title || "");
+      const payoutAmount = rewardVal != null ? Number(rewardVal) : (titleVal ?? calculatedValue);
+
+      const rawPhone = r.user?.phone_number || r.user_phone || "";
+      const cleanedPhone = rawPhone.replace(/\D/g, "");
+      const whatsappUrl = cleanedPhone
+        ? `https://wa.me/${cleanedPhone.startsWith("91") ? cleanedPhone : "91" + cleanedPhone}`
+        : null;
 
       return {
         ...r,
-        status: (r.status || '').toLowerCase(),
-        points_spent: points,
-        points_redeemed: points, // back-compat for UI
-        amount_inr: amount,
-        upi_id: upi,
-        payout_details: details,
-        reward,
-        reward_title: rewardTitle,
-        reward_type: rewardType,
-        user
+        userName: r.user?.full_name || r.user_name || "Unknown Member",
+        userPhone: rawPhone || "No phone",
+        userEmail: r.user?.email || r.user_email || "No email",
+        whatsappUrl,
+        rewardTitle: r.reward?.title || r.reward_title || "Redemption",
+        rewardType: r.reward?.type || r.reward_type || "discount",
+        amount_inr: payoutAmount, // Aligning with frontend expectation
+        points_spent: pointsUsed, // Aligning with frontend expectation
+        isVoucher:
+          r.reward?.type === "voucher" ||
+          r.reward?.type === "store_discount" ||
+          (r.reward?.title && r.reward.title.toLowerCase().includes("voucher")),
+      };
+    });
+
+    // Normalize Pickups
+    const normalizedPickups = pickups?.map((p) => {
+      const rawPhone = p.user?.phone_number || p.contact_phone || "";
+      const cleanedPhone = rawPhone.replace(/\D/g, "");
+      const whatsappUrl = cleanedPhone
+        ? `https://wa.me/${cleanedPhone.startsWith("91") ? cleanedPhone : "91" + cleanedPhone}`
+        : null;
+
+      return {
+        ...p,
+        userName: p.user?.full_name || p.contact_name || "Unknown Member",
+        userPhone: rawPhone || "No phone",
+        whatsappUrl,
+        locationName: p.location?.name_en || p.location?.name || "Home Address",
       };
     });
 
     return NextResponse.json({
       success: true,
-      settings: settings || null,
-      locations: locations || [],
+      settings: settings || {
+        key: "global",
+        enable_home_pickup: false,
+        points_to_rupee_rate: 0.1,
+        min_redemption_points: 100,
+        allowed_time_slots: ["09:00 AM - 12:00 PM", "02:00 PM - 05:00 PM"],
+      },
       categories: categories || [],
+      locations: locations || [],
       rewards: rewards || [],
-      pickups,
-      redemptions
+      redemptions: normalizedRedemptions || [],
+      pickups: normalizedPickups || [],
     });
   } catch (error: any) {
-    console.error('Admin Settings GET Error:', error);
-    return NextResponse.json(
-      { success: false, error: error.message || 'Failed to fetch admin settings' },
-      { status: 500 }
-    );
+    console.error("Admin Settings GET error:", error);
+    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
 }
 
-export async function POST(request: Request) {
+export async function POST(req: Request) {
   try {
-    const adminClient = createAdminClient();
-    const { action, id, data } = await request.json();
+    const supabase = createAdminClient();
+    const body = await req.json();
+    
+    // Robust parsing to handle both flat payloads and nested `data: {}` payloads from frontend
+    const action = body.action;
+    const id = body.id;
+    const payload = body.data || body; 
 
-    if (action === 'save_settings') {
-      const { data: updatedSettings, error } = await adminClient
-        .from('gr_settings')
-        .upsert({
-          ...(id ? { id } : {}),
-          ...data,
-          updated_at: new Date().toISOString()
-        })
-        .select()
-        .single();
-
+    // --- Action: Save Settings ---
+    if (action === "save_settings") {
+      const { error } = await supabase.from("gr_settings").upsert(
+        {
+          key: "global",
+          enable_home_pickup: Boolean(payload.enable_home_pickup),
+          points_to_rupee_rate: Number(payload.points_to_rupee_rate),
+          min_redemption_points: Number(payload.min_redemption_points),
+          allowed_time_slots: payload.allowed_time_slots || ["09:00 AM - 12:00 PM", "02:00 PM - 05:00 PM"],
+        },
+        { onConflict: "key" }
+      );
       if (error) throw error;
-      return NextResponse.json({ success: true, settings: updatedSettings });
+      return NextResponse.json({ success: true, message: "Settings saved" });
     }
 
-    if (action === 'save_location') {
-      const { data: loc, error } = await adminClient
-        .from('gr_collection_locations')
-        .upsert({
-          ...(id ? { id } : {}),
-          ...data,
-          updated_at: new Date().toISOString()
-        })
-        .select()
-        .single();
+    // --- Action: Update Redemption ---
+    if (action === "update_redemption") {
+      const { status, voucher_code, notes } = payload;
+      const updateData: Record<string, any> = { status, updated_at: new Date().toISOString() };
+      if (status === "completed" || status === "fulfilled") updateData.processed_at = new Date().toISOString();
+      if (voucher_code !== undefined) updateData.voucher_code = voucher_code;
+      if (notes !== undefined) updateData.notes = notes;
 
+      const { error } = await supabase.from("gr_redemptions").update(updateData).eq("id", id || payload.id);
       if (error) throw error;
-      return NextResponse.json({ success: true, location: loc });
+      return NextResponse.json({ success: true, message: "Redemption updated" });
     }
 
-    if (action === 'save_category') {
-      const { data: cat, error } = await adminClient
-        .from('gr_waste_categories')
-        .upsert({
-          ...(id ? { id } : {}),
-          ...data,
-          updated_at: new Date().toISOString()
-        })
-        .select()
-        .single();
-
+    // --- Action: Update Pickup ---
+    if (action === "update_pickup") {
+      const { status, admin_notes } = payload;
+      const { error } = await supabase
+        .from("gr_pickups")
+        .update({ status, admin_notes, updated_at: new Date().toISOString() })
+        .eq("id", id || payload.id);
       if (error) throw error;
-      return NextResponse.json({ success: true, category: cat });
+      return NextResponse.json({ success: true, message: "Pickup status updated" });
     }
 
-    return NextResponse.json({ success: false, error: 'Unknown action' }, { status: 400 });
+    // --- Action: Manage Rewards Catalog ---
+    if (action === "save_reward") {
+      const rewardPayload = {
+        title: payload.title,
+        description: payload.description,
+        points_required: Number(payload.points_required),
+        value_inr: Number(payload.value_inr || 0),
+        type: payload.type || "voucher",
+        is_active: payload.is_active !== undefined ? Boolean(payload.is_active) : true,
+        stock: payload.stock !== undefined ? Number(payload.stock) : null,
+        terms: payload.terms || null,
+        updated_at: new Date().toISOString(),
+      };
+
+      let query;
+      if (id || payload.id) {
+        query = supabase.from("gr_rewards").update(rewardPayload).eq("id", id || payload.id);
+      } else {
+        query = supabase.from("gr_rewards").insert([rewardPayload]);
+      }
+      const { error } = await query;
+      if (error) throw error;
+      return NextResponse.json({ success: true, message: "Reward saved" });
+    }
+
+    if (action === "delete_reward") {
+      const { error } = await supabase.from("gr_rewards").delete().eq("id", id || payload.id);
+      if (error) throw error;
+      return NextResponse.json({ success: true, message: "Reward deleted" });
+    }
+
+    // --- Action: Manage Waste Categories ---
+    if (action === "save_category" || action === "save_waste_category") {
+      const catPayload = {
+        name_en: payload.name_en || payload.name,
+        name_kn: payload.name_kn || "",
+        name: payload.name_en || payload.name, // Fallback for old schema
+        points_per_kg: Number(payload.points_per_kg),
+        description: payload.description || "",
+        icon: payload.icon || "Recycle",
+        is_active: payload.is_active !== undefined ? Boolean(payload.is_active) : true,
+      };
+
+      let query;
+      if (id || payload.id) {
+        query = supabase.from("gr_waste_categories").update(catPayload).eq("id", id || payload.id);
+      } else {
+        query = supabase.from("gr_waste_categories").insert([catPayload]);
+      }
+      const { error } = await query;
+      if (error) throw error;
+      return NextResponse.json({ success: true, message: "Category saved" });
+    }
+
+    if (action === "delete_waste_category") {
+      const { error } = await supabase.from("gr_waste_categories").delete().eq("id", id || payload.id);
+      if (error) throw error;
+      return NextResponse.json({ success: true, message: "Category deleted" });
+    }
+
+    // --- Action: Manage Collection Locations ---
+    if (action === "save_location") {
+      const locPayload = {
+        name_en: payload.name_en || payload.name,
+        name_kn: payload.name_kn || "",
+        name: payload.name_en || payload.name, // Fallback for old schema
+        address_en: payload.address_en || payload.address,
+        address_kn: payload.address_kn || "",
+        address: payload.address_en || payload.address, // Fallback
+        operating_hours: payload.operating_hours || "09:00 AM - 06:00 PM",
+        contact_phone: payload.contact_phone || "",
+        is_active: payload.is_active !== undefined ? Boolean(payload.is_active) : true,
+      };
+
+      let query;
+      if (id || payload.id) {
+        query = supabase.from("gr_collection_locations").update(locPayload).eq("id", id || payload.id);
+      } else {
+        query = supabase.from("gr_collection_locations").insert([locPayload]);
+      }
+      const { error } = await query;
+      if (error) throw error;
+      return NextResponse.json({ success: true, message: "Location saved" });
+    }
+
+    if (action === "delete_location") {
+      const { error } = await supabase.from("gr_collection_locations").delete().eq("id", id || payload.id);
+      if (error) throw error;
+      return NextResponse.json({ success: true, message: "Location deleted" });
+    }
+
+    return NextResponse.json({ success: false, error: "Invalid action type" }, { status: 400 });
   } catch (error: any) {
-    console.error('Admin Settings POST Error:', error);
+    console.error("Admin Settings POST error:", error);
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
 }
