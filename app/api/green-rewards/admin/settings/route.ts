@@ -12,13 +12,13 @@ export async function GET() {
       .eq("key", "global")
       .maybeSingle();
 
-    // 2. Fetch Waste Categories (Safely without throwing on order)
+    // 2. Fetch Waste Categories
     const { data: rawCategories } = await supabase.from("gr_waste_categories").select("*");
     const categories = (rawCategories || []).sort((a, b) =>
       (a.name_en || a.name || "").localeCompare(b.name_en || b.name || "")
     );
 
-    // 3. Fetch Collection Locations (Safely)
+    // 3. Fetch Collection Locations
     const { data: rawLocations } = await supabase.from("gr_collection_locations").select("*");
     const locations = (rawLocations || []).sort((a, b) =>
       (a.name_en || a.name || "").localeCompare(b.name_en || b.name || "")
@@ -30,89 +30,93 @@ export async function GET() {
       (a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime()
     );
 
-    // 5. Fetch Redemptions (Attempt join, fallback to manual fetch if FK missing)
-    let redemptionsList: any[] = [];
-    const { data: joinedRedemptions, error: redErr } = await supabase
-      .from("gr_redemptions")
-      .select(`
-        *,
-        user:profiles(full_name, phone_number, email),
-        reward:gr_rewards(*)
-      `)
-      .order("created_at", { ascending: false });
+    // 5. Build Master User Contact Lookup Map (Profiles + Auth Users)
+    const userLookupMap = new Map<string, { full_name: string; phone_number: string; email: string }>();
 
-    if (!redErr && joinedRedemptions) {
-      redemptionsList = joinedRedemptions;
-    } else {
-      // Fallback manual join if DB foreign keys are missing
-      const { data: baseRedemptions } = await supabase
-        .from("gr_redemptions")
-        .select("*")
-        .order("created_at", { ascending: false });
-
-      if (baseRedemptions && baseRedemptions.length > 0) {
-        const userIds = Array.from(new Set(baseRedemptions.map((r) => r.user_id).filter(Boolean)));
-        const rewardIds = Array.from(new Set(baseRedemptions.map((r) => r.reward_id).filter(Boolean)));
-
-        const [{ data: userProfiles }, { data: rewardItems }] = await Promise.all([
-          userIds.length > 0 ? supabase.from("profiles").select("id, full_name, phone_number, email").in("id", userIds) : Promise.resolve({ data: [] }),
-          rewardIds.length > 0 ? supabase.from("gr_rewards").select("*").in("id", rewardIds) : Promise.resolve({ data: [] }),
-        ]);
-
-        const profileMap = new Map((userProfiles || []).map((u) => [u.id, u]));
-        const rewardMap = new Map((rewardItems || []).map((rw) => [rw.id, rw]));
-
-        redemptionsList = baseRedemptions.map((r) => ({
-          ...r,
-          user: profileMap.get(r.user_id) || null,
-          reward: rewardMap.get(r.reward_id) || null,
-        }));
-      }
+    try {
+      const { data: userProfiles } = await supabase.from("profiles").select("*");
+      (userProfiles || []).forEach((p: any) => {
+        if (p.id) {
+          userLookupMap.set(p.id, {
+            full_name: p.full_name || p.name || p.display_name || "Member",
+            phone_number: p.phone_number || p.phone || p.mobile || p.contact_number || "",
+            email: p.email || "",
+          });
+        }
+      });
+    } catch (e) {
+      console.error("Profiles fetch warning:", e);
     }
 
-    // 6. Fetch Pickups & Drop-offs (Attempt join, fallback to manual fetch if FK missing)
-    let pickupsList: any[] = [];
-    const { data: joinedPickups, error: pickErr } = await supabase
-      .from("gr_collection_requests")
-      .select(`
-        *,
-        user:profiles(full_name, phone_number, email),
-        address:gr_addresses(*),
-        location:gr_collection_locations(*)
-      `)
+    try {
+      const { data: authData } = await supabase.auth.admin.listUsers();
+      (authData?.users || []).forEach((u: any) => {
+        const existing = userLookupMap.get(u.id) || { full_name: "", phone_number: "", email: "" };
+        userLookupMap.set(u.id, {
+          full_name:
+            existing.full_name && existing.full_name !== "Member"
+              ? existing.full_name
+              : u.user_metadata?.full_name || u.user_metadata?.name || u.email?.split("@")[0] || "Member",
+          phone_number:
+            existing.phone_number ||
+            u.phone ||
+            u.user_metadata?.phone_number ||
+            u.user_metadata?.phone ||
+            u.user_metadata?.mobile ||
+            "",
+          email: existing.email || u.email || "",
+        });
+      });
+    } catch (e) {
+      console.error("Auth admin listUsers warning:", e);
+    }
+
+    // 6. Fetch Redemptions
+    let redemptionsList: any[] = [];
+    const { data: baseRedemptions } = await supabase
+      .from("gr_redemptions")
+      .select("*")
       .order("created_at", { ascending: false });
 
-    if (!pickErr && joinedPickups) {
-      pickupsList = joinedPickups;
-    } else {
-      // Fallback manual join
-      const { data: basePickups } = await supabase
-        .from("gr_collection_requests")
-        .select("*")
-        .order("created_at", { ascending: false });
+    if (baseRedemptions && baseRedemptions.length > 0) {
+      const rewardIds = Array.from(new Set(baseRedemptions.map((r) => r.reward_id).filter(Boolean)));
+      const { data: rewardItems } = rewardIds.length > 0
+        ? await supabase.from("gr_rewards").select("*").in("id", rewardIds)
+        : { data: [] };
+      const rewardMap = new Map((rewardItems || []).map((rw: any) => [rw.id, rw]));
 
-      if (basePickups && basePickups.length > 0) {
-        const userIds = Array.from(new Set(basePickups.map((p) => p.user_id).filter(Boolean)));
-        const addressIds = Array.from(new Set(basePickups.map((p) => p.address_id).filter(Boolean)));
-        const locationIds = Array.from(new Set(basePickups.map((p) => p.location_id).filter(Boolean)));
+      redemptionsList = baseRedemptions.map((r) => ({
+        ...r,
+        user: userLookupMap.get(r.user_id) || null,
+        reward: rewardMap.get(r.reward_id) || null,
+      }));
+    }
 
-        const [{ data: userProfiles }, { data: addresses }, { data: locs }] = await Promise.all([
-          userIds.length > 0 ? supabase.from("profiles").select("id, full_name, phone_number, email").in("id", userIds) : Promise.resolve({ data: [] }),
-          addressIds.length > 0 ? supabase.from("gr_addresses").select("*").in("id", addressIds) : Promise.resolve({ data: [] }),
-          locationIds.length > 0 ? supabase.from("gr_collection_locations").select("*").in("id", locationIds) : Promise.resolve({ data: [] }),
-        ]);
+    // 7. Fetch Collection Requests (Doorstep Pickups & Self Drop-Offs)
+    let pickupsList: any[] = [];
+    const { data: basePickups } = await supabase
+      .from("gr_collection_requests")
+      .select("*")
+      .order("created_at", { ascending: false });
 
-        const profileMap = new Map((userProfiles || []).map((u) => [u.id, u]));
-        const addressMap = new Map((addresses || []).map((a) => [a.id, a]));
-        const locationMap = new Map((locs || []).map((l) => [l.id, l]));
+    if (basePickups && basePickups.length > 0) {
+      const addressIds = Array.from(new Set(basePickups.map((p) => p.address_id).filter(Boolean)));
+      const locationIds = Array.from(new Set(basePickups.map((p) => p.location_id).filter(Boolean)));
 
-        pickupsList = basePickups.map((p) => ({
-          ...p,
-          user: profileMap.get(p.user_id) || null,
-          address: addressMap.get(p.address_id) || null,
-          location: locationMap.get(p.location_id) || null,
-        }));
-      }
+      const [{ data: addresses }, { data: locs }] = await Promise.all([
+        addressIds.length > 0 ? supabase.from("gr_addresses").select("*").in("id", addressIds) : Promise.resolve({ data: [] }),
+        locationIds.length > 0 ? supabase.from("gr_collection_locations").select("*").in("id", locationIds) : Promise.resolve({ data: [] }),
+      ]);
+
+      const addressMap = new Map((addresses || []).map((a: any) => [a.id, a]));
+      const locationMap = new Map((locs || []).map((l: any) => [l.id, l]));
+
+      pickupsList = basePickups.map((p) => ({
+        ...p,
+        user: userLookupMap.get(p.user_id) || null,
+        address: addressMap.get(p.address_id) || null,
+        location: locationMap.get(p.location_id) || null,
+      }));
     }
 
     // Helper to extract amount from title (e.g., "₹100 Store Voucher", "Rs 50 Off")
@@ -124,6 +128,7 @@ export async function GET() {
 
     // Normalize Redemptions
     const normalizedRedemptions = redemptionsList.map((r) => {
+      const lookupUser = userLookupMap.get(r.user_id) || {};
       const rate = settings?.points_to_rupee_rate ? Number(settings.points_to_rupee_rate) : 0.1;
       const pointsUsed = r.points_used ?? r.points_spent ?? 0;
       const calculatedValue = pointsUsed * rate;
@@ -132,7 +137,8 @@ export async function GET() {
       const titleVal = extractAmountFromTitle(r.reward?.title || r.reward_title || "");
       const payoutAmount = rewardVal != null ? Number(rewardVal) : (titleVal ?? calculatedValue);
 
-      const rawPhone = r.user?.phone_number || r.user_phone || "";
+      const rawName = lookupUser.full_name || r.user?.full_name || r.user_name || "Unknown Member";
+      const rawPhone = lookupUser.phone_number || r.user?.phone_number || r.user_phone || "";
       const cleanedPhone = rawPhone.replace(/\D/g, "");
       const whatsappUrl = cleanedPhone
         ? `https://wa.me/${cleanedPhone.startsWith("91") ? cleanedPhone : "91" + cleanedPhone}`
@@ -140,9 +146,9 @@ export async function GET() {
 
       return {
         ...r,
-        userName: r.user?.full_name || r.user_name || "Unknown Member",
+        userName: rawName,
         userPhone: rawPhone || "No phone",
-        userEmail: r.user?.email || r.user_email || "No email",
+        userEmail: lookupUser.email || r.user?.email || r.user_email || "No email",
         whatsappUrl,
         rewardTitle: r.reward?.title || r.reward_title || "Redemption",
         rewardType: r.reward?.type || r.reward_type || "discount",
@@ -157,13 +163,16 @@ export async function GET() {
 
     // Normalize Pickups & Drop-offs
     const normalizedPickups = pickupsList.map((p) => {
-      const rawPhone = p.user?.phone_number || p.contact_phone || "";
+      const lookupUser = userLookupMap.get(p.user_id) || {};
+      const rawName = lookupUser.full_name || p.user?.full_name || p.contact_name || "Unknown Member";
+      const rawPhone = lookupUser.phone_number || p.user?.phone_number || p.contact_phone || "";
       const cleanedPhone = rawPhone.replace(/\D/g, "");
       const whatsappUrl = cleanedPhone
         ? `https://wa.me/${cleanedPhone.startsWith("91") ? cleanedPhone : "91" + cleanedPhone}`
         : null;
 
-      const isHomePickup = p.request_type === "home_pickup" || (!p.location_id && Boolean(p.address_id));
+      // CRITICAL FIX: If location_id is present, it is a Self Drop-Off at Center!
+      const isHomePickup = !p.location_id;
       const badgeText = isHomePickup ? "Home Pickup" : "Self Drop-Off at Center";
 
       const addressStr = p.address
@@ -173,16 +182,16 @@ export async function GET() {
         : null;
 
       const locationName = isHomePickup
-        ? (addressStr || "Doorstep Address")
+        ? (addressStr || "Doorstep Home Address")
         : (p.location?.name_en || p.location?.name || "Drop-off Center Hub");
 
       return {
         ...p,
         request_type: isHomePickup ? "home_pickup" : "dropoff",
         badge: badgeText,
-        userName: p.user?.full_name || p.contact_name || "Unknown Member",
+        userName: rawName,
         userPhone: rawPhone || "No phone",
-        userEmail: p.user?.email || "No email",
+        userEmail: lookupUser.email || p.user?.email || "No email",
         whatsappUrl,
         locationName,
         addressDetails: p.address,
@@ -259,13 +268,18 @@ export async function POST(req: Request) {
         .eq("id", targetId);
       if (error) throw error;
 
-      await supabase.from("gr_collection_status_history").insert([
-        {
-          request_id: targetId,
-          new_status: status,
-          comments: admin_notes || `Status updated to ${status} by admin`,
-        },
-      ]).catch(() => null);
+      // FIXED: Avoid .catch() on PostgREST Builder
+      try {
+        await supabase.from("gr_collection_status_history").insert([
+          {
+            request_id: targetId,
+            new_status: status,
+            comments: admin_notes || `Status updated to ${status} by admin`,
+          },
+        ]);
+      } catch (histErr) {
+        console.error("Status history log warning:", histErr);
+      }
 
       return NextResponse.json({ success: true, message: "Pickup status updated" });
     }
