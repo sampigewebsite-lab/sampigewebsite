@@ -114,16 +114,18 @@ export default function EditBlog() {
     setUploading(true)
 
     try {
-      // Compress the image before uploading
-      const compressedFile = await compressImage(file)
+      // 1. Compress the image (returns { file: File, summary: string })
+      const compressionResult = await compressImage(file)
+      const fileToUpload = compressionResult.file
 
-      const fileExt = compressedFile.name.split('.').pop()
+      const fileExt = fileToUpload.name.split('.').pop()
       const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`
       const filePath = `news/${fileName}`
 
+      // 2. Upload actual compressed File to Supabase Storage
       const { error: uploadError } = await supabase.storage
         .from('news')
-        .upload(filePath, compressedFile)
+        .upload(filePath, fileToUpload)
 
       if (uploadError) {
         if (uploadError.message.includes('bucket not found')) {
