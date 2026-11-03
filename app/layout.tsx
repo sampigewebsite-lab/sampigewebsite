@@ -326,184 +326,187 @@ export default async function RootLayout({
           `}
         </Script>
 
-        {/* CSquare360 Website Tracking — full form capture + page_view */}
+        {/* CSquare360 Website Visitor & Lead Tracker */}
         <Script id="csquare360-tracker" strategy="afterInteractive">
           {`
-(function() {
-  var lf = {
-    id: 'e6b4afde-7892-4faa-9761-e7f063885b08',
-    endpoint: 'https://csquare360.space/api/webhooks/website-visitor'
-  };
+            (function() {
+              var lf = {
+                id: 'e6b4afde-7892-4faa-9761-e7f063885b08',
+                endpoint: 'https://csquare360.space/api/webhooks/website-visitor'
+              };
 
-  var visitorId = localStorage.getItem('lf_visitor_id');
-  if (!visitorId) {
-    visitorId = 'v_' + Math.random().toString(36).substr(2, 16) + Date.now();
-    localStorage.setItem('lf_visitor_id', visitorId);
-  }
+              var visitorId = localStorage.getItem('lf_visitor_id');
+              if (!visitorId) {
+                visitorId = 'v_' + Math.random().toString(36).substr(2, 16) + Date.now();
+                localStorage.setItem('lf_visitor_id', visitorId);
+              }
 
-  var urlParams = new URLSearchParams(window.location.search);
-  var baseData = {
-    tracking_id: lf.id,
-    visitor_id: visitorId,
-    page_url: window.location.href,
-    page_title: document.title,
-    referrer: document.referrer,
-    user_agent: navigator.userAgent,
-    utm_source: urlParams.get('utm_source'),
-    utm_medium: urlParams.get('utm_medium'),
-    utm_campaign: urlParams.get('utm_campaign')
-  };
+              var urlParams = new URLSearchParams(window.location.search);
+              var baseData = {
+                tracking_id: lf.id,
+                visitor_id: visitorId,
+                page_url: window.location.href,
+                page_title: document.title,
+                referrer: document.referrer,
+                user_agent: navigator.userAgent,
+                utm_source: urlParams.get('utm_source'),
+                utm_medium: urlParams.get('utm_medium'),
+                utm_campaign: urlParams.get('utm_campaign')
+              };
 
-  function send(data) {
-    try {
-      fetch(lf.endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-        mode: 'cors',
-        keepalive: true
-      }).catch(function(){});
-    } catch (err) {}
-  }
+              function send(data) {
+                try {
+                  fetch(lf.endpoint, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data),
+                    mode: 'cors',
+                    keepalive: true
+                  }).catch(function(){});
+                } catch (err) {}
+              }
 
-  function pickObj(obj, keys) {
-    if (!obj) return '';
-    var i, k, want, lower = {};
-    for (i = 0; i < keys.length; i++) {
-      k = keys[i];
-      if (obj[k] != null && String(obj[k]).trim() !== '') return String(obj[k]).trim();
-    }
-    try {
-      Object.keys(obj).forEach(function(key) {
-        lower[String(key).toLowerCase()] = obj[key];
-      });
-    } catch (e) {}
-    for (i = 0; i < keys.length; i++) {
-      want = String(keys[i]).toLowerCase();
-      if (lower[want] != null && String(lower[want]).trim() !== '') {
-        return String(lower[want]).trim();
-      }
-    }
-    return '';
-  }
+              function pickObj(obj, keys) {
+                if (!obj) return '';
+                var i, k, want, lower = {};
+                for (i = 0; i < keys.length; i++) {
+                  k = keys[i];
+                  if (obj[k] != null && String(obj[k]).trim() !== '') return String(obj[k]).trim();
+                }
+                try {
+                  Object.keys(obj).forEach(function(key) {
+                    lower[String(key).toLowerCase()] = obj[key];
+                  });
+                } catch (e) {}
+                for (i = 0; i < keys.length; i++) {
+                  want = String(keys[i]).toLowerCase();
+                  if (lower[want] != null && String(lower[want]).trim() !== '') {
+                    return String(lower[want]).trim();
+                  }
+                }
+                return '';
+              }
 
-  function formToObject(form) {
-    var out = {};
-    try {
-      var fd = new FormData(form);
-      fd.forEach(function(val, key) {
-        if (key == null || key === '') return;
-        var s = val == null ? '' : String(val).trim();
-        if (s === '') return;
-        if (out[key] == null) out[key] = s;
-        else if (Object.prototype.toString.call(out[key]) === '[object Array]') out[key].push(s);
-        else out[key] = [out[key], s];
-      });
-    } catch (e1) {}
+              function formToObject(form) {
+                var out = {};
+                try {
+                  var fd = new FormData(form);
+                  fd.forEach(function(val, key) {
+                    if (key == null || key === '') return;
+                    var s = val == null ? '' : String(val).trim();
+                    if (s === '') return;
+                    if (out[key] == null) out[key] = s;
+                    else if (Object.prototype.toString.call(out[key]) === '[object Array]') out[key].push(s);
+                    else out[key] = [out[key], s];
+                  });
+                } catch (e1) {}
 
-    try {
-      if (form && form.querySelectorAll) {
-        var fields = form.querySelectorAll('input, select, textarea');
-        for (var i = 0; i < fields.length; i++) {
-          var el = fields[i];
-          var name = el.name || el.id || el.getAttribute('data-name') || '';
-          if (!name) continue;
-          var type = (el.type || '').toLowerCase();
-          if (type === 'password') continue;
-          if (type === 'checkbox' || type === 'radio') {
-            if (!el.checked) continue;
-          }
-          var val2 = el.value;
-          if (val2 == null || String(val2).trim() === '') continue;
-          if (out[name] == null || out[name] === '') out[name] = String(val2).trim();
-        }
-      }
-    } catch (e2) {}
-    return out;
-  }
+                try {
+                  if (form && form.querySelectorAll) {
+                    var fields = form.querySelectorAll('input, select, textarea');
+                    for (var i = 0; i < fields.length; i++) {
+                      var el = fields[i];
+                      var name = el.name || el.id || el.getAttribute('data-name') || '';
+                      if (!name) continue;
+                      var type = (el.type || '').toLowerCase();
+                      if (type === 'password') continue;
+                      if (type === 'checkbox' || type === 'radio') {
+                        if (!el.checked) continue;
+                      }
+                      var val2 = el.value;
+                      if (val2 == null || String(val2).trim() === '') continue;
+                      if (out[name] == null || out[name] === '') out[name] = String(val2).trim();
+                    }
+                  }
+                } catch (e2) {}
+                return out;
+              }
 
-  var NAME_KEYS = [
-    'name', 'full_name', 'fullname', 'contact_name', 'contact_person',
-    'your_name', 'username', 'first_name', 'fname', 'applicant_name',
-    'company_name', 'company', 'organisation', 'organization'
-  ];
-  var PHONE_KEYS = [
-    'phone', 'mobile', 'whatsapp', 'contact', 'tel', 'phone_number',
-    'mobile_number', 'contact_number', 'whatsapp_number', 'phoneNumber', 'mobileNumber'
-  ];
-  var EMAIL_KEYS = [
-    'email', 'e-mail', 'email_address', 'emailAddress', 'mail', 'work_email'
-  ];
+              var NAME_KEYS = [
+                'name', 'full_name', 'fullname', 'contact_name', 'contact_person',
+                'your_name', 'username', 'first_name', 'fname', 'applicant_name',
+                'company_name', 'company', 'organisation', 'organization'
+              ];
+              var PHONE_KEYS = [
+                'phone', 'mobile', 'whatsapp', 'contact', 'tel', 'phone_number',
+                'mobile_number', 'contact_number', 'whatsapp_number', 'phoneNumber', 'mobileNumber'
+              ];
+              var EMAIL_KEYS = [
+                'email', 'e-mail', 'email_address', 'emailAddress', 'mail', 'work_email'
+              ];
 
-  send(Object.assign({}, baseData, {
-    event_type: 'page_view',
-    event: 'page_view'
-  }));
+              // Page view event on load
+              send(Object.assign({}, baseData, {
+                event_type: 'page_view',
+                event: 'page_view'
+              }));
 
-  var startTime = Date.now();
-  window.addEventListener('beforeunload', function() {
-    var timeOnPage = Math.round((Date.now() - startTime) / 1000);
-    var payload = Object.assign({}, baseData, {
-      time_on_page: timeOnPage,
-      event_type: 'page_exit',
-      event: 'page_exit'
-    });
-    try {
-      if (navigator.sendBeacon) {
-        navigator.sendBeacon(
-          lf.endpoint,
-          new Blob([JSON.stringify(payload)], { type: 'application/json' })
-        );
-      } else {
-        send(payload);
-      }
-    } catch (e) {
-      send(payload);
-    }
-  });
+              var startTime = Date.now();
+              window.addEventListener('beforeunload', function() {
+                var timeOnPage = Math.round((Date.now() - startTime) / 1000);
+                var payload = Object.assign({}, baseData, {
+                  time_on_page: timeOnPage,
+                  event_type: 'page_exit',
+                  event: 'page_exit'
+                });
+                try {
+                  if (navigator.sendBeacon) {
+                    navigator.sendBeacon(
+                      lf.endpoint,
+                      new Blob([JSON.stringify(payload)], { type: 'application/json' })
+                    );
+                  } else {
+                    send(payload);
+                  }
+                } catch (e) {
+                  send(payload);
+                }
+              });
 
-  document.addEventListener('click', function(e) {
-    var el = e.target && e.target.closest ? e.target.closest('[data-lf-track]') : null;
-    if (!el) return;
-    var label = el.getAttribute('data-lf-track');
-    send(Object.assign({}, baseData, {
-      event_type: 'button_click',
-      event: 'button_click',
-      element_name: label,
-      element_label: label,
-      element_type: el.tagName === 'A' ? 'link' : 'button',
-      element_id: el.id || null
-    }));
-  }, true);
+              // Button & link click tracker
+              document.addEventListener('click', function(e) {
+                var el = e.target && e.target.closest ? e.target.closest('[data-lf-track]') : null;
+                if (!el) return;
+                var label = el.getAttribute('data-lf-track');
+                send(Object.assign({}, baseData, {
+                  event_type: 'button_click',
+                  event: 'button_click',
+                  element_name: label,
+                  element_label: label,
+                  element_type: el.tagName === 'A' ? 'link' : 'button',
+                  element_id: el.id || null
+                }));
+              }, true);
 
-  document.addEventListener('submit', function(e) {
-    var form = e.target && e.target.closest ? e.target.closest('[data-lf-form]') : null;
-    if (!form) return;
-    var formObj = formToObject(form);
-    var formName = form.getAttribute('data-lf-form') || 'form';
-    send(Object.assign({}, baseData, {
-      event_type: 'form_submit',
-      event: 'form_submit',
-      element_name: formName,
-      element_label: formName,
-      element_type: 'form',
-      visitor_name: pickObj(formObj, NAME_KEYS),
-      visitor_phone: pickObj(formObj, PHONE_KEYS),
-      visitor_email: pickObj(formObj, EMAIL_KEYS),
-      form_data: formObj,
-      payload: formObj
-    }));
-  }, true);
+              // Form submission tracker
+              document.addEventListener('submit', function(e) {
+                var form = e.target && e.target.closest ? e.target.closest('[data-lf-form]') : null;
+                if (!form) return;
+                var formObj = formToObject(form);
+                var formName = form.getAttribute('data-lf-form') || 'form';
+                send(Object.assign({}, baseData, {
+                  event_type: 'form_submit',
+                  event: 'form_submit',
+                  element_name: formName,
+                  element_label: formName,
+                  element_type: 'form',
+                  visitor_name: pickObj(formObj, NAME_KEYS),
+                  visitor_phone: pickObj(formObj, PHONE_KEYS),
+                  visitor_email: pickObj(formObj, EMAIL_KEYS),
+                  form_data: formObj,
+                  payload: formObj
+                }));
+              }, true);
 
-  window.CSquare360 = {
-    track: function(eventType, data) {
-      send(Object.assign({}, baseData, {
-        event_type: eventType,
-        event: eventType
-      }, data || {}));
-    }
-  };
-})();
+              window.CSquare360 = {
+                track: function(eventType, data) {
+                  send(Object.assign({}, baseData, {
+                    event_type: eventType,
+                    event: eventType
+                  }, data || {}));
+                }
+              };
+            })();
           `}
         </Script>
 

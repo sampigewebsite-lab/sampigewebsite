@@ -60,6 +60,24 @@ export default function PoojaEnquiryForm({ lang = 'en' }: EnquiryFormProps) {
       admin_notes: cpName === 'help' ? 'Requires help finding nearest collection point.' : '',
     }
 
+    // CSquare360 tracking — must run BEFORE insert and BEFORE redirect
+    if (typeof window !== 'undefined' && (window as any).CSquare360) {
+      try {
+        (window as any).CSquare360.track('form_submit', {
+          element_name: 'Pooja to Prakruthi Recycling Form',
+          visitor_name: data.full_name,
+          contact_person: data.full_name,
+          full_name: data.full_name,
+          visitor_phone: data.phone,
+          phone: data.phone,
+          visitor_email: data.email,
+          email: data.email,
+          participation_type: type,
+          locality: data.area_locality
+        })
+      } catch (err) {}
+    }
+
     const supabase = createClient()
     const { error } = await supabase.from('pooja_enquiries').insert([data])
 
@@ -67,18 +85,6 @@ export default function PoojaEnquiryForm({ lang = 'en' }: EnquiryFormProps) {
       toast.error(isKn ? 'ಏನೋ ತಪ್ಪಾಗಿದೆ, ದಯವಿಟ್ಟು ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ.' : 'Something went wrong. Please try again.')
       setLoading(false)
     } else {
-      // ⚡ CSquare360 Website Lead Tracking Trigger
-      if (typeof window !== 'undefined' && (window as any).CSquare360) {
-        (window as any).CSquare360.track('form_submit', {
-          element_name: `Pooja to Prakruthi - ${type}`,
-          visitor_name: data.full_name,
-          visitor_phone: data.phone,
-          visitor_email: data.email,
-          participation_type: type,
-          locality: data.area_locality
-        })
-      }
-
       toast.success(isKn ? 'ಧನ್ಯವಾದಗಳು! ಪಾವತಿ ಪುಟಕ್ಕೆ ಮರುನಿರ್ದೇಶಿಸಲಾಗುತ್ತಿದೆ...' : 'Thank you! Redirecting to payment...')
       setTimeout(() => {
         window.location.href = `/pooja-to-prakruthi/pay?phone=${encodeURIComponent(data.phone)}`
