@@ -326,14 +326,12 @@ export default async function RootLayout({
           `}
         </Script>
 
-        {/* CSquare360 Website Visitor & Lead Tracker */}
+        {/* CSquare360 Universal Auto-Tracker Script */}
         <Script id="csquare360-tracker" strategy="afterInteractive">
           {`
             (function() {
-              var lf = {
-                id: 'e6b4afde-7892-4faa-9761-e7f063885b08',
-                endpoint: 'https://csquare360.space/api/webhooks/website-visitor'
-              };
+              var trackingId = 'e6b4afde-7892-4faa-9761-e7f063885b08';
+              var endpoint = 'https://csquare360.space/api/webhooks/website-visitor';
 
               var visitorId = localStorage.getItem('lf_visitor_id');
               if (!visitorId) {
@@ -341,169 +339,186 @@ export default async function RootLayout({
                 localStorage.setItem('lf_visitor_id', visitorId);
               }
 
-              var urlParams = new URLSearchParams(window.location.search);
-              var baseData = {
-                tracking_id: lf.id,
-                visitor_id: visitorId,
-                page_url: window.location.href,
-                page_title: document.title,
-                referrer: document.referrer,
-                user_agent: navigator.userAgent,
-                utm_source: urlParams.get('utm_source'),
-                utm_medium: urlParams.get('utm_medium'),
-                utm_campaign: urlParams.get('utm_campaign')
-              };
+              function getPayload(extra) {
+                var urlParams = new URLSearchParams(window.location.search);
+                var data = {
+                  tracking_id: trackingId,
+                  visitor_id: visitorId,
+                  page_url: window.location.href,
+                  page_title: document.title,
+                  referrer: document.referrer,
+                  user_agent: navigator.userAgent,
+                  utm_source: urlParams.get('utm_source'),
+                  utm_medium: urlParams.get('utm_medium'),
+                  utm_campaign: urlParams.get('utm_campaign')
+                };
+                if (extra) {
+                  for (var k in extra) {
+                    if (Object.prototype.hasOwnProperty.call(extra, k)) {
+                      data[k] = extra[k];
+                    }
+                  }
+                }
+                return data;
+              }
 
-              function send(data) {
+              function sendEvent(data) {
+                var bodyStr = JSON.stringify(data);
+                if (navigator.sendBeacon) {
+                  try {
+                    var blob = new Blob([bodyStr], { type: 'application/json' });
+                    if (navigator.sendBeacon(endpoint, blob)) return;
+                  } catch (e) {}
+                }
                 try {
-                  fetch(lf.endpoint, {
+                  fetch(endpoint, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(data),
+                    body: bodyStr,
                     mode: 'cors',
                     keepalive: true
                   }).catch(function(){});
-                } catch (err) {}
-              }
-
-              function pickObj(obj, keys) {
-                if (!obj) return '';
-                var i, k, want, lower = {};
-                for (i = 0; i < keys.length; i++) {
-                  k = keys[i];
-                  if (obj[k] != null && String(obj[k]).trim() !== '') return String(obj[k]).trim();
-                }
-                try {
-                  Object.keys(obj).forEach(function(key) {
-                    lower[String(key).toLowerCase()] = obj[key];
-                  });
                 } catch (e) {}
-                for (i = 0; i < keys.length; i++) {
-                  want = String(keys[i]).toLowerCase();
-                  if (lower[want] != null && String(lower[want]).trim() !== '') {
-                    return String(lower[want]).trim();
-                  }
-                }
-                return '';
               }
 
-              function formToObject(form) {
-                var out = {};
-                try {
-                  var fd = new FormData(form);
-                  fd.forEach(function(val, key) {
-                    if (key == null || key === '') return;
-                    var s = val == null ? '' : String(val).trim();
-                    if (s === '') return;
-                    if (out[key] == null) out[key] = s;
-                    else if (Object.prototype.toString.call(out[key]) === '[object Array]') out[key].push(s);
-                    else out[key] = [out[key], s];
-                  });
-                } catch (e1) {}
+              function inspectForm(form) {
+                var formData = {};
+                var nameVal = '', phoneVal = '', emailVal = '';
+
+                var EMAIL_REGEX = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}/;
+                var PHONE_REGEX = /(\\+?\\d[\\d\\s\\-\\(\\)]{7,18}\\d)/;
 
                 try {
-                  if (form && form.querySelectorAll) {
-                    var fields = form.querySelectorAll('input, select, textarea');
-                    for (var i = 0; i < fields.length; i++) {
-                      var el = fields[i];
-                      var name = el.name || el.id || el.getAttribute('data-name') || '';
-                      if (!name) continue;
-                      var type = (el.type || '').toLowerCase();
-                      if (type === 'password') continue;
-                      if (type === 'checkbox' || type === 'radio') {
-                        if (!el.checked) continue;
+                  var fields = form.querySelectorAll('input, select, textarea');
+                  for (var i = 0; i < fields.length; i++) {
+                    var el = fields[i];
+                    var type = (el.type || '').toLowerCase();
+                    if (type === 'password' || type === 'hidden' || type === 'submit' || type === 'button') continue;
+                    if ((type === 'checkbox' || type === 'radio') && !el.checked) continue;
+
+                    var val = el.value ? String(el.value).trim() : '';
+                    if (!val) continue;
+
+                    var key = el.name || el.id || el.placeholder || el.getAttribute('aria-label');
+                    if (!key) {
+                      var parentLabel = el.closest('label');
+                      if (parentLabel) {
+                        key = parentLabel.innerText || parentLabel.textContent;
+                      } else if (el.id) {
+                        var lbl = document.querySelector('label[for="' + el.id + '"]');
+                        if (lbl) key = lbl.innerText || lbl.textContent;
                       }
-                      var val2 = el.value;
-                      if (val2 == null || String(val2).trim() === '') continue;
-                      if (out[name] == null || out[name] === '') out[name] = String(val2).trim();
+                    }
+                    if (!key) key = 'field_' + i;
+                    key = key.replace(/[*:]/g, '').trim();
+
+                    formData[key] = val;
+
+                    var keyLower = key.toLowerCase();
+                    if (!emailVal && (type === 'email' || keyLower.includes('email') || keyLower.includes('mail') || EMAIL_REGEX.test(val))) {
+                      var m = val.match(EMAIL_REGEX);
+                      if (m) emailVal = m[0];
+                    } else if (!phoneVal && (type === 'tel' || keyLower.includes('phone') || keyLower.includes('mobile') || keyLower.includes('contact') || keyLower.includes('whatsapp') || PHONE_REGEX.test(val))) {
+                      if (val.replace(/\\D/g, '').length >= 7) phoneVal = val;
+                    } else if (!nameVal && (keyLower.includes('name') || keyLower.includes('person') || keyLower.includes('company') || keyLower.includes('customer') || keyLower.includes('user'))) {
+                      nameVal = val;
                     }
                   }
-                } catch (e2) {}
-                return out;
+                } catch (err) {}
+
+                var formName = form.getAttribute('data-lf-form') || form.id || form.name;
+                if (!formName) {
+                  var heading = form.querySelector('h1, h2, h3, h4, h5, legend');
+                  if (heading) formName = heading.innerText || heading.textContent;
+                }
+                if (!formName) formName = document.title || 'Website Form';
+
+                return {
+                  formName: String(formName).trim().substring(0, 100),
+                  formData: formData,
+                  name: nameVal,
+                  phone: phoneVal,
+                  email: emailVal
+                };
               }
 
-              var NAME_KEYS = [
-                'name', 'full_name', 'fullname', 'contact_name', 'contact_person',
-                'your_name', 'username', 'first_name', 'fname', 'applicant_name',
-                'company_name', 'company', 'organisation', 'organization'
-              ];
-              var PHONE_KEYS = [
-                'phone', 'mobile', 'whatsapp', 'contact', 'tel', 'phone_number',
-                'mobile_number', 'contact_number', 'whatsapp_number', 'phoneNumber', 'mobileNumber'
-              ];
-              var EMAIL_KEYS = [
-                'email', 'e-mail', 'email_address', 'emailAddress', 'mail', 'work_email'
-              ];
+              document.addEventListener('submit', function(e) {
+                var form = e.target && e.target.tagName === 'FORM' ? e.target : (e.target && e.target.closest ? e.target.closest('form') : null);
+                if (!form) return;
 
-              // Page view event on load
-              send(Object.assign({}, baseData, {
-                event_type: 'page_view',
-                event: 'page_view'
-              }));
+                var info = inspectForm(form);
+                sendEvent(getPayload({
+                  event_type: 'form_submit',
+                  event: 'form_submit',
+                  element_name: info.formName,
+                  element_label: info.formName,
+                  element_type: 'form',
+                  visitor_name: info.name,
+                  visitor_phone: info.phone,
+                  visitor_email: info.email,
+                  form_data: info.formData,
+                  payload: info.formData
+                }));
+              }, true);
 
-              var startTime = Date.now();
-              window.addEventListener('beforeunload', function() {
-                var timeOnPage = Math.round((Date.now() - startTime) / 1000);
-                var payload = Object.assign({}, baseData, {
-                  time_on_page: timeOnPage,
-                  event_type: 'page_exit',
-                  event: 'page_exit'
-                });
-                try {
-                  if (navigator.sendBeacon) {
-                    navigator.sendBeacon(
-                      lf.endpoint,
-                      new Blob([JSON.stringify(payload)], { type: 'application/json' })
-                    );
-                  } else {
-                    send(payload);
-                  }
-                } catch (e) {
-                  send(payload);
-                }
-              });
-
-              // Button & link click tracker
               document.addEventListener('click', function(e) {
                 var el = e.target && e.target.closest ? e.target.closest('[data-lf-track]') : null;
                 if (!el) return;
                 var label = el.getAttribute('data-lf-track');
-                send(Object.assign({}, baseData, {
+                if (!label) return;
+
+                sendEvent(getPayload({
                   event_type: 'button_click',
                   event: 'button_click',
                   element_name: label,
                   element_label: label,
-                  element_type: el.tagName === 'A' ? 'link' : 'button',
-                  element_id: el.id || null
+                  element_type: el.tagName === 'A' ? 'link' : 'button'
                 }));
               }, true);
 
-              // Form submission tracker
-              document.addEventListener('submit', function(e) {
-                var form = e.target && e.target.closest ? e.target.closest('[data-lf-form]') : null;
-                if (!form) return;
-                var formObj = formToObject(form);
-                var formName = form.getAttribute('data-lf-form') || 'form';
-                send(Object.assign({}, baseData, {
-                  event_type: 'form_submit',
-                  event: 'form_submit',
-                  element_name: formName,
-                  element_label: formName,
-                  element_type: 'form',
-                  visitor_name: pickObj(formObj, NAME_KEYS),
-                  visitor_phone: pickObj(formObj, PHONE_KEYS),
-                  visitor_email: pickObj(formObj, EMAIL_KEYS),
-                  form_data: formObj,
-                  payload: formObj
+              var currentPath = window.location.href;
+              function trackPageView() {
+                sendEvent(getPayload({
+                  event_type: 'page_view',
+                  event: 'page_view'
                 }));
-              }, true);
+              }
+
+              trackPageView();
+
+              var origPushState = history.pushState;
+              if (origPushState) {
+                history.pushState = function() {
+                  origPushState.apply(this, arguments);
+                  if (window.location.href !== currentPath) {
+                    currentPath = window.location.href;
+                    setTimeout(trackPageView, 150);
+                  }
+                };
+              }
+              var origReplaceState = history.replaceState;
+              if (origReplaceState) {
+                history.replaceState = function() {
+                  origReplaceState.apply(this, arguments);
+                  if (window.location.href !== currentPath) {
+                    currentPath = window.location.href;
+                    setTimeout(trackPageView, 150);
+                  }
+                };
+              }
+              window.addEventListener('popstate', function() {
+                if (window.location.href !== currentPath) {
+                  currentPath = window.location.href;
+                  trackPageView();
+                }
+              });
 
               window.CSquare360 = {
                 track: function(eventType, data) {
-                  send(Object.assign({}, baseData, {
+                  sendEvent(getPayload(Object.assign({
                     event_type: eventType,
                     event: eventType
-                  }, data || {}));
+                  }, data || {})));
                 }
               };
             })();
