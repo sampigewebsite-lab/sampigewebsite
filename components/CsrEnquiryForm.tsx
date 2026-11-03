@@ -60,6 +60,18 @@ export default function CsrEnquiryForm({ activities, pillars }: { activities: Ac
       return
     }
 
+    // ⚡ CSquare360 Website Lead Tracking Trigger
+    if (typeof window !== 'undefined' && (window as any).CSquare360) {
+      (window as any).CSquare360.track('form_submit', {
+        element_name: 'CSR Partnership Enquiry',
+        visitor_name: form.contact_name.trim(),
+        visitor_email: form.email.trim(),
+        visitor_phone: form.phone.trim(),
+        company_name: form.company_name.trim(),
+        employee_count: form.employee_count
+      })
+    }
+
     setSuccess(true)
     setLoading(false)
     toast.success('Your CSR request has been recorded!')
@@ -107,13 +119,18 @@ export default function CsrEnquiryForm({ activities, pillars }: { activities: Ac
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
+    <form 
+      onSubmit={handleSubmit} 
+      data-lf-form="CSR Partnership Form" 
+      className="space-y-6"
+    >
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Company Info */}
         <div>
           <label className="text-xs font-bold uppercase text-[#B0B0B0] mb-2 block">Company Name *</label>
           <input
             type="text"
+            name="company_name"
             required
             value={form.company_name}
             onChange={(e) => setForm((f) => ({ ...f, company_name: e.target.value }))}
@@ -124,6 +141,7 @@ export default function CsrEnquiryForm({ activities, pillars }: { activities: Ac
           <label className="text-xs font-bold uppercase text-[#B0B0B0] mb-2 block">Company Website</label>
           <input
             type="url"
+            name="company_website"
             placeholder="https://company.com"
             value={form.company_website}
             onChange={(e) => setForm((f) => ({ ...f, company_website: e.target.value }))}
@@ -136,6 +154,7 @@ export default function CsrEnquiryForm({ activities, pillars }: { activities: Ac
           <label className="text-xs font-bold uppercase text-[#B0B0B0] mb-2 block">Contact Person Name *</label>
           <input
             type="text"
+            name="contact_name"
             required
             value={form.contact_name}
             onChange={(e) => setForm((f) => ({ ...f, contact_name: e.target.value }))}
@@ -146,6 +165,7 @@ export default function CsrEnquiryForm({ activities, pillars }: { activities: Ac
           <label className="text-xs font-bold uppercase text-[#B0B0B0] mb-2 block">Designation</label>
           <input
             type="text"
+            name="designation"
             placeholder="e.g. CSR Manager, HR Director"
             value={form.designation}
             onChange={(e) => setForm((f) => ({ ...f, designation: e.target.value }))}
@@ -156,6 +176,7 @@ export default function CsrEnquiryForm({ activities, pillars }: { activities: Ac
           <label className="text-xs font-bold uppercase text-[#B0B0B0] mb-2 block">Business Email *</label>
           <input
             type="email"
+            name="email"
             required
             value={form.email}
             onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
@@ -166,6 +187,7 @@ export default function CsrEnquiryForm({ activities, pillars }: { activities: Ac
           <label className="text-xs font-bold uppercase text-[#B0B0B0] mb-2 block">Phone Number *</label>
           <input
             type="tel"
+            name="phone"
             required
             value={form.phone}
             onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
@@ -177,6 +199,7 @@ export default function CsrEnquiryForm({ activities, pillars }: { activities: Ac
         <div>
           <label className="text-xs font-bold uppercase text-[#B0B0B0] mb-2 block">Preferred CSR Pillar</label>
           <select
+            name="csr_pillar"
             value={form.csr_pillar}
             onChange={(e) => setForm((f) => ({ ...f, csr_pillar: e.target.value }))}
             className="w-full bg-black text-white border border-gray-800 rounded-xl px-4 py-3.5 text-sm focus:border-gold-500 outline-none"
@@ -193,6 +216,7 @@ export default function CsrEnquiryForm({ activities, pillars }: { activities: Ac
         <div>
           <label className="text-xs font-bold uppercase text-[#B0B0B0] mb-2 block">Preferred Activity Format</label>
           <select
+            name="preferred_activity"
             value={form.preferred_activity}
             onChange={(e) => setForm((f) => ({ ...f, preferred_activity: e.target.value }))}
             className="w-full bg-black text-white border border-gray-800 rounded-xl px-4 py-3.5 text-sm focus:border-gold-500 outline-none"
@@ -210,6 +234,7 @@ export default function CsrEnquiryForm({ activities, pillars }: { activities: Ac
         <div>
           <label className="text-xs font-bold uppercase text-[#B0B0B0] mb-2 block">Estimated Number of Employees *</label>
           <select
+            name="employee_count"
             required
             value={form.employee_count}
             onChange={(e) => setForm((f) => ({ ...f, employee_count: e.target.value }))}
@@ -228,6 +253,7 @@ export default function CsrEnquiryForm({ activities, pillars }: { activities: Ac
           <label className="text-xs font-bold uppercase text-[#B0B0B0] mb-2 block">Preferred Location (e.g. Bengaluru)</label>
           <input
             type="text"
+            name="location"
             value={form.location}
             onChange={(e) => setForm((f) => ({ ...f, location: e.target.value }))}
             className="w-full bg-black text-white border border-gray-800 rounded-xl px-4 py-3 text-sm focus:border-gold-500 outline-none"
@@ -238,6 +264,7 @@ export default function CsrEnquiryForm({ activities, pillars }: { activities: Ac
           <label className="text-xs font-bold uppercase text-[#B0B0B0] mb-2 block">Preferred Implementation Date</label>
           <input
             type="date"
+            name="preferred_date"
             value={form.preferred_date}
             onChange={(e) => setForm((f) => ({ ...f, preferred_date: e.target.value }))}
             className="w-full bg-black text-white border border-gray-800 rounded-xl px-4 py-3 text-sm focus:border-gold-500 outline-none"
@@ -246,6 +273,7 @@ export default function CsrEnquiryForm({ activities, pillars }: { activities: Ac
         <div>
           <label className="text-xs font-bold uppercase text-[#B0B0B0] mb-2 block">Preferred Format Duration</label>
           <select
+            name="duration"
             value={form.duration}
             onChange={(e) => setForm((f) => ({ ...f, duration: e.target.value }))}
             className="w-full bg-black text-white border border-gray-800 rounded-xl px-4 py-3.5 text-sm focus:border-gold-500 outline-none"
@@ -262,6 +290,7 @@ export default function CsrEnquiryForm({ activities, pillars }: { activities: Ac
       <div>
         <label className="text-xs font-bold uppercase text-[#B0B0B0] mb-2 block">Special Instructions / Message</label>
         <textarea
+          name="message"
           rows={4}
           value={form.message}
           onChange={(e) => setForm((f) => ({ ...f, message: e.target.value }))}
@@ -273,6 +302,7 @@ export default function CsrEnquiryForm({ activities, pillars }: { activities: Ac
       <div>
         <label className="text-xs font-bold uppercase text-[#B0B0B0] mb-2 block">How did you hear about us?</label>
         <select
+          name="source"
           value={form.source}
           onChange={(e) => setForm((f) => ({ ...f, source: e.target.value }))}
           className="w-full bg-black text-white border border-gray-800 rounded-xl px-4 py-3.5 text-sm focus:border-gold-500 outline-none"
@@ -289,6 +319,7 @@ export default function CsrEnquiryForm({ activities, pillars }: { activities: Ac
       <button
         type="submit"
         disabled={loading}
+        data-lf-track="CSR Form Submit Button"
         className="w-full bg-gold-500 hover:bg-gold-400 text-black font-extrabold py-4 rounded-xl text-xs uppercase tracking-widest transition-colors disabled:opacity-50"
       >
         {loading ? 'Submitting request...' : 'Secure Custom CSR Presentation'}

@@ -44,6 +44,17 @@ export default function ContactForm() {
 
       if (error) throw error
 
+      // ⚡ CSquare360 Website Lead Tracking Trigger
+      if (typeof window !== 'undefined' && (window as any).CSquare360) {
+        (window as any).CSquare360.track('form_submit', {
+          element_name: 'General Contact Form',
+          visitor_name: formData.name.trim(),
+          visitor_email: formData.email.trim(),
+          visitor_phone: formData.phone.trim(),
+          subject: formData.subject.trim()
+        })
+      }
+
       toast.success('Thank you! Your message has been sent successfully.')
       setFormData({
         name: '',
@@ -67,7 +78,11 @@ export default function ContactForm() {
         Fill out the form below and we will get back to you as soon as possible.
       </p>
 
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form 
+        onSubmit={handleSubmit} 
+        data-lf-form="General Contact Form" 
+        className="space-y-4"
+      >
         <div>
           <label className="block text-sm font-medium text-gray-300 mb-1">
             Full Name <span className="text-gold-500">*</span>
@@ -145,6 +160,7 @@ export default function ContactForm() {
         <button
           type="submit"
           disabled={loading}
+          data-lf-track="Contact Form Submit Button"
           className="w-full py-3 bg-gold-500 text-black font-semibold rounded-lg hover:bg-gold-600 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed shadow-md hover:shadow-gold-500/20"
         >
           {loading ? (

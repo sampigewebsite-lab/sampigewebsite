@@ -70,7 +70,6 @@ export async function generateMetadata(): Promise<Metadata> {
         'photo frame recycling near me',
         'frame recycling Bangalore',
         'eco-friendly waste disposal Bangalore',
-        'e-waste recycling Bangalore',
         'corporate social responsibility Bangalore',
         'CSR activities Bangalore',
       ],
@@ -330,6 +329,94 @@ export default async function RootLayout({
             function gtag(){dataLayer.push(arguments);}
             gtag('js', new Date());
             gtag('config', '${GA_MEASUREMENT_ID}');
+          `}
+        </Script>
+
+        {/* ═══════════════════════════════════════════
+            CSquare360 Website Visitor & Lead Tracking
+            Tracking ID: e6b4afde-7892-4faa-9761-e7f063885b08
+            ═══════════════════════════════════════════ */}
+        <Script id="csquare360-tracker" strategy="afterInteractive">
+          {`
+            (function() {
+              var lf = {
+                id: 'e6b4afde-7892-4faa-9761-e7f063885b08',
+                endpoint: 'https://csquare360.space/api/webhooks/website-visitor'
+              };
+
+              var visitorId = localStorage.getItem('lf_visitor_id');
+              if (!visitorId) {
+                visitorId = 'v_' + Math.random().toString(36).substr(2, 16) + Date.now();
+                localStorage.setItem('lf_visitor_id', visitorId);
+              }
+
+              var urlParams = new URLSearchParams(window.location.search);
+              var baseData = {
+                tracking_id: lf.id,
+                visitor_id: visitorId,
+                page_url: window.location.href,
+                page_title: document.title,
+                referrer: document.referrer,
+                user_agent: navigator.userAgent,
+                utm_source: urlParams.get('utm_source'),
+                utm_medium: urlParams.get('utm_medium'),
+                utm_campaign: urlParams.get('utm_campaign')
+              };
+
+              function send(data) {
+                fetch(lf.endpoint, {
+                  method: 'POST',
+                  headers: {'Content-Type': 'application/json'},
+                  body: JSON.stringify(data)
+                }).catch(function(){});
+              }
+
+              // Track initial page view
+              send(baseData);
+
+              var startTime = Date.now();
+              window.addEventListener('beforeunload', function() {
+                var timeOnPage = Math.round((Date.now() - startTime) / 1000);
+                navigator.sendBeacon(lf.endpoint, JSON.stringify(
+                  Object.assign({}, baseData, { time_on_page: timeOnPage, event: 'page_exit' })
+                ));
+              });
+
+              // Track button/link clicks marked with data-lf-track
+              document.addEventListener('click', function(e) {
+                var el = e.target.closest('[data-lf-track]');
+                if (el) {
+                  send(Object.assign({}, baseData, {
+                    event_type: 'button_click',
+                    element_name: el.getAttribute('data-lf-track'),
+                    element_type: el.tagName === 'A' ? 'link' : 'button',
+                    element_id: el.id || null,
+                  }));
+                }
+              });
+
+              // Track form submissions marked with data-lf-form
+              document.addEventListener('submit', function(e) {
+                var form = e.target.closest('[data-lf-form]');
+                if (!form) return;
+                var fd = new FormData(form);
+                send(Object.assign({}, baseData, {
+                  event_type: 'form_submit',
+                  element_name: form.getAttribute('data-lf-form'),
+                  element_type: 'form',
+                  visitor_name: fd.get('name') || fd.get('full_name') || fd.get('fullname') || '',
+                  visitor_phone: fd.get('phone') || fd.get('mobile') || fd.get('whatsapp') || fd.get('contact') || '',
+                  visitor_email: fd.get('email') || '',
+                }));
+              });
+
+              // Expose global tracker
+              window.CSquare360 = {
+                track: function(eventType, data) {
+                  send(Object.assign({}, baseData, { event_type: eventType }, data || {}));
+                }
+              };
+            })();
           `}
         </Script>
 

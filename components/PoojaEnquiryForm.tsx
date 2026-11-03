@@ -43,20 +43,20 @@ export default function PoojaEnquiryForm({ lang = 'en' }: EnquiryFormProps) {
     }
 
     const data = {
-      full_name: formData.get('full_name') as string || formData.get('contact_person') as string,
-      phone: formData.get('phone') as string,
-      email: formData.get('email') as string,
+      full_name: (formData.get('full_name') as string) || (formData.get('contact_person') as string) || '',
+      phone: (formData.get('phone') as string) || '',
+      email: (formData.get('email') as string) || '',
       participation_type: type,
-      area_locality: formData.get('area_locality') as string || formData.get('venue_location') as string,
+      area_locality: (formData.get('area_locality') as string) || (formData.get('venue_location') as string) || '',
       collection_point_id: cpId,
-      estimated_volume: formData.get('estimated_volume') as string,
-      address: formData.get('address') as string,
-      apartment_name: formData.get('apartment_name') as string,
+      estimated_volume: (formData.get('estimated_volume') as string) || '',
+      address: (formData.get('address') as string) || '',
+      apartment_name: (formData.get('apartment_name') as string) || '',
       flats_participating: formData.get('flats_participating') ? Number(formData.get('flats_participating')) : null,
-      contact_role: formData.get('contact_role') as string,
-      event_date: formData.get('event_date') as string || null,
-      event_type: formData.get('event_type') as string,
-      message: formData.get('message') as string,
+      contact_role: (formData.get('contact_role') as string) || '',
+      event_date: (formData.get('event_date') as string) || null,
+      event_type: (formData.get('event_type') as string) || '',
+      message: (formData.get('message') as string) || '',
       admin_notes: cpName === 'help' ? 'Requires help finding nearest collection point.' : '',
     }
 
@@ -67,6 +67,18 @@ export default function PoojaEnquiryForm({ lang = 'en' }: EnquiryFormProps) {
       toast.error(isKn ? 'ಏನೋ ತಪ್ಪಾಗಿದೆ, ದಯವಿಟ್ಟು ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ.' : 'Something went wrong. Please try again.')
       setLoading(false)
     } else {
+      // ⚡ CSquare360 Website Lead Tracking Trigger
+      if (typeof window !== 'undefined' && (window as any).CSquare360) {
+        (window as any).CSquare360.track('form_submit', {
+          element_name: `Pooja to Prakruthi - ${type}`,
+          visitor_name: data.full_name,
+          visitor_phone: data.phone,
+          visitor_email: data.email,
+          participation_type: type,
+          locality: data.area_locality
+        })
+      }
+
       toast.success(isKn ? 'ಧನ್ಯವಾದಗಳು! ಪಾವತಿ ಪುಟಕ್ಕೆ ಮರುನಿರ್ದೇಶಿಸಲಾಗುತ್ತಿದೆ...' : 'Thank you! Redirecting to payment...')
       setTimeout(() => {
         window.location.href = `/pooja-to-prakruthi/pay?phone=${encodeURIComponent(data.phone)}`
@@ -94,7 +106,11 @@ export default function PoojaEnquiryForm({ lang = 'en' }: EnquiryFormProps) {
         </p>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-8">
+      <form 
+        onSubmit={handleSubmit} 
+        data-lf-form="Pooja to Prakruthi Recycling Form" 
+        className="space-y-8"
+      >
         
         {/* Step 1: Type */}
         <div className="space-y-3">
@@ -110,6 +126,7 @@ export default function PoojaEnquiryForm({ lang = 'en' }: EnquiryFormProps) {
                   key={t.id}
                   type="button"
                   onClick={() => setType(t.id)}
+                  data-lf-track={`Participation Type: ${t.id}`}
                   className={`py-3 px-3 flex flex-col items-center gap-2 rounded-xl border transition-all ${
                     isActive ? 'bg-[#FFB300] text-black border-[#FFB300]' : 'bg-black text-gray-400 border-gray-800 hover:border-[#FFB300]/50 hover:text-white'
                   }`}
@@ -288,6 +305,7 @@ export default function PoojaEnquiryForm({ lang = 'en' }: EnquiryFormProps) {
           <button
             type="submit"
             disabled={loading}
+            data-lf-track="Pooja Form Submit Button"
             className="w-full py-4 bg-[#FFB300] text-black font-extrabold text-sm uppercase tracking-wider rounded-xl hover:bg-[#FFCA28] transition-all flex items-center justify-center gap-2 shadow-lg shadow-[#FFB300]/20"
           >
             {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : (isKn ? `ನೋಂದಾಯಿಸಿ ಮತ್ತು ಪಾವತಿಗೆ ಮುಂದುವರಿಯಿರಿ` : `Submit & Continue to Payment`)}
